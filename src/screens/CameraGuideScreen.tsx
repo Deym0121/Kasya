@@ -25,7 +25,7 @@ export default function CameraGuideScreen({ navigation, route }: Props) {
         <Button
           label="Start recording"
           icon="camera"
-          onPress={() => navigation.navigate('Processing', { goal })}
+          onPress={() => navigation.navigate('PoseScan', { goal })}
         />
       }
     >
@@ -48,8 +48,8 @@ export default function CameraGuideScreen({ navigation, route }: Props) {
           <Text style={styles.demoTitle}>Demo mode</Text>
         </View>
         <Text style={styles.demoText}>
-          This build simulates the analysis. Real on-device pose — where no video ever leaves your
-          phone — is the next milestone.
+          In the StrideFit app build, this uses your camera to track your stride live — no video
+          ever leaves your phone. In Expo Go or the browser it runs a quick simulation.
         </Text>
       </Card>
     </ScreenContainer>

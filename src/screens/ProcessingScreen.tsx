@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation';
 import { colors, spacing, fonts } from '../theme';
-import { gaitEngine } from '../gait';
+import { gaitEngine, LivePoseGaitEngine } from '../gait';
 import { buildGaitReport } from '../storage/reportRecord';
 import { saveReport } from '../storage/reports';
 
@@ -13,14 +13,16 @@ const STEPS = ['Detecting your body', 'Tracking your stride', 'Measuring cadence
 type Props = NativeStackScreenProps<RootStackParamList, 'Processing'>;
 
 export default function ProcessingScreen({ navigation, route }: Props) {
-  const { goal } = route.params;
+  const { goal, frames } = route.params;
   const [step, setStep] = useState(0);
   const navigated = useRef(false);
 
   useEffect(() => {
     const ticker = setInterval(() => setStep((s) => Math.min(s + 1, STEPS.length - 1)), 600);
     (async () => {
-      const result = await gaitEngine.analyze({ frames: [] });
+      // Real captured frames -> on-device engine; otherwise the mock (web / Expo Go).
+      const engine = frames && frames.length > 0 ? new LivePoseGaitEngine() : gaitEngine;
+      const result = await engine.analyze({ frames: frames ?? [] });
       const id = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
       const record = buildGaitReport(result, goal, id, new Date().toISOString());
       await saveReport(record);

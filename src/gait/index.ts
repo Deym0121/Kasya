@@ -8,6 +8,7 @@ export {
   assessCaptureQuality,
   type CadenceResult,
 } from './ruleEngine';
+export { toPoseFrame, type RawLandmark } from './poseMapper';
 
 import { GaitEngine } from './GaitEngine';
 import { MockGaitEngine } from './MockGaitEngine';

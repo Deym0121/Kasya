@@ -13,6 +13,7 @@ import SignInScreen from './src/screens/SignInScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import ScanSetupScreen from './src/screens/ScanSetupScreen';
 import CameraGuideScreen from './src/screens/CameraGuideScreen';
+import PoseScanScreen from './src/screens/PoseScanScreen';
 import ProcessingScreen from './src/screens/ProcessingScreen';
 import ResultScreen from './src/screens/ResultScreen';
 import ShoeMatchesScreen from './src/screens/ShoeMatchesScreen';
@@ -66,6 +67,7 @@ export default function App() {
           <Stack.Screen name="Home" component={HomeScreen} />
           <Stack.Screen name="ScanSetup" component={ScanSetupScreen} />
           <Stack.Screen name="CameraGuide" component={CameraGuideScreen} />
+          <Stack.Screen name="PoseScan" component={PoseScanScreen} options={{ animation: 'fade' }} />
           <Stack.Screen name="Processing" component={ProcessingScreen} options={{ animation: 'fade' }} />
           <Stack.Screen name="Result" component={ResultScreen} />
           <Stack.Screen name="ShoeMatches" component={ShoeMatchesScreen} />
