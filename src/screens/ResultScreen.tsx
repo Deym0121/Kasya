@@ -1,8 +1,10 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation';
 import { colors, spacing, radius, type as T, fonts } from '../theme';
-import { ScreenContainer, Button, Card, ConfidenceChip, IconBubble, Disclaimer } from '../components';
+import { ScreenContainer, Button, Card, ConfidenceChip, IconBubble, Badge, Disclaimer } from '../components';
+import { explainGait } from '../ai/explain';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Result'>;
 
@@ -10,6 +12,25 @@ export default function ResultScreen({ navigation, route }: Props) {
   const { report } = route.params;
   const { result } = report;
   const q = result.captureQuality;
+
+  // Show the built-in tip instantly; upgrade to the AI explanation if the
+  // proxy is reachable. The app never blocks on or breaks without AI.
+  const [tip, setTip] = useState(report.cadenceTip);
+  const [aiOn, setAiOn] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    setAiLoading(true);
+    explainGait(report, ctrl.signal)
+      .then((t) => {
+        setTip(t);
+        setAiOn(true);
+      })
+      .catch(() => {})
+      .finally(() => setAiLoading(false));
+    return () => ctrl.abort();
+  }, [report]);
 
   return (
     <ScreenContainer
@@ -36,8 +57,14 @@ export default function ResultScreen({ navigation, route }: Props) {
         <View style={styles.head}>
           <IconBubble icon="message-circle" tint={colors.accentSoft} color={colors.accent} size={40} />
           <Text style={styles.cardTitle}>Coaching tip</Text>
+          <View style={{ flex: 1 }} />
+          {aiLoading ? (
+            <ActivityIndicator color={colors.accent} />
+          ) : aiOn ? (
+            <Badge label="AI" tint={colors.ink} color="#fff" />
+          ) : null}
         </View>
-        <Text style={[T.body, { marginTop: spacing.md }]}>{report.cadenceTip}</Text>
+        <Text style={[T.body, { marginTop: spacing.md }]}>{tip}</Text>
       </Card>
 
       <Card style={{ marginTop: spacing.md }}>
