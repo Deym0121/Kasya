@@ -1,0 +1,186 @@
+import { PoseFrame, LANDMARK } from './types';
+import { detectFootEvents } from './events';
+
+/** A detailed, per-step read of the walk. All values are hedged estimates. */
+export interface StepAnalysis {
+  stepCount: number;
+  cadenceSpm: number;
+  meanStepTimeSec: number;
+  rhythmRegularityPct: number;
+  /** % of each step spent with the foot on the ground (estimate) */
+  stanceRatioPct: number;
+  /** 0..100, reach of the foot ahead of the hips at contact */
+  overstrideScore: number;
+  /** knee angle at foot strike, degrees (180 = straight) */
+  kneeContactDeg: number;
+  /** peak knee bend through the stride, degrees of flexion from straight */
+  kneePeakDeg: number;
+  symmetryPct: number;
+  leadFoot: 'left' | 'right' | 'unknown';
+}
+
+const clampPct = (v: number) => Math.max(0, Math.min(100, v));
+const mean = (a: number[]) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0);
+const std = (a: number[]) => {
+  if (a.length < 2) return 0;
+  const m = mean(a);
+  return Math.sqrt(mean(a.map((v) => (v - m) ** 2)));
+};
+
+function angleDeg(ax: number, ay: number, bx: number, by: number, cx: number, cy: number): number {
+  const v1x = ax - bx;
+  const v1y = ay - by;
+  const v2x = cx - bx;
+  const v2y = cy - by;
+  const m1 = Math.hypot(v1x, v1y);
+  const m2 = Math.hypot(v2x, v2y);
+  if (m1 === 0 || m2 === 0) return 0;
+  let c = (v1x * v2x + v1y * v2y) / (m1 * m2);
+  c = Math.max(-1, Math.min(1, c));
+  return (Math.acos(c) * 180) / Math.PI;
+}
+
+const hipCenterX = (f: PoseFrame) =>
+  (f.landmarks[LANDMARK.LEFT_HIP].x + f.landmarks[LANDMARK.RIGHT_HIP].x) / 2;
+
+const legLen = (f: PoseFrame) =>
+  Math.max(
+    1e-3,
+    (f.landmarks[LANDMARK.LEFT_ANKLE].y - f.landmarks[LANDMARK.LEFT_HIP].y +
+      (f.landmarks[LANDMARK.RIGHT_ANKLE].y - f.landmarks[LANDMARK.RIGHT_HIP].y)) / 2,
+  );
+
+function kneeAngle(f: PoseFrame, foot: 'left' | 'right'): number {
+  const hip = foot === 'left' ? LANDMARK.LEFT_HIP : LANDMARK.RIGHT_HIP;
+  const knee = foot === 'left' ? LANDMARK.LEFT_KNEE : LANDMARK.RIGHT_KNEE;
+  const ankle = foot === 'left' ? LANDMARK.LEFT_ANKLE : LANDMARK.RIGHT_ANKLE;
+  const h = f.landmarks[hip];
+  const k = f.landmarks[knee];
+  const a = f.landmarks[ankle];
+  if (!h || !k || !a) return 0;
+  return angleDeg(h.x, h.y, k.x, k.y, a.x, a.y);
+}
+
+const tSec = (frames: PoseFrame[], idx: number) => (frames[idx].t - frames[0].t) / 1000;
+
+const EMPTY: StepAnalysis = {
+  stepCount: 0,
+  cadenceSpm: 0,
+  meanStepTimeSec: 0,
+  rhythmRegularityPct: 0,
+  stanceRatioPct: 0,
+  overstrideScore: 0,
+  kneeContactDeg: 0,
+  kneePeakDeg: 0,
+  symmetryPct: 0,
+  leadFoot: 'unknown',
+};
+
+export function analyzeSteps(frames: PoseFrame[]): StepAnalysis {
+  if (frames.length < 6) return EMPTY;
+  const ev = detectFootEvents(frames);
+  const contacts = ev.ordered;
+  if (contacts.length < 2) return EMPTY;
+
+  const durationSec = (frames[frames.length - 1].t - frames[0].t) / 1000;
+  const cadenceSpm = durationSec > 0 ? (contacts.length / durationSec) * 60 : 0;
+
+  const stepTimes: number[] = [];
+  for (let i = 1; i < contacts.length; i++) {
+    stepTimes.push(tSec(frames, contacts[i].idx) - tSec(frames, contacts[i - 1].idx));
+  }
+  const meanStepTimeSec = mean(stepTimes);
+  const cv = meanStepTimeSec > 0 ? std(stepTimes) / meanStepTimeSec : 1;
+  const rhythmRegularityPct = clampPct((1 - cv) * 100);
+
+  const overs = contacts.map((c) => {
+    const f = frames[c.idx];
+    const ankle = f.landmarks[c.foot === 'left' ? LANDMARK.LEFT_ANKLE : LANDMARK.RIGHT_ANKLE];
+    return Math.abs(ankle.x - hipCenterX(f)) / legLen(f);
+  });
+  const overstrideScore = clampPct(mean(overs) * 220);
+
+  const kneeContactDeg = Math.round(mean(contacts.map((c) => kneeAngle(frames[c.idx], c.foot))));
+  let minKnee = 180;
+  for (const f of frames) {
+    const kl = kneeAngle(f, 'left');
+    const kr = kneeAngle(f, 'right');
+    if (kl > 0) minKnee = Math.min(minKnee, kl);
+    if (kr > 0) minKnee = Math.min(minKnee, kr);
+  }
+  const kneePeakDeg = Math.round(Math.max(0, 180 - minKnee));
+
+  const stanceRatios: number[] = [];
+  for (const foot of ['left', 'right'] as const) {
+    const { contacts: cs, toeOffs: tos } = ev[foot];
+    for (let i = 0; i < cs.length - 1; i++) {
+      const c = cs[i];
+      const next = cs[i + 1];
+      const to = tos.find((x) => x > c && x < next);
+      if (to != null) {
+        const stride = tSec(frames, next) - tSec(frames, c);
+        const stance = tSec(frames, to) - tSec(frames, c);
+        if (stride > 0) stanceRatios.push(clampPct((stance / stride) * 100));
+      }
+    }
+  }
+  const stanceRatioPct = stanceRatios.length ? Math.round(mean(stanceRatios)) : 0;
+
+  const lSteps: number[] = [];
+  const rSteps: number[] = [];
+  for (let i = 1; i < contacts.length; i++) {
+    const dt = tSec(frames, contacts[i].idx) - tSec(frames, contacts[i - 1].idx);
+    if (contacts[i - 1].foot === 'left') lSteps.push(dt);
+    else rSteps.push(dt);
+  }
+  const ml = mean(lSteps);
+  const mr = mean(rSteps);
+  const symmetryPct = clampPct((1 - Math.abs(ml - mr) / Math.max(ml, mr, 1e-6)) * 100);
+
+  return {
+    stepCount: contacts.length,
+    cadenceSpm,
+    meanStepTimeSec,
+    rhythmRegularityPct,
+    stanceRatioPct,
+    overstrideScore,
+    kneeContactDeg,
+    kneePeakDeg,
+    symmetryPct,
+    leadFoot: contacts[0].foot,
+  };
+}
+
+/** Plain-English, wellness-only walkthrough of what happens during a step. */
+export function describeGait(
+  a: StepAnalysis,
+  verticalOscillationPct: number,
+): { summary: string; walkthrough: string[] } {
+  if (a.stepCount < 2) {
+    return { summary: 'Not enough clear steps to break down — try a longer, side-on capture.', walkthrough: [] };
+  }
+  const lead = a.leadFoot === 'unknown' ? 'front' : a.leadFoot;
+  const reach =
+    a.overstrideScore >= 65
+      ? 'landing well ahead of you (that’s overstriding)'
+      : a.overstrideScore >= 40
+        ? 'a little ahead of you'
+        : 'nicely under your body';
+  const bounce =
+    verticalOscillationPct >= 12 ? 'and your body bounces up and down a fair bit' : 'and your body stays fairly level';
+  const rhythm =
+    a.rhythmRegularityPct >= 80
+      ? ' with a steady rhythm'
+      : a.rhythmRegularityPct >= 60
+        ? ''
+        : ', though your rhythm was a bit uneven';
+
+  const walkthrough = [
+    `1. Swing — your ${lead} foot lifts off and swings forward, the knee bending toward about ${a.kneePeakDeg}°.`,
+    `2. Foot strike — it lands ${reach}, with the knee around ${a.kneeContactDeg}° at contact.`,
+    `3. Stance — your weight rolls over the planted foot; you spend roughly ${a.stanceRatioPct}% of each step on the ground, ${bounce}.`,
+    `4. Push-off — that foot drives off behind you as the other foot begins its own swing, and the cycle repeats.`,
+    `Overall a step lands about every ${a.meanStepTimeSec.toFixed(2)}s (~${Math.round(a.cadenceSpm)} per minute)${rhythm}.`,
+  ];
+  return { summary: walkthrough[walkthrough.length - 1], walkthrough };
+}

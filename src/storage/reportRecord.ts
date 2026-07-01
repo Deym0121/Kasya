@@ -2,6 +2,7 @@ import { GaitResult, PoseFrame } from '../gait/types';
 import { cadenceTip } from '../gait/insights';
 import { buildDetail, GaitGraphData } from '../gait/detailed';
 import { FormMetrics, GaitFeedback } from '../gait/form';
+import { StepAnalysis } from '../gait/stepAnalysis';
 
 /**
  * A gait scan as persisted on-device (and later synced to Supabase as a row).
@@ -22,6 +23,9 @@ export interface GaitReportRecord {
   metrics?: FormMetrics;
   feedback?: GaitFeedback;
   graph?: GaitGraphData;
+  steps?: StepAnalysis;
+  /** per-step "what's happening" walkthrough */
+  walkthrough?: string[];
   /** downsampled landmark motion for the slow-mo replay (NOT video) */
   frames?: PoseFrame[];
 }

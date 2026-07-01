@@ -1,6 +1,7 @@
 import { PoseFrame, GaitResult } from './types';
 import { analyzeGait, gaitSignal } from './ruleEngine';
 import { computeFormMetrics, buildFeedback, FormMetrics, GaitFeedback } from './form';
+import { analyzeSteps, describeGait, StepAnalysis } from './stepAnalysis';
 
 /** Data needed to draw the saved gait graph (never a video). */
 export interface GaitGraphData {
@@ -13,6 +14,8 @@ export interface DetailedGait extends GaitResult {
   metrics: FormMetrics;
   feedback: GaitFeedback;
   graph: GaitGraphData;
+  steps: StepAnalysis;
+  walkthrough: string[];
 }
 
 function normalizedSignal(frames: PoseFrame[]): GaitGraphData {
@@ -23,11 +26,25 @@ function normalizedSignal(frames: PoseFrame[]): GaitGraphData {
   return { signal, steps: sig.stepIndices, times: sig.times };
 }
 
+// The smart metrics prefer the per-step analysis (foot-strike based) over the
+// coarser whole-signal estimates for overstride, rhythm, and symmetry.
+function smartMetrics(frames: PoseFrame[], steps: StepAnalysis): FormMetrics {
+  const base = computeFormMetrics(frames);
+  return {
+    ...base,
+    overstrideScore: steps.overstrideScore,
+    rhythmRegularityPct: steps.rhythmRegularityPct,
+    symmetryPct: steps.symmetryPct,
+  };
+}
+
 export function analyzeGaitDetailed(frames: PoseFrame[]): DetailedGait {
   const base = analyzeGait(frames);
-  const metrics = computeFormMetrics(frames);
+  const steps = analyzeSteps(frames);
+  const metrics = smartMetrics(frames, steps);
   const feedback = buildFeedback(base.cadence.value, base.cadence.confidence, metrics, base.captureQuality.ok);
-  return { ...base, metrics, feedback, graph: normalizedSignal(frames) };
+  const { walkthrough } = describeGait(steps, metrics.verticalOscillationPct);
+  return { ...base, metrics, feedback, graph: normalizedSignal(frames), steps, walkthrough };
 }
 
 function roundFrames(frames: PoseFrame[]): PoseFrame[] {
@@ -50,12 +67,28 @@ export function downsampleFrames(frames: PoseFrame[], max = 120): PoseFrame[] {
   return roundFrames(out);
 }
 
-/** Everything we persist alongside a report (metrics, feedback, graph, motion). */
+/** Everything we persist alongside a report (metrics, feedback, graph, motion, steps). */
 export function buildDetail(
   result: GaitResult,
   frames: PoseFrame[],
-): { metrics: FormMetrics; feedback: GaitFeedback; graph: GaitGraphData; frames: PoseFrame[] } {
-  const metrics = computeFormMetrics(frames);
+): {
+  metrics: FormMetrics;
+  feedback: GaitFeedback;
+  graph: GaitGraphData;
+  frames: PoseFrame[];
+  steps: StepAnalysis;
+  walkthrough: string[];
+} {
+  const steps = analyzeSteps(frames);
+  const metrics = smartMetrics(frames, steps);
   const feedback = buildFeedback(result.cadence.value, result.cadence.confidence, metrics, result.captureQuality.ok);
-  return { metrics, feedback, graph: normalizedSignal(frames), frames: downsampleFrames(frames) };
+  const { walkthrough } = describeGait(steps, metrics.verticalOscillationPct);
+  return {
+    metrics,
+    feedback,
+    graph: normalizedSignal(frames),
+    frames: downsampleFrames(frames),
+    steps,
+    walkthrough,
+  };
 }

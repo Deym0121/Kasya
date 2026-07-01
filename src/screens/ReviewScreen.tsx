@@ -26,6 +26,7 @@ export default function ReviewScreen({ navigation, route }: Props) {
   const fb = report.feedback;
   const g = report.graph;
   const frames = report.frames;
+  const s = report.steps;
 
   if (!frames || !frames.length || !m || !fb || !g) {
     return (
@@ -54,16 +55,38 @@ export default function ReviewScreen({ navigation, route }: Props) {
       <View style={{ height: spacing.sm }} />
       <SkeletonPlayer frames={frames} />
 
+      {report.walkthrough && report.walkthrough.length > 0 ? (
+        <>
+          <View style={{ height: spacing.xl }} />
+          <Card>
+            <View style={styles.head}>
+              <IconBubble icon="activity" tint={colors.accentSoft} color={colors.accent} size={40} />
+              <Text style={styles.cardTitle}>How your step works</Text>
+            </View>
+            {report.walkthrough.map((line, i) => (
+              <Text key={i} style={styles.step}>
+                {line}
+              </Text>
+            ))}
+          </Card>
+        </>
+      ) : null}
+
       <View style={{ height: spacing.xl }} />
       <Label>Your numbers</Label>
       <View style={styles.metrics}>
         <Metric label="Cadence" value={Math.round(report.result.cadence.value)} unit="spm" />
+        {s ? <Metric label="Step time" value={s.meanStepTimeSec.toFixed(2)} unit="s" /> : null}
+        {s ? <Metric label="Stance" value={s.stanceRatioPct} unit="%" /> : null}
         <Metric label="Bounce" value={m.verticalOscillationPct} unit="%" />
         <Metric label="Overstride" value={m.overstrideScore} unit="/100" />
         <Metric label="Rhythm" value={m.rhythmRegularityPct} unit="%" />
         <Metric label="Symmetry" value={m.symmetryPct} unit="%" />
         <Metric label="Knee bend" value={m.kneeFlexionRangeDeg} unit="°" />
       </View>
+      {s && s.leadFoot !== 'unknown' ? (
+        <Text style={styles.caption}>Leading foot this scan: {s.leadFoot}.</Text>
+      ) : null}
 
       <Card style={{ marginTop: spacing.lg }}>
         <Label>Step rhythm graph</Label>
@@ -109,6 +132,7 @@ const styles = StyleSheet.create({
   metricUnit: { fontFamily: fonts.semibold, fontSize: 13, color: colors.muted },
   metricLabel: { fontFamily: fonts.medium, fontSize: 13, color: colors.muted, marginTop: 2 },
   caption: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 17, color: colors.muted, marginTop: spacing.sm },
+  step: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, color: colors.inkSoft, marginTop: spacing.md },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   cardTitle: { fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
   li: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, color: colors.inkSoft, marginTop: spacing.sm },

@@ -12,6 +12,8 @@ export {
 export { toPoseFrame, type RawLandmark } from './poseMapper';
 export { makeSyntheticWalk } from './synthetic';
 export { computeFormMetrics, buildFeedback, type FormMetrics, type GaitFeedback } from './form';
+export { detectFootEvents, type FootEvents } from './events';
+export { analyzeSteps, describeGait, type StepAnalysis } from './stepAnalysis';
 export {
   analyzeGaitDetailed,
   downsampleFrames,
