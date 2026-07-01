@@ -14,7 +14,7 @@ import { usePoseDetection, RunningMode, Delegate } from 'react-native-mediapipe-
 import { Canvas, Line as SkLine, Circle as SkCircle, vec } from '@shopify/react-native-skia';
 import { colors, spacing, fonts, radius } from '../theme';
 import { Button } from '../components';
-import { toPoseFrame } from '../gait';
+import { toPoseFrame, analyzeGait } from '../gait';
 
 const HIP_L = 23, HIP_R = 24, KNEE_L = 25, KNEE_R = 26, ANK_L = 27, ANK_R = 28;
 const HEEL_L = 29, HEEL_R = 30, FOOT_L = 31, FOOT_R = 32;
@@ -35,6 +35,7 @@ export default function PoseScanCamera({ navigation, route }) {
   const [size, setSize] = useState({ w: 1, h: 1 });
   const [landmarks, setLandmarks] = useState(null);
   const [recording, setRecording] = useState(false);
+  const [retry, setRetry] = useState('');
 
   const capturing = useRef(false);
   const startedAt = useRef(0);
@@ -56,6 +57,7 @@ export default function PoseScanCamera({ navigation, route }) {
   );
 
   const startCapture = useCallback(() => {
+    setRetry('');
     frames.current = [];
     startedAt.current = Date.now();
     capturing.current = true;
@@ -63,6 +65,12 @@ export default function PoseScanCamera({ navigation, route }) {
     setTimeout(() => {
       capturing.current = false;
       setRecording(false);
+      // GATE: only advance when we recorded an analyzable walk.
+      const result = analyzeGait(frames.current);
+      if (!result.captureQuality.ok) {
+        setRetry(result.captureQuality.issues[0] || 'Stay fully in frame and walk for the whole ten seconds.');
+        return;
+      }
       navigation.replace('Processing', { goal, frames: frames.current });
     }, CAPTURE_MS);
   }, [goal, navigation]);
@@ -128,7 +136,7 @@ export default function PoseScanCamera({ navigation, route }) {
           <Text style={styles.backText}>Close</Text>
         </Pressable>
         <Text style={styles.hint}>
-          {recording ? 'Recording — walk naturally' : 'Stand side-on, full body in frame'}
+          {recording ? 'Recording — walk naturally' : retry || 'Stand side-on, full body in frame'}
         </Text>
       </View>
 
