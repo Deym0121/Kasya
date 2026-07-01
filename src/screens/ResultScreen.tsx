@@ -88,6 +88,14 @@ export default function ResultScreen({ navigation, route }: Props) {
         ))}
       </Card>
 
+      <View style={{ height: spacing.lg }} />
+      <Button
+        label="Review & slow-mo"
+        variant="secondary"
+        icon="film"
+        onPress={() => navigation.navigate('Review', { report })}
+      />
+
       <Disclaimer />
     </ScreenContainer>
   );

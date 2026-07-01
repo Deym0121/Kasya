@@ -16,6 +16,7 @@ import CameraGuideScreen from './src/screens/CameraGuideScreen';
 import PoseScanScreen from './src/screens/PoseScanScreen';
 import ProcessingScreen from './src/screens/ProcessingScreen';
 import ResultScreen from './src/screens/ResultScreen';
+import ReviewScreen from './src/screens/ReviewScreen';
 import ShoeMatchesScreen from './src/screens/ShoeMatchesScreen';
 import PaywallScreen from './src/screens/PaywallScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
@@ -70,6 +71,7 @@ export default function App() {
           <Stack.Screen name="PoseScan" component={PoseScanScreen} options={{ animation: 'fade' }} />
           <Stack.Screen name="Processing" component={ProcessingScreen} options={{ animation: 'fade' }} />
           <Stack.Screen name="Result" component={ResultScreen} />
+          <Stack.Screen name="Review" component={ReviewScreen} />
           <Stack.Screen name="ShoeMatches" component={ShoeMatchesScreen} />
           <Stack.Screen name="Paywall" component={PaywallScreen} options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="Profile" component={ProfileScreen} />

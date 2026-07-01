@@ -21,7 +21,7 @@ export async function listReports(): Promise<GaitReportRecord[]> {
 export async function saveReport(record: GaitReportRecord): Promise<void> {
   const all = await listReports();
   all.unshift(record); // newest first
-  await AsyncStorage.setItem(KEY, JSON.stringify(all));
+  await AsyncStorage.setItem(KEY, JSON.stringify(all.slice(0, 20))); // cap stored history
 }
 
 export async function getLatestReport(): Promise<GaitReportRecord | null> {

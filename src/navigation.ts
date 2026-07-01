@@ -10,6 +10,7 @@ export type RootStackParamList = {
   PoseScan: { goal: string };
   Processing: { goal: string; frames?: PoseFrame[] };
   Result: { report: GaitReportRecord };
+  Review: { report: GaitReportRecord };
   ShoeMatches: { report: GaitReportRecord };
   Paywall: undefined;
   Profile: undefined;

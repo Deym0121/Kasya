@@ -6,9 +6,19 @@ export {
   analyzeGait,
   computeCadence,
   assessCaptureQuality,
+  gaitSignal,
   type CadenceResult,
 } from './ruleEngine';
 export { toPoseFrame, type RawLandmark } from './poseMapper';
+export { makeSyntheticWalk } from './synthetic';
+export { computeFormMetrics, buildFeedback, type FormMetrics, type GaitFeedback } from './form';
+export {
+  analyzeGaitDetailed,
+  downsampleFrames,
+  buildDetail,
+  type DetailedGait,
+  type GaitGraphData,
+} from './detailed';
 
 import { GaitEngine } from './GaitEngine';
 import { MockGaitEngine } from './MockGaitEngine';

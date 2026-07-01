@@ -123,3 +123,28 @@ export function analyzeGait(frames: PoseFrame[]): GaitResult {
   const gatedCadence: MetricEstimate = captureQuality.ok ? cadence : { ...cadence, confidence: 'low' };
   return { cadence: gatedCadence, stepCount, durationSec, captureQuality };
 }
+
+/**
+ * The rectified ankle-separation signal plus detected step indices and per-frame
+ * times (seconds). Used to draw the gait graph and to derive step rhythm.
+ */
+export function gaitSignal(frames: PoseFrame[]): {
+  signal: number[];
+  stepIndices: number[];
+  times: number[];
+} {
+  if (frames.length < 2) return { signal: [], stepIndices: [], times: [] };
+  const durationSec = (frames[frames.length - 1].t - frames[0].t) / 1000;
+  const times = frames.map((f) => (f.t - frames[0].t) / 1000);
+  const diff = frames.map(ankleApDifference);
+  const baseline = median(diff);
+  const signal = diff.map((v) => Math.abs(v - baseline));
+  const { min, max } = minMax(signal);
+  const range = max - min;
+  if (durationSec <= 0 || range < STILLNESS_EPSILON) return { signal, stepIndices: [], times };
+  const fps = (frames.length - 1) / durationSec;
+  const minHeight = min + 0.5 * range;
+  const minDistance = Math.max(1, Math.round(0.2 * fps));
+  const stepIndices = findPeaks(signal, { minHeight, minDistance });
+  return { signal, stepIndices, times };
+}
