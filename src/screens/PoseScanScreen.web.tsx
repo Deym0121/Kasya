@@ -6,10 +6,13 @@
 // usable was recorded (no camera, no person, not enough walking), it does NOT
 // advance; it explains why and lets you try again.
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { colors, spacing } from '../theme';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import { colors, spacing, radius, fonts } from '../theme';
 import { Button } from '../components';
-import { toPoseFrame, analyzeGait } from '../gait';
+import { toPoseFrame, analyzeGait, assessFrontalQuality } from '../gait';
+import { BODY_GUIDE, BODY_GUIDE_VIEWBOX } from '../viz/bodyGuide';
+import { setPendingVideo, clearPendingVideo } from '../viz/videoHolder';
 
 const WASM = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm';
 const MODEL =
@@ -65,13 +68,62 @@ export default function PoseScanScreen({ navigation, route }) {
   const capturingRef = useRef(false);
   const startRef = useRef(0);
   const detectedRef = useRef(false);
+  // Side frames captured this session (for chaining the rear pass in-screen), or
+  // handed in via navigation when this screen was opened directly for the rear view.
+  const sideFramesRef = useRef(route.params.sideFrames || null);
 
-  const [status, setStatus] = useState('loading'); // loading | ready | recording | error
+  const [view, setView] = useState(route.params.view || 'side'); // 'side' | 'rear'
+  const [status, setStatus] = useState('loading'); // loading | ready | counting | recording | error
   const [msg, setMsg] = useState('Loading pose model…');
   const [count, setCount] = useState(CAPTURE_SECONDS);
+  const [leadIn, setLeadIn] = useState(3); // "get ready" countdown, seconds
   const [detected, setDetected] = useState(false);
   const [retryMsg, setRetryMsg] = useState('');
+  const [choice, setChoice] = useState(false); // after a good SIDE capture: add rear or analyze now
+  const [recordVideo, setRecordVideo] = useState(false); // opt-in ephemeral clip
   const [nonce, setNonce] = useState(0);
+  const timerRef = useRef(null); // active countdown / capture interval
+  const streamRef = useRef(null);
+  const recorderRef = useRef(null);
+  const chunksRef = useRef([]);
+  const recordVideoRef = useRef(false);
+  useEffect(() => {
+    recordVideoRef.current = recordVideo;
+  }, [recordVideo]);
+
+  // Never leave an interval running after the screen unmounts (e.g. Close mid-count).
+  useEffect(() => () => timerRef.current && clearInterval(timerRef.current), []);
+
+  // Opt-in clip: record the raw camera to an in-memory blob DURING the side
+  // capture only. Never written to disk, never uploaded. Kept only if the capture
+  // passes the gate; the Review screen deletes it right after.
+  const startVideo = useCallback(() => {
+    const s = streamRef.current;
+    if (!s || !recordVideoRef.current || typeof MediaRecorder === 'undefined') return;
+    try {
+      chunksRef.current = [];
+      const mime = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm';
+      const rec = new MediaRecorder(s, { mimeType: mime });
+      rec.ondataavailable = (e) => e.data && e.data.size && chunksRef.current.push(e.data);
+      rec.start();
+      recorderRef.current = rec;
+    } catch {}
+  }, []);
+  const stopVideo = useCallback((keep) => {
+    const rec = recorderRef.current;
+    recorderRef.current = null;
+    if (!rec) return;
+    rec.onstop = () => {
+      if (keep && chunksRef.current.length) {
+        const blob = new Blob(chunksRef.current, { type: rec.mimeType });
+        setPendingVideo(URL.createObjectURL(blob));
+      }
+      chunksRef.current = [];
+    };
+    try {
+      rec.stop();
+    } catch {}
+  }, []);
 
   const render = useCallback(() => {
     const v = videoRef.current;
@@ -127,6 +179,7 @@ export default function PoseScanScreen({ navigation, route }) {
     let stream = null;
     setStatus('loading');
     setMsg('Loading pose model…');
+    setRetryMsg(''); // "Try again" (nonce bump) must not resurrect a stale gate-failure banner
     detectedRef.current = false;
     setDetected(false);
     (async () => {
@@ -154,6 +207,7 @@ export default function PoseScanScreen({ navigation, route }) {
         }
         const v = videoRef.current;
         v.srcObject = stream;
+        streamRef.current = stream;
         await v.play();
         setStatus('ready');
         rafRef.current = requestAnimationFrame(render);
@@ -166,53 +220,125 @@ export default function PoseScanScreen({ navigation, route }) {
     return () => {
       alive = false;
       cancelAnimationFrame(rafRef.current);
+      if (recorderRef.current) {
+        try {
+          recorderRef.current.stop();
+        } catch {}
+        recorderRef.current = null;
+        chunksRef.current = [];
+      }
       if (stream) stream.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
       if (lmRef.current && lmRef.current.close) lmRef.current.close();
       lmRef.current = null;
     };
   }, [render, nonce]);
 
-  const record = useCallback(() => {
-    setRetryMsg('');
+  // The actual 10s capture — runs only after the "get ready" countdown.
+  const beginCapture = useCallback(() => {
     framesRef.current = [];
     startRef.current = performance.now();
     capturingRef.current = true;
     setStatus('recording');
+    if (view === 'side') {
+      if (recordVideoRef.current) startVideo(); // opt-in clip records over the side pass
+      else clearPendingVideo(); // a non-video scan must not inherit a stale clip
+    }
     let n = CAPTURE_SECONDS;
     setCount(n);
-    const iv = setInterval(() => {
+    timerRef.current = setInterval(() => {
       n -= 1;
       setCount(n);
       if (n <= 0) {
-        clearInterval(iv);
+        clearInterval(timerRef.current);
         capturingRef.current = false;
-        // GATE: only advance when we actually recorded an analyzable walk.
         const frames = framesRef.current;
-        const result = analyzeGait(frames);
-        if (!result.captureQuality.ok) {
+        // GATE: only advance when we actually recorded an analyzable walk. The
+        // side view is gated on cadence/quality; the rear view on frontal quality.
+        const gate =
+          view === 'rear'
+            ? assessFrontalQuality(frames)
+            : analyzeGait(frames).captureQuality;
+        if (!gate.ok) {
+          if (view === 'side') stopVideo(false); // discard the clip on a failed capture
           setStatus('ready');
           setRetryMsg(
-            result.captureQuality.issues[0] ||
-              'We couldn’t read your stride. Stay fully in frame and walk for the whole ten seconds.',
+            gate.issues[0] ||
+              (view === 'rear'
+                ? 'We couldn’t read the rear view. Face away, stay fully in frame, and walk the whole time.'
+                : 'We couldn’t read your stride. Stay fully in frame and walk for the whole ten seconds.'),
           );
           return;
         }
-        navigation.replace('Processing', { goal, frames });
+        if (view === 'rear') {
+          // Second pass done → one merged report from both angles.
+          navigation.replace('Processing', { goal, frames: sideFramesRef.current || undefined, frontalFrames: frames });
+        } else {
+          // Side pass done → keep the clip (if any), and offer the optional rear view.
+          stopVideo(true);
+          sideFramesRef.current = frames;
+          setStatus('ready');
+          setChoice(true);
+        }
       }
     }, 1000);
+  }, [goal, navigation, view, startVideo, stopVideo]);
+
+  // Tap Record → a short "get ready" countdown (3/5/10s) → beginCapture().
+  const record = useCallback(() => {
+    setRetryMsg('');
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (leadIn <= 0) {
+      beginCapture();
+      return;
+    }
+    let c = leadIn;
+    setCount(c);
+    setStatus('counting');
+    timerRef.current = setInterval(() => {
+      c -= 1;
+      if (c <= 0) {
+        clearInterval(timerRef.current);
+        beginCapture();
+      } else {
+        setCount(c);
+      }
+    }, 1000);
+  }, [leadIn, beginCapture]);
+
+  // Switch to the rear pass without tearing down the loaded model/camera.
+  const startRearPass = useCallback(() => {
+    setChoice(false);
+    setRetryMsg('');
+    framesRef.current = [];
+    setView('rear');
+    setStatus('ready');
+  }, []);
+
+  const analyzeNow = useCallback(() => {
+    setChoice(false);
+    navigation.replace('Processing', { goal, frames: sideFramesRef.current || undefined });
   }, [goal, navigation]);
 
-  let buttonLabel = `Record ${CAPTURE_SECONDS} seconds`;
+  const rear = view === 'rear';
+  const walkHint = rear ? 'walk away from the camera' : 'walk side-on';
+
+  let buttonLabel = rear ? `Record rear view · ${CAPTURE_SECONDS}s` : `Record ${CAPTURE_SECONDS} seconds`;
   let buttonIcon = 'camera';
   let buttonDisabled = false;
   let onPress = record;
-  if (status === 'loading') {
+  if (choice) {
+    buttonDisabled = true; // the choice overlay owns the next action
+  } else if (status === 'loading') {
     buttonLabel = 'Loading…';
     buttonDisabled = true;
   } else if (status === 'error') {
     buttonLabel = 'Try again';
     buttonIcon = 'refresh-ccw';
     onPress = () => setNonce((x) => x + 1);
+  } else if (status === 'counting') {
+    buttonLabel = `Starting in ${count}…`;
+    buttonDisabled = true;
   } else if (status === 'recording') {
     buttonLabel = `Recording… ${count}s`;
     buttonDisabled = true;
@@ -221,15 +347,22 @@ export default function PoseScanScreen({ navigation, route }) {
     buttonDisabled = true;
   }
 
-  const topText =
-    status === 'recording'
-      ? `Recording — ${count}s · walk side-on`
+  const topText = choice
+    ? '✓ Side view captured'
+    : status === 'counting'
+      ? `Get ready — ${walkHint} when it hits 0`
+      : status === 'recording'
+      ? `Recording — ${count}s · ${walkHint}`
       : status === 'ready'
         ? retryMsg
           ? retryMsg
-          : detected
-            ? '✓ You’re in frame — press Record and walk'
-            : 'Step back so your whole body is visible'
+          : rear
+            ? detected
+              ? '✓ In frame — press Record and walk away'
+              : 'Face away and line up with the outline — whole body in frame'
+            : detected
+              ? '✓ You’re in frame — press Record and walk'
+              : 'Line up with the outline — step back so your whole body shows'
         : '';
 
   return (
@@ -237,18 +370,119 @@ export default function PoseScanScreen({ navigation, route }) {
       <div style={stageStyle}>
         <video ref={videoRef} autoPlay playsInline muted style={videoStyle} />
         <canvas ref={canvasRef} style={canvasStyle} />
-        <div onClick={() => navigation.goBack()} style={closeStyle}>
+        {status === 'ready' || status === 'counting' ? (
+          <svg viewBox={BODY_GUIDE_VIEWBOX} preserveAspectRatio="xMidYMid meet" style={guideStyle} aria-hidden="true">
+            <circle
+              cx={BODY_GUIDE.head.cx}
+              cy={BODY_GUIDE.head.cy}
+              r={BODY_GUIDE.head.r}
+              fill="none"
+              stroke={detected ? '#39FF14' : 'rgba(255,255,255,0.55)'}
+              strokeWidth={4}
+              strokeDasharray="6 8"
+            />
+            {BODY_GUIDE.lines.map((l, i) => (
+              <line
+                key={i}
+                x1={l[0]}
+                y1={l[1]}
+                x2={l[2]}
+                y2={l[3]}
+                stroke={detected ? '#39FF14' : 'rgba(255,255,255,0.55)'}
+                strokeWidth={4}
+                strokeLinecap="round"
+                strokeDasharray="6 8"
+              />
+            ))}
+          </svg>
+        ) : null}
+        <div
+          onClick={() => navigation.goBack()}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && navigation.goBack()}
+          role="button"
+          tabIndex={0}
+          aria-label="Close the scan"
+          style={closeStyle}
+        >
           ✕ Close
         </div>
         {topText ? (
+          // retry tint = colors.accentInk (#B3290F) at 85%
           <div style={{ ...hintStyle, background: retryMsg ? 'rgba(179,41,15,0.85)' : 'rgba(0,0,0,0.5)' }}>
             {topText}
           </div>
         ) : null}
-        {status !== 'ready' && status !== 'recording' ? <div style={msgStyle}>{msg}</div> : null}
+        {status === 'loading' || status === 'error' ? <div style={msgStyle}>{msg}</div> : null}
+        {status === 'counting' ? <div style={countdownStyle}>{count}</div> : null}
         {status === 'recording' ? <div style={recDot} /> : null}
+        {choice ? (
+          <div style={choiceStyle}>
+            {/* Dismiss = analyze the side view — a passed capture is never discarded. */}
+            <div
+              onClick={analyzeNow}
+              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && analyzeNow()}
+              role="button"
+              tabIndex={0}
+              aria-label="Dismiss and analyze the side view only"
+              style={choiceClose}
+            >
+              ✕
+            </div>
+            <div style={choiceTitle}>Add a rear view?</div>
+            <div style={choiceText}>
+              A second pass from behind adds hip level, base of support and left/right balance — folded
+              into the same result.
+            </div>
+            <div
+              onClick={startRearPass}
+              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && startRearPass()}
+              role="button"
+              tabIndex={0}
+              style={choicePrimary}
+            >
+              + Add rear view
+            </div>
+            <div
+              onClick={analyzeNow}
+              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && analyzeNow()}
+              role="button"
+              tabIndex={0}
+              style={choiceSecondary}
+            >
+              Analyze side view only
+            </div>
+          </div>
+        ) : null}
       </div>
       <View style={styles.controls}>
+        {status === 'ready' && !choice ? (
+          <View style={styles.leadRow}>
+            <Text style={styles.leadLabel}>Get ready</Text>
+            {[3, 5, 10].map((s) => (
+              <Pressable
+                key={s}
+                onPress={() => setLeadIn(s)}
+                accessibilityRole="button"
+                accessibilityLabel={`Get-ready countdown ${s} seconds`}
+                accessibilityState={{ selected: leadIn === s }}
+                style={[styles.leadChip, leadIn === s && styles.leadChipOn]}
+              >
+                <Text style={[styles.leadChipText, leadIn === s && styles.leadChipTextOn]}>{s}s</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+        {status === 'ready' && !choice && view === 'side' ? (
+          <Pressable style={styles.vidToggle} onPress={() => setRecordVideo((v) => !v)} accessibilityRole="switch" accessibilityState={{ checked: recordVideo }}>
+            <View style={[styles.check, recordVideo && styles.checkOn]}>
+              {recordVideo ? <Feather name="check" size={14} color="#fff" /> : null}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.vidTitle}>Record my video (just this once)</Text>
+              <Text style={styles.vidSub}>Shown only in your review, then deleted. Never uploaded.</Text>
+            </View>
+          </Pressable>
+        ) : null}
         <Button
           label={buttonLabel}
           icon={buttonIcon}
@@ -272,12 +506,14 @@ const stageStyle = {
 };
 const videoStyle = { width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' };
 const canvasStyle = { position: 'absolute', inset: 0, width: '100%', height: '100%', transform: 'scaleX(-1)' };
+const guideStyle = { position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none' };
+// DOM inline styles — plain JS objects, so the theme tokens drop straight in.
 const closeStyle = {
   position: 'absolute',
   top: 14,
-  left: 16,
-  color: '#fff',
-  font: '600 15px sans-serif',
+  left: spacing.lg,
+  color: colors.onDark,
+  font: `600 15px ${fonts.semibold}, sans-serif`,
   cursor: 'pointer',
   textShadow: '0 1px 3px rgba(0,0,0,0.6)',
   zIndex: 2,
@@ -285,13 +521,13 @@ const closeStyle = {
 const hintStyle = {
   position: 'absolute',
   top: 48,
-  left: 16,
-  right: 16,
+  left: spacing.lg,
+  right: spacing.lg,
   textAlign: 'center',
-  color: '#fff',
-  font: '600 14px sans-serif',
-  padding: '8px 12px',
-  borderRadius: 999,
+  color: colors.onDark,
+  font: `600 14px ${fonts.semibold}, sans-serif`,
+  padding: `${spacing.sm}px ${spacing.md}px`,
+  borderRadius: radius.pill,
   zIndex: 2,
 };
 const msgStyle = {
@@ -300,10 +536,10 @@ const msgStyle = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  color: '#fff',
+  color: colors.onDark,
   textAlign: 'center',
-  padding: 24,
-  font: '15px sans-serif',
+  padding: spacing.xl,
+  font: `15px ${fonts.regular}, sans-serif`,
 };
 const recDot = {
   position: 'absolute',
@@ -312,11 +548,109 @@ const recDot = {
   width: 14,
   height: 14,
   borderRadius: 7,
-  background: '#FF3B30',
+  background: colors.danger,
   zIndex: 2,
+};
+const choiceStyle = {
+  position: 'absolute',
+  left: spacing.lg,
+  right: spacing.lg,
+  bottom: spacing.lg,
+  background: 'rgba(21,22,27,0.92)', // colors.ink (#15161B) at 92%
+  borderRadius: radius.lg,
+  padding: spacing.lg,
+  zIndex: 3,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+};
+const choiceClose = {
+  position: 'absolute',
+  top: 10,
+  right: 14,
+  color: colors.onDarkMuted,
+  font: `600 16px ${fonts.semibold}, sans-serif`,
+  cursor: 'pointer',
+  padding: 6,
+};
+const choiceTitle = { color: colors.onDark, font: `700 17px ${fonts.bold}, sans-serif` };
+const choiceText = {
+  color: 'rgba(255,255,255,0.75)',
+  font: `14px ${fonts.regular}, sans-serif`,
+  lineHeight: 1.4,
+};
+const choicePrimary = {
+  marginTop: 4,
+  textAlign: 'center',
+  color: colors.onDark,
+  background: colors.accent,
+  font: `700 15px ${fonts.bold}, sans-serif`,
+  padding: `${spacing.md}px ${spacing.lg}px`,
+  borderRadius: radius.pill,
+  cursor: 'pointer',
+};
+const choiceSecondary = {
+  textAlign: 'center',
+  color: colors.onDark,
+  font: `600 15px ${fonts.semibold}, sans-serif`,
+  padding: `10px ${spacing.lg}px`,
+  borderRadius: radius.pill,
+  cursor: 'pointer',
+  border: '1px solid rgba(255,255,255,0.25)',
+};
+const countdownStyle = {
+  position: 'absolute',
+  inset: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: '#fff',
+  font: `800 140px ${fonts.extra}, sans-serif`,
+  textShadow: '0 4px 24px rgba(0,0,0,0.6)',
+  zIndex: 2,
+  pointerEvents: 'none',
 };
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   controls: { padding: spacing.xl },
+  leadRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
+  leadLabel: { fontFamily: fonts.medium, fontSize: 14, color: colors.muted, marginRight: spacing.md },
+  leadChip: {
+    minHeight: 40,
+    minWidth: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.surface,
+    marginRight: spacing.sm,
+  },
+  leadChipOn: { backgroundColor: colors.ink, borderColor: colors.ink },
+  leadChipText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.inkSoft },
+  leadChipTextOn: { color: colors.onDark },
+  vidToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceAlt,
+    marginBottom: spacing.md,
+  },
+  check: {
+    width: 24,
+    height: 24,
+    borderRadius: 7,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  checkOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+  vidTitle: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink },
+  vidSub: { fontFamily: fonts.regular, fontSize: 12, color: colors.muted, marginTop: 1 },
 });

@@ -35,6 +35,8 @@ export const colors = {
   accentSoft: '#FFEAE3',
   accentInk: '#B3290F',
   line: '#ECEAE4',
+  /** stronger border for interactive outlines needing ≥3:1 non-text contrast */
+  lineStrong: '#D8D5CC',
   muted: '#6B6E76',
   success: '#0E7C5A',
   successSoft: '#E3F4EC',

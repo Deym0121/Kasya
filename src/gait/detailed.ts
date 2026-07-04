@@ -2,6 +2,7 @@ import { PoseFrame, GaitResult } from './types';
 import { analyzeGait, gaitSignal } from './ruleEngine';
 import { computeFormMetrics, buildFeedback, FormMetrics, GaitFeedback } from './form';
 import { analyzeSteps, describeGait, StepAnalysis } from './stepAnalysis';
+import { analyzeFrontalDetailed, FrontalAnalysis } from './frontal';
 
 /** Data needed to draw the saved gait graph (never a video). */
 export interface GaitGraphData {
@@ -53,6 +54,8 @@ function roundFrames(frames: PoseFrame[]): PoseFrame[] {
     landmarks: f.landmarks.map((p) => ({
       x: Math.round(p.x * 1000) / 1000,
       y: Math.round(p.y * 1000) / 1000,
+      // Keep depth (rounded) so the saved skeleton can drive the rotatable 3D view.
+      z: p.z != null ? Math.round(p.z * 1000) / 1000 : undefined,
       visibility: p.visibility != null ? Math.round(p.visibility * 100) / 100 : undefined,
     })),
   }));
@@ -65,6 +68,20 @@ export function downsampleFrames(frames: PoseFrame[], max = 120): PoseFrame[] {
   const step = (frames.length - 1) / (max - 1);
   for (let i = 0; i < max; i++) out.push(frames[Math.round(i * step)]);
   return roundFrames(out);
+}
+
+/**
+ * The rear-view (frontal) pass persisted alongside a report: its analysis plus a
+ * downsampled skeleton for the rear-view replay. Never video — only landmarks.
+ */
+export function buildFrontalDetail(frontalFrames: PoseFrame[]): {
+  frontal: FrontalAnalysis;
+  frontalFrames: PoseFrame[];
+} {
+  return {
+    frontal: analyzeFrontalDetailed(frontalFrames),
+    frontalFrames: downsampleFrames(frontalFrames),
+  };
 }
 
 /** Everything we persist alongside a report (metrics, feedback, graph, motion, steps). */

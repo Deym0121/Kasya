@@ -7,14 +7,24 @@
 //
 // Types suppressed (@ts-nocheck): native modules aren't verifiable headless.
 // The data contract — toPoseFrame() — is unit-tested in poseMapper.test.ts.
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { usePoseDetection, RunningMode, Delegate } from 'react-native-mediapipe-posedetection';
 import { Canvas, Line as SkLine, Circle as SkCircle, vec } from '@shopify/react-native-skia';
+import Svg, { Circle as SvgCircle, Line as SvgLine } from 'react-native-svg';
 import { colors, spacing, fonts, radius } from '../theme';
 import { Button } from '../components';
 import { toPoseFrame, analyzeGait } from '../gait';
+import { BODY_GUIDE, BODY_GUIDE_VIEWBOX } from '../viz/bodyGuide';
+import { setPendingVideo, clearPendingVideo } from '../viz/videoHolder';
+
+async function deleteFile(path) {
+  try {
+    const FS = await import('expo-file-system');
+    await FS.deleteAsync(path, { idempotent: true });
+  } catch {}
+}
 
 const HIP_L = 23, HIP_R = 24, KNEE_L = 25, KNEE_R = 26, ANK_L = 27, ANK_R = 28;
 const HEEL_L = 29, HEEL_R = 30, FOOT_L = 31, FOOT_R = 32;
@@ -36,10 +46,42 @@ export default function PoseScanCamera({ navigation, route }) {
   const [landmarks, setLandmarks] = useState(null);
   const [recording, setRecording] = useState(false);
   const [retry, setRetry] = useState('');
+  const [leadIn, setLeadIn] = useState(3); // "get ready" countdown, seconds
+  const [count, setCount] = useState(0); // live countdown number
+  const [counting, setCounting] = useState(false);
+  const [recordVideo, setRecordVideo] = useState(false); // opt-in ephemeral clip
 
+  const cameraRef = useRef(null);
   const capturing = useRef(false);
   const startedAt = useRef(0);
   const frames = useRef([]);
+  const timer = useRef(null);
+  const recordingVideoRef = useRef(false);
+
+  useEffect(() => () => timer.current && clearInterval(timer.current), []);
+
+  // Evaluate the capture (+ keep or discard the opt-in clip), then advance.
+  const finish = useCallback(
+    (videoPath) => {
+      capturing.current = false;
+      setRecording(false);
+      try {
+        const result = analyzeGait(frames.current);
+        if (!result.captureQuality.ok) {
+          if (videoPath) deleteFile(videoPath);
+          setRetry(result.captureQuality.issues[0] || 'Stay fully in frame and walk for the whole ten seconds.');
+          return;
+        }
+        if (videoPath) setPendingVideo(videoPath);
+        else clearPendingVideo();
+        navigation.replace('Processing', { goal, frames: frames.current });
+      } catch {
+        if (videoPath) deleteFile(videoPath);
+        setRetry('Something went wrong analyzing that capture — try again.');
+      }
+    },
+    [goal, navigation],
+  );
 
   const pose = usePoseDetection(
     {
@@ -56,24 +98,66 @@ export default function PoseScanCamera({ navigation, route }) {
     { numPoses: 1, minPoseDetectionConfidence: 0.5, delegate: Delegate.GPU },
   );
 
-  const startCapture = useCallback(() => {
-    setRetry('');
+  const beginCapture = useCallback(() => {
+    setCounting(false);
     frames.current = [];
     startedAt.current = Date.now();
     capturing.current = true;
     setRecording(true);
-    setTimeout(() => {
-      capturing.current = false;
-      setRecording(false);
-      // GATE: only advance when we recorded an analyzable walk.
-      const result = analyzeGait(frames.current);
-      if (!result.captureQuality.ok) {
-        setRetry(result.captureQuality.issues[0] || 'Stay fully in frame and walk for the whole ten seconds.');
-        return;
+
+    // Opt-in clip: record the camera to a temp file. onRecordingFinished fires
+    // after stopRecording and hands us the path; finish() keeps or deletes it.
+    const withVideo = recordVideo && cameraRef.current;
+    recordingVideoRef.current = !!withVideo;
+    if (withVideo) {
+      try {
+        cameraRef.current.startRecording({
+          video: true,
+          audio: false,
+          onRecordingFinished: (v) => finish(v.path),
+          onRecordingError: () => finish(null),
+        });
+      } catch {
+        recordingVideoRef.current = false;
       }
-      navigation.replace('Processing', { goal, frames: frames.current });
+    } else {
+      clearPendingVideo(); // a non-video scan must not inherit a stale clip
+    }
+
+    timer.current = setTimeout(() => {
+      if (recordingVideoRef.current && cameraRef.current) {
+        try {
+          cameraRef.current.stopRecording(); // path arrives via onRecordingFinished → finish()
+        } catch {
+          finish(null);
+        }
+      } else {
+        finish(null);
+      }
     }, CAPTURE_MS);
-  }, [goal, navigation]);
+  }, [goal, navigation, recordVideo, finish]);
+
+  // Tap Record → a short "get ready" countdown (3/5/10s) → beginCapture().
+  const startCapture = useCallback(() => {
+    setRetry('');
+    if (timer.current) clearInterval(timer.current);
+    if (leadIn <= 0) {
+      beginCapture();
+      return;
+    }
+    let c = leadIn;
+    setCount(c);
+    setCounting(true);
+    timer.current = setInterval(() => {
+      c -= 1;
+      if (c <= 0) {
+        clearInterval(timer.current);
+        beginCapture();
+      } else {
+        setCount(c);
+      }
+    }, 1000);
+  }, [leadIn, beginCapture]);
 
   if (!hasPermission) {
     return (
@@ -104,9 +188,12 @@ export default function PoseScanCamera({ navigation, route }) {
       onLayout={(e) => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
     >
       <Camera
+        ref={cameraRef}
         style={StyleSheet.absoluteFill}
         device={device}
         isActive
+        video={true}
+        audio={false}
         frameProcessor={pose.frameProcessor}
         onLayout={pose.cameraViewLayoutChangeHandler}
       />
@@ -131,22 +218,86 @@ export default function PoseScanCamera({ navigation, route }) {
           )}
       </Canvas>
 
+      {!recording ? (
+        <Svg
+          style={StyleSheet.absoluteFill}
+          viewBox={BODY_GUIDE_VIEWBOX}
+          preserveAspectRatio="xMidYMid meet"
+          pointerEvents="none"
+        >
+          <SvgCircle
+            cx={BODY_GUIDE.head.cx}
+            cy={BODY_GUIDE.head.cy}
+            r={BODY_GUIDE.head.r}
+            fill="none"
+            stroke={landmarks ? '#39FF14' : 'rgba(255,255,255,0.55)'}
+            strokeWidth={4}
+            strokeDasharray="6 8"
+          />
+          {BODY_GUIDE.lines.map((l, i) => (
+            <SvgLine
+              key={i}
+              x1={l[0]}
+              y1={l[1]}
+              x2={l[2]}
+              y2={l[3]}
+              stroke={landmarks ? '#39FF14' : 'rgba(255,255,255,0.55)'}
+              strokeWidth={4}
+              strokeLinecap="round"
+              strokeDasharray="6 8"
+            />
+          ))}
+        </Svg>
+      ) : null}
+
+      {counting ? (
+        <View style={styles.countWrap} pointerEvents="none">
+          <Text style={styles.countNum}>{count}</Text>
+        </View>
+      ) : null}
+
       <View style={styles.top} pointerEvents="box-none">
         <Pressable onPress={() => navigation.goBack()} hitSlop={12} style={styles.back}>
           <Text style={styles.backText}>Close</Text>
         </Pressable>
         <Text style={styles.hint}>
-          {recording ? 'Recording — walk naturally' : retry || 'Stand side-on, full body in frame'}
+          {counting
+            ? 'Get ready — start walking when it hits 0'
+            : recording
+              ? 'Recording — walk naturally'
+              : retry || 'Stand side-on, full body in frame'}
         </Text>
       </View>
 
       <View style={styles.bottom} pointerEvents="box-none">
+        {!recording && !counting ? (
+          <View style={styles.leadRow}>
+            <Text style={styles.leadLabel}>Get ready</Text>
+            {[3, 5, 10].map((s) => (
+              <Pressable
+                key={s}
+                onPress={() => setLeadIn(s)}
+                style={[styles.leadChip, leadIn === s && styles.leadChipOn]}
+              >
+                <Text style={[styles.leadChipText, leadIn === s && styles.leadChipTextOn]}>{s}s</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+        {!recording && !counting ? (
+          <Pressable style={styles.vidToggle} onPress={() => setRecordVideo((v) => !v)}>
+            <View style={[styles.check, recordVideo && styles.checkOn]}>
+              {recordVideo ? <Text style={styles.checkMark}>✓</Text> : null}
+            </View>
+            <Text style={styles.vidText}>Record my video (just this once) — shown only in review, then deleted</Text>
+          </Pressable>
+        ) : null}
         <Button
-          label={recording ? 'Recording…' : 'Record 10 seconds'}
+          label={counting ? `Starting in ${count}…` : recording ? 'Recording…' : 'Record 10 seconds'}
           icon="camera"
           variant="accent"
           onPress={startCapture}
-          disabled={recording}
+          disabled={recording || counting}
         />
       </View>
     </View>
@@ -171,4 +322,35 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   bottom: { position: 'absolute', left: spacing.xl, right: spacing.xl, bottom: 40 },
+  countWrap: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  countNum: { fontFamily: fonts.extra, fontSize: 140, color: '#fff' },
+  leadRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
+  leadLabel: { fontFamily: fonts.medium, fontSize: 14, color: '#fff', marginRight: spacing.md },
+  leadChip: {
+    minHeight: 40,
+    minWidth: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.4)',
+    marginRight: spacing.sm,
+  },
+  leadChipOn: { backgroundColor: '#fff' },
+  leadChipText: { fontFamily: fonts.semibold, fontSize: 14, color: '#fff' },
+  leadChipTextOn: { color: colors.ink },
+  vidToggle: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md },
+  check: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+  checkMark: { color: '#fff', fontSize: 13, fontFamily: fonts.bold },
+  vidText: { flex: 1, fontFamily: fonts.medium, fontSize: 13, color: '#fff' },
 });

@@ -10,14 +10,29 @@ export {
   type CadenceResult,
 } from './ruleEngine';
 export { toPoseFrame, type RawLandmark } from './poseMapper';
-export { makeSyntheticWalk } from './synthetic';
+export { makeSyntheticWalk, makeSyntheticRearWalk } from './synthetic';
 export { computeFormMetrics, buildFeedback, type FormMetrics, type GaitFeedback } from './form';
 export { detectFootEvents, type FootEvents } from './events';
 export { analyzeSteps, describeGait, type StepAnalysis } from './stepAnalysis';
 export {
+  analyzeFrontal,
+  assessFrontalQuality,
+  buildFrontalFeedback,
+  analyzeFrontalDetailed,
+  analyzeFrontalSides,
+  frontalSummary,
+  type FrontalMetrics,
+  type FrontalFeedback,
+  type FrontalQuality,
+  type FrontalAnalysis,
+  type FrontalSide,
+  type FrontalSides,
+} from './frontal';
+export {
   analyzeGaitDetailed,
   downsampleFrames,
   buildDetail,
+  buildFrontalDetail,
   type DetailedGait,
   type GaitGraphData,
 } from './detailed';

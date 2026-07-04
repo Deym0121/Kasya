@@ -10,6 +10,8 @@ export interface Shoe {
   priceMax: number;
   tags: string[];
   isOwnProduct?: boolean;
+  /** product photo URL (licensed). When absent, the UI shows a styled thumbnail. */
+  image?: string;
 }
 
 /**
@@ -20,6 +22,7 @@ export interface Shoe {
 export const SHOES: Shoe[] = [
   {
     id: 'sf-support-runner',
+    image: 'https://loremflickr.com/320/320/running,shoe?lock=201',
     brand: 'StrideFit',
     model: 'Support Runner',
     category: 'stability',
@@ -32,6 +35,7 @@ export const SHOES: Shoe[] = [
   },
   {
     id: 'asics-gt-2000',
+    image: 'https://loremflickr.com/320/320/running,shoe?lock=202',
     brand: 'Asics',
     model: 'GT-2000',
     category: 'stability',
@@ -43,6 +47,7 @@ export const SHOES: Shoe[] = [
   },
   {
     id: 'brooks-ghost-17',
+    image: 'https://loremflickr.com/320/320/running,shoe?lock=203',
     brand: 'Brooks',
     model: 'Ghost 17',
     category: 'neutral',
@@ -54,6 +59,7 @@ export const SHOES: Shoe[] = [
   },
   {
     id: 'hoka-clifton-10',
+    image: 'https://loremflickr.com/320/320/running,shoe?lock=204',
     brand: 'Hoka',
     model: 'Clifton 10',
     category: 'max_cushion',
@@ -65,6 +71,7 @@ export const SHOES: Shoe[] = [
   },
   {
     id: 'nike-pegasus-41',
+    image: 'https://loremflickr.com/320/320/running,shoe?lock=205',
     brand: 'Nike',
     model: 'Pegasus 41',
     category: 'neutral',
@@ -76,6 +83,7 @@ export const SHOES: Shoe[] = [
   },
   {
     id: 'newbalance-880',
+    image: 'https://loremflickr.com/320/320/running,shoe?lock=206',
     brand: 'New Balance',
     model: 'Fresh Foam 880',
     category: 'neutral',
@@ -87,6 +95,7 @@ export const SHOES: Shoe[] = [
   },
   {
     id: 'skechers-gowalk',
+    image: 'https://loremflickr.com/320/320/walking,shoe?lock=207',
     brand: 'Skechers',
     model: 'GoWalk 7',
     category: 'walking',
@@ -98,6 +107,7 @@ export const SHOES: Shoe[] = [
   },
   {
     id: 'adidas-supernova',
+    image: 'https://loremflickr.com/320/320/running,shoe?lock=208',
     brand: 'Adidas',
     model: 'Supernova Rise',
     category: 'stability',
@@ -106,5 +116,77 @@ export const SHOES: Shoe[] = [
     priceMin: 6000,
     priceMax: 7000,
     tags: ['support', 'daily-trainer'],
+  },
+  {
+    id: 'saucony-endorphin-speed',
+    image: 'https://loremflickr.com/320/320/running,shoe?lock=209',
+    brand: 'Saucony',
+    model: 'Endorphin Speed',
+    category: 'neutral',
+    cushion: 'medium',
+    useCase: ['running', 'gym'],
+    priceMin: 8500,
+    priceMax: 9500,
+    tags: ['lightweight', 'responsive', 'tempo'],
+  },
+  {
+    id: 'xero-hfs',
+    image: 'https://loremflickr.com/320/320/sneaker?lock=210',
+    brand: 'Xero',
+    model: 'HFS II',
+    category: 'neutral',
+    cushion: 'low',
+    useCase: ['running', 'gym'],
+    priceMin: 5000,
+    priceMax: 5500,
+    tags: ['minimal', 'lightweight', 'ground-feel'],
+  },
+  {
+    id: 'nike-metcon-9',
+    image: 'https://loremflickr.com/320/320/gym,shoe?lock=211',
+    brand: 'Nike',
+    model: 'Metcon 9',
+    category: 'gym',
+    cushion: 'low',
+    useCase: ['gym'],
+    priceMin: 7000,
+    priceMax: 8000,
+    tags: ['stable-base', 'lifting', 'gym'],
+  },
+  {
+    id: 'nb-940v5',
+    image: 'https://loremflickr.com/320/320/walking,shoe?lock=212',
+    brand: 'New Balance',
+    model: '940v5',
+    category: 'walking',
+    cushion: 'high',
+    useCase: ['walking', 'daily_comfort', 'recovery'],
+    priceMin: 6500,
+    priceMax: 7500,
+    tags: ['walking', 'wide-fit', 'support'],
+  },
+  {
+    id: 'kalenji-run-active',
+    image: 'https://loremflickr.com/320/320/running,shoe?lock=213',
+    brand: 'Kalenji',
+    model: 'Run Active',
+    category: 'neutral',
+    cushion: 'medium',
+    useCase: ['running', 'walking', 'daily_comfort'],
+    priceMin: 2200,
+    priceMax: 2800,
+    tags: ['budget', 'beginner', 'everyday'],
+  },
+  {
+    id: 'hoka-bondi-9',
+    image: 'https://loremflickr.com/320/320/running,shoe?lock=214',
+    brand: 'Hoka',
+    model: 'Bondi 9',
+    category: 'max_cushion',
+    cushion: 'high',
+    useCase: ['walking', 'recovery', 'daily_comfort'],
+    priceMin: 9000,
+    priceMax: 10000,
+    tags: ['max-cushion', 'plush', 'recovery'],
   },
 ];

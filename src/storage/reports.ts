@@ -28,3 +28,12 @@ export async function getLatestReport(): Promise<GaitReportRecord | null> {
   const all = await listReports();
   return all[0] ?? null;
 }
+
+export async function deleteReport(id: string): Promise<void> {
+  const all = await listReports();
+  await AsyncStorage.setItem(KEY, JSON.stringify(all.filter((r) => r.id !== id)));
+}
+
+export async function clearReports(): Promise<void> {
+  await AsyncStorage.removeItem(KEY);
+}

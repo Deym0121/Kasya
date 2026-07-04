@@ -25,3 +25,45 @@ export function buildGaitFeatures(report: GaitReportRecord): GaitFeatures {
     gaitCycles: r.captureQuality.gaitCyclesDetected,
   };
 }
+
+/**
+ * The fuller de-identified feature set the AI COACH sees — the whole scan's
+ * numbers so it can guide on any of them. Still numbers only: never name/email/id,
+ * never landmarks or imagery. `focus` lets the user steer coaching to one metric.
+ */
+export interface CoachFeatures extends GaitFeatures {
+  bouncePct?: number;
+  overstrideScore?: number;
+  rhythmPct?: number;
+  symmetryPct?: number;
+  kneeFlexionDeg?: number;
+  stancePct?: number;
+  stepTimeSec?: number;
+  hipDropPct?: number;
+  baseWidthPct?: number;
+  swayPct?: number;
+  rearSymmetryPct?: number;
+  focus?: string;
+}
+
+export function buildCoachFeatures(report: GaitReportRecord, focus?: string): CoachFeatures {
+  const base = buildGaitFeatures(report);
+  const m = report.metrics;
+  const s = report.steps;
+  const fr = report.frontal;
+  return {
+    ...base,
+    bouncePct: m?.verticalOscillationPct,
+    overstrideScore: m?.overstrideScore,
+    rhythmPct: m?.rhythmRegularityPct,
+    symmetryPct: m?.symmetryPct,
+    kneeFlexionDeg: m?.kneeFlexionRangeDeg,
+    stancePct: s?.stanceRatioPct,
+    stepTimeSec: s?.meanStepTimeSec != null ? Math.round(s.meanStepTimeSec * 100) / 100 : undefined,
+    hipDropPct: fr?.metrics.hipDropPct,
+    baseWidthPct: fr?.metrics.stepWidthPct,
+    swayPct: fr?.metrics.lateralSwayPct,
+    rearSymmetryPct: fr?.metrics.symmetryPct,
+    focus: focus || undefined,
+  };
+}

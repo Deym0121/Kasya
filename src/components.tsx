@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import type { ComponentProps, ReactNode } from 'react';
 import {
   Pressable,
@@ -6,14 +7,21 @@ import {
   StyleSheet,
   ViewStyle,
   StyleProp,
+  TextStyle,
   TextInput,
   ScrollView,
   KeyboardTypeOptions,
   ActivityIndicator,
+  Animated,
+  Easing,
+  Platform,
+  AccessibilityInfo,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import type { Edge } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, radius, shadow, fonts, type as T, confidenceColor } from './theme';
+import { METRIC_INFO, typicalBand, MetricKey } from './gait/metricInfo';
 
 type IconName = ComponentProps<typeof Feather>['name'];
 
@@ -23,21 +31,30 @@ export function ScreenContainer({
   onBack,
   right,
   footer,
+  edges = ['top', 'bottom'],
 }: {
   children: ReactNode;
   title?: string;
   onBack?: () => void;
   right?: ReactNode;
   footer?: ReactNode;
+  /** tab screens pass ['top'] — the tab bar already consumes the bottom inset */
+  edges?: Edge[];
 }) {
   const showBar = !!(title || onBack || right);
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.screen} edges={edges}>
       {showBar && (
         <View style={styles.topbar}>
           <View style={styles.side}>
             {onBack && (
-              <Pressable onPress={onBack} hitSlop={12} style={styles.iconBtn}>
+              <Pressable
+                onPress={onBack}
+                hitSlop={12}
+                style={styles.iconBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
+              >
                 <Feather name="chevron-left" size={24} color={colors.ink} />
               </Pressable>
             )}
@@ -89,6 +106,9 @@ export function Button({
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!(disabled || loading), busy: !!loading }}
       style={({ pressed }) => [styles.btn, v.box, pressed && styles.btnPressed, disabled && { opacity: 0.45 }]}
     >
       {loading ? (
@@ -115,7 +135,7 @@ export function Card({
 }) {
   const inner = <View style={[styles.card, style]}>{children}</View>;
   return onPress ? (
-    <Pressable onPress={onPress} style={({ pressed }) => pressed && { opacity: 0.96 }}>
+    <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => pressed && { opacity: 0.96 }}>
       {inner}
     </Pressable>
   ) : (
@@ -137,6 +157,8 @@ export function IconBubble({
   return (
     <View
       style={[styles.bubble, { width: size, height: size, borderRadius: size / 2, backgroundColor: tint }]}
+      importantForAccessibility="no-hide-descendants"
+      accessibilityElementsHidden
     >
       <Feather name={icon} size={Math.round(size * 0.42)} color={color} />
     </View>
@@ -198,7 +220,13 @@ export function Chip({
   icon?: IconName;
 }) {
   return (
-    <Pressable onPress={onPress} style={[styles.chip, selected && styles.chipOn]}>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: !!selected }}
+      style={[styles.chip, selected && styles.chipOn]}
+    >
       {icon && (
         <Feather
           name={icon}
@@ -231,7 +259,7 @@ export function Badge({
 export function ConfidenceChip({ confidence }: { confidence: string }) {
   const c = confidenceColor[confidence] ?? colors.muted;
   return (
-    <View style={[styles.badge, { backgroundColor: c }]}>
+    <View style={[styles.badge, { backgroundColor: c }]} accessibilityLabel={`${confidence} confidence estimate`}>
       <Text style={[styles.badgeText, { color: '#fff' }]}>{confidence} confidence</Text>
     </View>
   );
@@ -239,7 +267,7 @@ export function ConfidenceChip({ confidence }: { confidence: string }) {
 
 export function Dots({ count, index }: { count: number; index: number }) {
   return (
-    <View style={styles.dots}>
+    <View style={styles.dots} accessibilityLabel={`Step ${index + 1} of ${count}`}>
       {Array.from({ length: count }).map((_, i) => (
         <View key={i} style={[styles.dot, i === index && styles.dotOn]} />
       ))}
@@ -253,6 +281,272 @@ export function Disclaimer() {
       StrideFit gives wellness and shoe-selection estimates — not medical advice or a diagnosis. For
       pain or injury, see a qualified professional.
     </Text>
+  );
+}
+
+/** One metric tile. `band: 'outside'` warn-tints the value (never danger-red). */
+export function Metric({
+  label,
+  value,
+  unit,
+  band = 'unknown',
+  onPress,
+  expanded,
+}: {
+  label: string;
+  value: string | number;
+  unit?: string;
+  band?: 'typical' | 'outside' | 'unknown';
+  onPress?: () => void;
+  expanded?: boolean;
+}) {
+  const body = (
+    <View style={styles.metric}>
+      <Text style={[styles.metricVal, band === 'outside' && { color: colors.warn }]}>
+        {value}
+        {unit ? <Text style={styles.metricUnit}> {unit}</Text> : null}
+        {band === 'outside' ? <Text style={{ color: colors.warn }}> •</Text> : null}
+      </Text>
+      <Text style={styles.metricLabel}>{label}</Text>
+    </View>
+  );
+  if (!onPress) return body;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}, ${value}${unit ? ` ${unit}` : ''}. Opens explanation`}
+      accessibilityState={{ expanded: !!expanded }}
+      style={({ pressed }) => pressed && { opacity: 0.7 }}
+    >
+      {body}
+    </Pressable>
+  );
+}
+
+export interface MetricGridItem {
+  key: MetricKey;
+  value: string | number;
+  unit?: string;
+  /** numeric value for band tinting when `value` is a formatted string */
+  raw?: number;
+}
+
+/**
+ * Metric tiles + one tap-to-open plain-English explainer panel below the grid.
+ * Labels/units/copy come from METRIC_INFO; outlier tinting from typicalBand.
+ */
+export function MetricGrid({ items, columns = 3 }: { items: MetricGridItem[]; columns?: 3 | 4 }) {
+  const [openKey, setOpenKey] = useState<MetricKey | null>(null);
+  const fade = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!openKey) return;
+    fade.setValue(0);
+    Animated.timing(fade, {
+      toValue: 1,
+      duration: 150,
+      useNativeDriver: Platform.OS !== 'web',
+    }).start();
+  }, [openKey, fade]);
+
+  const open = openKey ? METRIC_INFO[openKey] : null;
+  return (
+    <View>
+      <View style={styles.metricsWrap}>
+        {items.map((it) => {
+          const info = METRIC_INFO[it.key];
+          const raw = it.raw ?? (typeof it.value === 'number' ? it.value : 0);
+          return (
+            <View key={it.key} style={{ width: `${100 / columns}%` as const }}>
+              <Metric
+                label={info.label}
+                value={it.value}
+                unit={it.unit ?? info.unit}
+                band={typicalBand(it.key, raw)}
+                onPress={() => setOpenKey(openKey === it.key ? null : it.key)}
+                expanded={openKey === it.key}
+              />
+            </View>
+          );
+        })}
+      </View>
+      {open ? (
+        <Animated.View style={[styles.metricPanel, { opacity: fade }]}>
+          <Text style={styles.metricPanelTitle}>{open.label}</Text>
+          <Text style={[T.body, { marginTop: 2 }]}>{open.plain}</Text>
+          <Text style={[T.small, { marginTop: spacing.xs }]}>{open.typical}</Text>
+        </Animated.View>
+      ) : null}
+    </View>
+  );
+}
+
+/** Friendly empty state — used by first-run Home and the zero-scan History tab. */
+export function EmptyState({
+  icon,
+  title,
+  body,
+  action,
+}: {
+  icon: IconName;
+  title: string;
+  body: string;
+  action?: { label: string; onPress: () => void };
+}) {
+  return (
+    <View style={styles.emptyCard}>
+      <IconBubble icon={icon} tint={colors.surfaceAlt} color={colors.ink} size={56} />
+      <Text style={[T.title, { marginTop: spacing.lg, textAlign: 'center' }]}>{title}</Text>
+      <Text style={[T.bodyMuted, { marginTop: spacing.xs, textAlign: 'center' }]}>{body}</Text>
+      {action && (
+        <View style={{ marginTop: spacing.lg, alignSelf: 'stretch' }}>
+          <Button label={action.label} variant="secondary" onPress={action.onPress} />
+        </View>
+      )}
+    </View>
+  );
+}
+
+/** rAF count-up number (easeOutCubic). Snaps instantly under OS reduce-motion. */
+export function AnimatedNumber({
+  value,
+  duration = 800,
+  delay = 0,
+  style,
+  format,
+}: {
+  value: number;
+  duration?: number;
+  delay?: number;
+  style?: StyleProp<TextStyle>;
+  format?: (v: number) => string;
+}) {
+  const [display, setDisplay] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+    let raf = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .catch(() => false)
+      .then((reduce) => {
+        if (!mounted) return;
+        if (reduce) {
+          setDisplay(value);
+          return;
+        }
+        let start = 0;
+        const tick = (ts: number) => {
+          if (!mounted) return;
+          if (!start) start = ts;
+          const p = Math.min(1, (ts - start) / duration);
+          const eased = 1 - Math.pow(1 - p, 3);
+          setDisplay(value * eased);
+          if (p < 1) raf = requestAnimationFrame(tick);
+        };
+        timer = setTimeout(() => {
+          raf = requestAnimationFrame(tick);
+        }, delay);
+      });
+    return () => {
+      mounted = false;
+      cancelAnimationFrame(raf);
+      if (timer) clearTimeout(timer);
+    };
+  }, [value, duration, delay]);
+
+  return <Text style={style}>{format ? format(display) : String(Math.round(display))}</Text>;
+}
+
+/** Mount entrance: fade + rise. Static under OS reduce-motion. */
+export function Reveal({
+  delay = 0,
+  children,
+  style,
+}: {
+  delay?: number;
+  children: ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    let mounted = true;
+    const t = Animated.timing(anim, {
+      toValue: 1,
+      duration: 320,
+      delay,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: Platform.OS !== 'web',
+    });
+    t.start();
+    AccessibilityInfo.isReduceMotionEnabled()
+      .catch(() => false)
+      .then((reduce) => {
+        if (mounted && reduce) {
+          t.stop();
+          anim.setValue(1);
+        }
+      });
+    return () => {
+      mounted = false;
+      t.stop();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <Animated.View
+      style={[
+        style,
+        {
+          opacity: anim,
+          transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
+        },
+      ]}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
+/** The rotating "Today's focus" coaching tip card. */
+export function CoachCard({ tip, source }: { tip: string; source: 'scan' | 'general' }) {
+  return (
+    <Card style={{ marginTop: spacing.md }}>
+      <View style={styles.coachHead}>
+        <IconBubble icon="message-circle" tint={colors.accentSoft} color={colors.accent} size={40} />
+        <View style={{ flex: 1, marginLeft: spacing.md }}>
+          <Label>Today's focus</Label>
+        </View>
+        {source === 'scan' && <Badge label="From your last scan" />}
+      </View>
+      <Text style={[T.body, { marginTop: spacing.md }]}>{tip}</Text>
+    </Card>
+  );
+}
+
+/** Soft in-app notice with an action — used for the re-scan due banner. */
+export function NoticeBanner({
+  icon,
+  text,
+  actionLabel,
+  onAction,
+}: {
+  icon: IconName;
+  text: string;
+  actionLabel: string;
+  onAction: () => void;
+}) {
+  return (
+    <View style={styles.notice}>
+      <Feather name={icon} size={18} color={colors.accentInk} style={{ marginTop: 2 }} />
+      <Text style={styles.noticeText}>{text}</Text>
+      <Pressable onPress={onAction} accessibilityRole="button" accessibilityLabel={actionLabel} hitSlop={10}>
+        <Text style={styles.noticeAction}>{actionLabel}</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -311,9 +605,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: colors.line,
+    borderColor: colors.lineStrong,
     borderRadius: radius.pill,
-    paddingVertical: 10,
+    minHeight: 44,
+    paddingVertical: 12,
     paddingHorizontal: spacing.lg,
     marginRight: spacing.sm,
     marginBottom: spacing.sm,
@@ -328,4 +623,38 @@ const styles = StyleSheet.create({
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.line },
   dotOn: { backgroundColor: colors.accent, width: 22 },
   disc: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, color: colors.muted, marginTop: spacing.xl },
+  metric: { paddingVertical: spacing.md },
+  metricVal: { fontFamily: fonts.extra, fontSize: 24, color: colors.ink },
+  metricUnit: { fontFamily: fonts.semibold, fontSize: 13, color: colors.muted },
+  metricLabel: { fontFamily: fonts.medium, fontSize: 13, color: colors.muted, marginTop: 2 },
+  metricsWrap: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.sm },
+  metricPanel: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  metricPanelTitle: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink },
+  emptyCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.line,
+    padding: spacing.xl,
+    alignItems: 'center',
+    ...shadow.card,
+  },
+  coachHead: { flexDirection: 'row', alignItems: 'center' },
+  notice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  noticeText: { flex: 1, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, color: colors.ink },
+  noticeAction: { fontFamily: fonts.bold, fontSize: 14, color: colors.accentInk },
 });

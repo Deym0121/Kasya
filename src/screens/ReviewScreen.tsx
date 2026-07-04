@@ -1,21 +1,46 @@
-import { View, Text, StyleSheet } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation';
-import { colors, spacing, type as T, fonts } from '../theme';
-import { ScreenContainer, Card, Button, IconBubble, Label, Disclaimer } from '../components';
+import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import { RootScreenProps } from '../navigation';
+import { colors, spacing, radius, type as T, fonts } from '../theme';
+import { ScreenContainer, Card, Button, IconBubble, Label, Disclaimer, MetricGrid } from '../components';
 import { GaitGraph } from '../viz/GaitGraph';
 import { SkeletonPlayer } from '../viz/SkeletonPlayer';
+import { XraySkeleton } from '../viz/XraySkeleton';
+import { VideoReplay } from '../viz/VideoReplay';
+import { GaitCycleDiagram } from '../viz/GaitCycleDiagram';
+import { LeftRightCompare } from '../viz/LeftRightCompare';
+import { peekPendingVideo, clearPendingVideo } from '../viz/videoHolder';
+import { typicalBand } from '../gait/metricInfo';
+import { LANDMARK } from '../gait/types';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Review'>;
+type Props = RootScreenProps<'Review'>;
 
-function Metric({ label, value, unit }: { label: string; value: string | number; unit?: string }) {
+/** Collapsible section header — conditional render, no LayoutAnimation (web-safe). */
+function SectionToggle({
+  title,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <View style={styles.metric}>
-      <Text style={styles.metricVal}>
-        {value}
-        {unit ? <Text style={styles.metricUnit}> {unit}</Text> : null}
-      </Text>
-      <Text style={styles.metricLabel}>{label}</Text>
+    <View style={{ marginTop: spacing.md }}>
+      <Pressable
+        onPress={() => setOpen((v) => !v)}
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        accessibilityState={{ expanded: open }}
+        style={styles.toggle}
+      >
+        <Text style={styles.toggleTitle}>{title}</Text>
+        <Feather name={open ? 'chevron-up' : 'chevron-down'} size={20} color={colors.muted} />
+      </Pressable>
+      {open ? children : null}
     </View>
   );
 }
@@ -27,6 +52,7 @@ export default function ReviewScreen({ navigation, route }: Props) {
   const g = report.graph;
   const frames = report.frames;
   const s = report.steps;
+  const frontal = report.frontal;
 
   if (!frames || !frames.length || !m || !fb || !g) {
     return (
@@ -35,9 +61,36 @@ export default function ReviewScreen({ navigation, route }: Props) {
           This scan doesn’t have motion data to review. Run a new scan to get the slow-mo replay,
           graph, and form feedback.
         </Text>
+        <View style={{ height: spacing.xl }} />
+        <Button label="Start a new scan" icon="camera" onPress={() => navigation.navigate('ScanSetup')} />
       </ScreenContainer>
     );
   }
+
+  // Opt-in clip for THIS report (in memory only) — deleted when we leave Review.
+  const [videoUri] = useState(() => peekPendingVideo(report.id));
+  useEffect(() => () => clearPendingVideo(), []);
+
+  // Joints to glow in the X-ray replay — whatever the analysis flagged this scan.
+  const flaggedJoints: number[] = [];
+  const focusAreas: string[] = [];
+  if (m.verticalOscillationPct >= 12) {
+    flaggedJoints.push(LANDMARK.LEFT_HIP, LANDMARK.RIGHT_HIP);
+    focusAreas.push('hips');
+  }
+  if (m.overstrideScore >= 65) {
+    flaggedJoints.push(LANDMARK.LEFT_KNEE, LANDMARK.RIGHT_KNEE, LANDMARK.LEFT_ANKLE, LANDMARK.RIGHT_ANKLE);
+    focusAreas.push('knees', 'ankles');
+  }
+
+  // The rear-view detail opens itself only when something there reads outside typical.
+  const rearOutlier =
+    !!frontal &&
+    frontal.quality.ok &&
+    (typicalBand('hipDrop', frontal.metrics.hipDropPct) === 'outside' ||
+      typicalBand('baseWidth', frontal.metrics.stepWidthPct) === 'outside' ||
+      typicalBand('sway', frontal.metrics.lateralSwayPct) === 'outside' ||
+      typicalBand('rearSymmetry', frontal.metrics.symmetryPct) === 'outside');
 
   return (
     <ScreenContainer
@@ -51,39 +104,67 @@ export default function ReviewScreen({ navigation, route }: Props) {
         />
       }
     >
-      <Label>Slow-mo replay</Label>
+      <Card>
+        <View style={styles.head}>
+          <IconBubble icon="eye" tint={colors.accentSoft} color={colors.accent} size={40} />
+          <Text style={styles.cardTitle}>The big picture</Text>
+        </View>
+        {fb.observations.slice(0, 3).map((o, i) => (
+          <Text key={i} style={styles.li}>
+            • {o}
+          </Text>
+        ))}
+        <Text style={styles.caption}>The full detail is below — tap any number for what it means.</Text>
+      </Card>
+
+      <View style={{ height: spacing.xl }} />
+      <Label>{videoUri ? 'Your video · skeleton overlay' : 'Movement replay'}</Label>
       <View style={{ height: spacing.sm }} />
-      <SkeletonPlayer frames={frames} />
+      {videoUri ? (
+        <VideoReplay videoUri={videoUri} frames={frames} />
+      ) : (
+        <>
+          <XraySkeleton frames={frames} flagged={flaggedJoints} />
+          {focusAreas.length ? (
+            <Text style={styles.caption}>
+              The glowing joints ({focusAreas.join(', ')}) are where your movement stood out this scan — a spot to
+              focus on, not a sign of injury.
+            </Text>
+          ) : (
+            <Text style={styles.caption}>Your major joints are marked — this is a replay of the motion we captured.</Text>
+          )}
+        </>
+      )}
 
       {report.walkthrough && report.walkthrough.length > 0 ? (
-        <>
-          <View style={{ height: spacing.xl }} />
+        <SectionToggle title="How your step works">
           <Card>
-            <View style={styles.head}>
-              <IconBubble icon="activity" tint={colors.accentSoft} color={colors.accent} size={40} />
-              <Text style={styles.cardTitle}>How your step works</Text>
-            </View>
             {report.walkthrough.map((line, i) => (
               <Text key={i} style={styles.step}>
                 {line}
               </Text>
             ))}
+            <View style={{ height: spacing.lg }} />
+            <GaitCycleDiagram />
           </Card>
-        </>
+        </SectionToggle>
       ) : null}
 
       <View style={{ height: spacing.xl }} />
       <Label>Your numbers</Label>
-      <View style={styles.metrics}>
-        <Metric label="Cadence" value={Math.round(report.result.cadence.value)} unit="spm" />
-        {s ? <Metric label="Step time" value={s.meanStepTimeSec.toFixed(2)} unit="s" /> : null}
-        {s ? <Metric label="Stance" value={s.stanceRatioPct} unit="%" /> : null}
-        <Metric label="Bounce" value={m.verticalOscillationPct} unit="%" />
-        <Metric label="Overstride" value={m.overstrideScore} unit="/100" />
-        <Metric label="Rhythm" value={m.rhythmRegularityPct} unit="%" />
-        <Metric label="Symmetry" value={m.symmetryPct} unit="%" />
-        <Metric label="Knee bend" value={m.kneeFlexionRangeDeg} unit="°" />
-      </View>
+      <MetricGrid
+        columns={3}
+        items={[
+          { key: 'cadence', value: Math.round(report.result.cadence.value) },
+          ...(s ? [{ key: 'stepTime' as const, value: s.meanStepTimeSec.toFixed(2), raw: s.meanStepTimeSec }] : []),
+          ...(s ? [{ key: 'stance' as const, value: s.stanceRatioPct }] : []),
+          { key: 'bounce', value: m.verticalOscillationPct },
+          { key: 'overstride', value: m.overstrideScore },
+          { key: 'rhythm', value: m.rhythmRegularityPct },
+          { key: 'symmetry', value: m.symmetryPct },
+          { key: 'kneeBend', value: m.kneeFlexionRangeDeg },
+        ]}
+      />
       {s && s.leadFoot !== 'unknown' ? (
         <Text style={styles.caption}>Leading foot this scan: {s.leadFoot}.</Text>
       ) : null}
@@ -120,20 +201,69 @@ export default function ReviewScreen({ navigation, route }: Props) {
         ))}
       </Card>
 
+      {frontal && frontal.quality.ok ? (
+        <SectionToggle title="Rear view · left & right" defaultOpen={rearOutlier}>
+          {report.frontalFrames && report.frontalFrames.length ? (
+            <>
+              <View style={{ height: spacing.sm }} />
+              <SkeletonPlayer frames={report.frontalFrames} alignment />
+              <Text style={styles.caption}>The teal line is your left leg, coral is your right — how each tracks from behind.</Text>
+            </>
+          ) : null}
+          {frontal.sides ? (
+            <View style={{ marginTop: spacing.md }}>
+              <LeftRightCompare sides={frontal.sides} />
+            </View>
+          ) : null}
+          <View style={{ height: spacing.md }} />
+          <MetricGrid
+            columns={4}
+            items={[
+              { key: 'hipDrop', value: frontal.metrics.hipDropPct, unit: '' },
+              { key: 'baseWidth', value: frontal.metrics.stepWidthPct },
+              { key: 'sway', value: frontal.metrics.lateralSwayPct, unit: '' },
+              { key: 'rearSymmetry', value: frontal.metrics.symmetryPct },
+            ]}
+          />
+          <Card style={{ marginTop: spacing.md }}>
+            <View style={styles.head}>
+              <IconBubble icon="refresh-cw" tint={colors.accentSoft} color={colors.accent} size={40} />
+              <Text style={styles.cardTitle}>From behind</Text>
+            </View>
+            {frontal.feedback.observations.map((o, i) => (
+              <Text key={i} style={styles.li}>
+                • {o}
+              </Text>
+            ))}
+            {frontal.feedback.recommendations.map((r, i) => (
+              <Text key={`r${i}`} style={styles.li}>
+                • {r}
+              </Text>
+            ))}
+          </Card>
+        </SectionToggle>
+      ) : null}
+
       <Disclaimer />
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  metrics: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.sm },
-  metric: { width: '33.33%', paddingVertical: spacing.md },
-  metricVal: { fontFamily: fonts.extra, fontSize: 24, color: colors.ink },
-  metricUnit: { fontFamily: fonts.semibold, fontSize: 13, color: colors.muted },
-  metricLabel: { fontFamily: fonts.medium, fontSize: 13, color: colors.muted, marginTop: 2 },
   caption: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 17, color: colors.muted, marginTop: spacing.sm },
   step: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, color: colors.inkSoft, marginTop: spacing.md },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   cardTitle: { fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
   li: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, color: colors.inkSoft, marginTop: spacing.sm },
+  toggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 48,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+    marginBottom: spacing.sm,
+  },
+  toggleTitle: { fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
 });

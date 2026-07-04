@@ -1,0 +1,57 @@
+import { Platform } from 'react-native';
+
+/**
+ * Holds the ONE opt-in review clip from the most recent capture — in memory only,
+ * never persisted to storage and never uploaded. Web keeps an object URL; native
+ * keeps a temp file path. Whoever shows it (the Review screen) clears it on the
+ * way out, so the clip is deleted right after the review.
+ */
+interface Pending {
+  uri: string;
+  native: boolean;
+  /** the report this clip belongs to (stamped once the report id exists) */
+  reportId?: string;
+}
+let pending: Pending | null = null;
+
+async function dispose(p: Pending): Promise<void> {
+  if (!p) return;
+  if (!p.native) {
+    try {
+      URL.revokeObjectURL(p.uri);
+    } catch {
+      // already gone
+    }
+    return;
+  }
+  try {
+    const FS: any = await import('expo-file-system');
+    await FS.deleteAsync(p.uri, { idempotent: true });
+  } catch {
+    // best-effort delete
+  }
+}
+
+/** Stash the just-recorded clip. Disposes any previous clip first. */
+export function setPendingVideo(uri: string): void {
+  if (pending) dispose(pending);
+  pending = { uri, native: Platform.OS !== 'web' };
+}
+
+/** Stamp the pending clip with the report it belongs to (called once the id exists). */
+export function tagPendingVideo(reportId: string): void {
+  if (pending) pending.reportId = reportId;
+}
+
+/** The clip for THIS report, or null — so old scans never show a stale clip. */
+export function peekPendingVideo(reportId: string): string | null {
+  return pending && pending.reportId === reportId ? pending.uri : null;
+}
+
+/** Delete the clip (revoke URL / remove temp file) and forget it. */
+export function clearPendingVideo(): void {
+  if (pending) {
+    dispose(pending);
+    pending = null;
+  }
+}

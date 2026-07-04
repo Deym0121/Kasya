@@ -3,7 +3,11 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Svg, { Line as SvgLine, Circle } from 'react-native-svg';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, fonts, radius } from '../theme';
+import { LANDMARK } from '../gait/types';
 import type { PoseFrame } from '../gait/types';
+
+const LEFT_TONE = '#1D9E75'; // teal — left leg
+const RIGHT_TONE = '#FF5436'; // coral — right leg
 
 // BlazePose bones (torso, arms, legs, feet).
 const BONES = [
@@ -14,8 +18,20 @@ const BONES = [
 ];
 const SPEEDS = [0.25, 0.5, 1];
 
-/** Slow-mo replay of the captured skeleton, reconstructed from saved landmarks. */
-export function SkeletonPlayer({ frames, height = 300 }: { frames: PoseFrame[]; height?: number }) {
+/**
+ * Slow-mo replay of the captured skeleton, reconstructed from saved landmarks.
+ * `alignment` overlays a straight hip→ankle line down each leg (left teal, right
+ * coral) — the rear-view "how each leg tracks" line, honest (not pronation).
+ */
+export function SkeletonPlayer({
+  frames,
+  height = 300,
+  alignment = false,
+}: {
+  frames: PoseFrame[];
+  height?: number;
+  alignment?: boolean;
+}) {
   const n = frames?.length ?? 0;
   const [idx, setIdx] = useState(0);
   const [playing, setPlaying] = useState(true);
@@ -83,16 +99,50 @@ export function SkeletonPlayer({ frames, height = 300 }: { frames: PoseFrame[]; 
           {f.landmarks.map((p, k) =>
             p ? <Circle key={`p${k}`} cx={p.x} cy={p.y} r={0.013} fill="#FF3B30" /> : null,
           )}
+          {alignment
+            ? ([
+                [LANDMARK.LEFT_HIP, LANDMARK.LEFT_ANKLE, LEFT_TONE],
+                [LANDMARK.RIGHT_HIP, LANDMARK.RIGHT_ANKLE, RIGHT_TONE],
+              ] as const).map(([hip, ankle, tone], i) => {
+                const h = f.landmarks[hip];
+                const a = f.landmarks[ankle];
+                if (!h || !a) return null;
+                return (
+                  <SvgLine
+                    key={`al${i}`}
+                    x1={h.x}
+                    y1={h.y}
+                    x2={a.x}
+                    y2={a.y}
+                    stroke={tone}
+                    strokeWidth={0.008}
+                    strokeLinecap="round"
+                  />
+                );
+              })
+            : null}
         </Svg>
       </View>
 
       <View style={styles.controls}>
-        <Pressable onPress={() => setPlaying((p) => !p)} style={styles.play}>
+        <Pressable
+          onPress={() => setPlaying((p) => !p)}
+          accessibilityRole="button"
+          accessibilityLabel={playing ? 'Pause replay' : 'Play replay'}
+          style={styles.play}
+        >
           <Feather name={playing ? 'pause' : 'play'} size={20} color="#fff" />
         </Pressable>
         <View style={styles.speeds}>
           {SPEEDS.map((s) => (
-            <Pressable key={s} onPress={() => setSpeed(s)} style={[styles.speed, speed === s && styles.speedOn]}>
+            <Pressable
+              key={s}
+              onPress={() => setSpeed(s)}
+              accessibilityRole="button"
+              accessibilityLabel={`Playback speed ${s}x`}
+              accessibilityState={{ selected: speed === s }}
+              style={[styles.speed, speed === s && styles.speedOn]}
+            >
               <Text style={[styles.speedText, speed === s && styles.speedTextOn]}>{s}×</Text>
             </Pressable>
           ))}
@@ -126,11 +176,13 @@ const styles = StyleSheet.create({
   },
   speeds: { flexDirection: 'row', gap: spacing.sm },
   speed: {
+    minHeight: 44,
+    justifyContent: 'center',
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: radius.pill,
     borderWidth: 1.5,
-    borderColor: colors.line,
+    borderColor: colors.lineStrong,
     backgroundColor: colors.surface,
   },
   speedOn: { backgroundColor: colors.ink, borderColor: colors.ink },

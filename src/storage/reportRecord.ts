@@ -1,8 +1,9 @@
 import { GaitResult, PoseFrame } from '../gait/types';
 import { cadenceTip } from '../gait/insights';
-import { buildDetail, GaitGraphData } from '../gait/detailed';
+import { buildDetail, buildFrontalDetail, GaitGraphData } from '../gait/detailed';
 import { FormMetrics, GaitFeedback } from '../gait/form';
 import { StepAnalysis } from '../gait/stepAnalysis';
+import { FrontalAnalysis } from '../gait/frontal';
 
 /**
  * A gait scan as persisted on-device (and later synced to Supabase as a row).
@@ -28,6 +29,10 @@ export interface GaitReportRecord {
   walkthrough?: string[];
   /** downsampled landmark motion for the slow-mo replay (NOT video) */
   frames?: PoseFrame[];
+  /** the optional rear-view (frontal-plane) pass, when a second angle was captured */
+  frontal?: FrontalAnalysis;
+  /** downsampled rear-view landmark motion for its replay (NOT video) */
+  frontalFrames?: PoseFrame[];
 }
 
 export function buildGaitReport(
@@ -36,6 +41,7 @@ export function buildGaitReport(
   id: string,
   createdAt: string,
   frames?: PoseFrame[],
+  frontalFrames?: PoseFrame[],
 ): GaitReportRecord {
   const record: GaitReportRecord = {
     id,
@@ -45,5 +51,6 @@ export function buildGaitReport(
     cadenceTip: cadenceTip(result.cadence),
   };
   if (frames && frames.length) Object.assign(record, buildDetail(result, frames));
+  if (frontalFrames && frontalFrames.length) Object.assign(record, buildFrontalDetail(frontalFrames));
   return record;
 }

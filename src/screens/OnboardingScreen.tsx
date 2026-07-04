@@ -22,7 +22,7 @@ const SLIDES = [
     tint: colors.accentSoft,
     fg: colors.accent,
     title: 'Record your stride',
-    body: 'Film a short walk or run, side-on. Your video never leaves your phone.',
+    body: 'Walk or run side-on. By default we track motion only — no video saved. Optionally keep a clip just for your review, then it’s deleted. Nothing is ever uploaded.',
   },
   {
     icon: 'activity',

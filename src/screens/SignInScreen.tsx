@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation';
+import { RootScreenProps } from '../navigation';
 import { colors, spacing, type as T, fonts } from '../theme';
 import { ScreenContainer, Button, TextField, Disclaimer } from '../components';
-import { setOnboarded, setUser } from '../storage/session';
+import { getUser, setOnboarded, setUser } from '../storage/session';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'SignIn'>;
+type Props = RootScreenProps<'SignIn'>;
 
 export default function SignInScreen({ navigation }: Props) {
   const [mode, setMode] = useState<'signup' | 'login'>('signup');
@@ -16,9 +15,11 @@ export default function SignInScreen({ navigation }: Props) {
   async function proceed() {
     const trimmed = email.trim() || 'demo@stridefit.app';
     const name = trimmed.split('@')[0] || 'Runner';
-    await setUser({ email: trimmed, name, plan: 'free' });
+    // Preserve an existing plan — re-login must never silently downgrade premium.
+    const existing = await getUser();
+    await setUser({ email: trimmed, name, plan: existing?.plan ?? 'free' });
     await setOnboarded(true);
-    navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+    navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
   }
 
   return (
@@ -57,6 +58,9 @@ export default function SignInScreen({ navigation }: Props) {
         secureTextEntry
         icon="lock"
       />
+      <Text style={styles.demoNote}>
+        Demo mode — any email works and the password isn't checked. Real accounts come later.
+      </Text>
 
       <Button label="Continue as guest" variant="ghost" onPress={proceed} />
 
@@ -73,6 +77,7 @@ export default function SignInScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   brand: { fontFamily: fonts.extra, fontSize: 18, color: colors.accent, letterSpacing: -0.3 },
+  demoNote: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, color: colors.muted, marginBottom: spacing.lg },
   switch: { marginTop: spacing.lg, alignItems: 'center' },
   switchText: { fontFamily: fonts.medium, fontSize: 15, color: colors.ink },
 });

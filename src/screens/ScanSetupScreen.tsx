@@ -5,13 +5,7 @@ import { RootStackParamList } from '../navigation';
 import { spacing, type as T } from '../theme';
 import { ScreenContainer, Button, Chip, Label } from '../components';
 
-const GOALS = [
-  { key: 'running', label: 'Running', icon: 'activity' },
-  { key: 'walking', label: 'Walking', icon: 'navigation' },
-  { key: 'gym', label: 'Gym / training', icon: 'zap' },
-  { key: 'daily_comfort', label: 'Daily comfort', icon: 'sun' },
-  { key: 'recovery', label: 'Recovery', icon: 'heart' },
-] as const;
+import { GOALS } from '../goals';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ScanSetup'>;
 
@@ -26,7 +20,7 @@ export default function ScanSetupScreen({ navigation }: Props) {
         <Button
           label="Continue"
           iconRight="arrow-right"
-          onPress={() => navigation.navigate('CameraGuide', { goal })}
+          onPress={() => navigation.navigate('CameraGuide', { goal, view: 'side' })}
         />
       }
     >
