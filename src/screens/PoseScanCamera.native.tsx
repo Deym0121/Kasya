@@ -57,13 +57,35 @@ export default function PoseScanCamera({ navigation, route }) {
   const frames = useRef([]);
   const timer = useRef(null);
   const recordingVideoRef = useRef(false);
+  const mounted = useRef(true);
 
-  useEffect(() => () => timer.current && clearInterval(timer.current), []);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      if (timer.current) clearTimeout(timer.current); // clears both setTimeout + setInterval in RN
+      // If we're torn down mid-capture, stop the camera so the clip finalizes and
+      // finish() (now guarded below) deletes it. We do NOT clearPendingVideo here —
+      // a successful capture has already handed its clip to the review holder.
+      if (recordingVideoRef.current && cameraRef.current) {
+        try {
+          cameraRef.current.stopRecording();
+        } catch {}
+      }
+    };
+  }, []);
 
   // Evaluate the capture (+ keep or discard the opt-in clip), then advance.
   const finish = useCallback(
     (videoPath) => {
+      // Screen closed before the clip finalized: delete the temp file, touch no
+      // state/navigation (avoids the leaked clip + navigate-on-unmounted bug).
+      if (!mounted.current) {
+        if (videoPath) deleteFile(videoPath);
+        return;
+      }
       capturing.current = false;
+      recordingVideoRef.current = false;
       setRecording(false);
       try {
         const result = analyzeGait(frames.current);
