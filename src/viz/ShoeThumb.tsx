@@ -1,6 +1,6 @@
-import { View, Image, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { colors, radius } from '../theme';
+import { colors, radius, fonts } from '../theme';
 import type { Shoe } from '../data/shoes';
 
 // A soft palette so each shoe tile reads a little differently.
@@ -11,14 +11,20 @@ function tintFor(id: string): string {
   return TINTS[h % TINTS.length];
 }
 
-// A simple side-view sneaker silhouette.
+// A simple side-view sneaker silhouette (used as a faint watermark on the tile).
 const SHOE_PATH =
   'M6,42 Q4,50 14,50 L86,50 Q95,50 93,42 L91,38 Q70,29 58,29 L46,29 Q41,20 30,20 Q17,20 15,31 L9,35 Q5,38 6,42 Z';
 
+/** First letter/number of the brand, for the glyph tile. */
+function brandInitial(brand: string): string {
+  const m = brand.match(/[A-Za-z0-9]/);
+  return (m ? m[0] : '?').toUpperCase();
+}
+
 /**
- * Shoe thumbnail — the licensed product photo when a shoe has one, otherwise a
- * clean tinted sneaker glyph (no network, works everywhere). Swap in real photos
- * later by setting `shoe.image`.
+ * Shoe thumbnail. If a shoe has a real, self-hosted photo we render it; otherwise
+ * an HONEST brand-initial glyph (never a random/generated photo — that was the bug).
+ * The real product photo is one tap away on the live Shopee/TikTok listing.
  */
 export function ShoeThumb({ shoe, size = 56 }: { shoe: Shoe; size?: number }) {
   if (shoe.image) {
@@ -33,11 +39,14 @@ export function ShoeThumb({ shoe, size = 56 }: { shoe: Shoe; size?: number }) {
   }
   const tint = tintFor(shoe.id);
   return (
-    <View style={[styles.tile, { width: size, height: size }]}>
-      <Svg width={size * 0.78} height={size * 0.78} viewBox="0 0 100 60">
-        <Path d={SHOE_PATH} fill={tint} opacity={0.9} />
-        <Path d="M46,29 Q41,20 30,20 Q17,20 15,31" fill="none" stroke="#fff" strokeWidth={2} opacity={0.55} />
+    <View
+      style={[styles.tile, { width: size, height: size, backgroundColor: tint }]}
+      accessibilityLabel={`${shoe.brand} ${shoe.model}`}
+    >
+      <Svg width={size * 0.9} height={size * 0.9} viewBox="0 0 100 60" style={StyleSheet.absoluteFill as any}>
+        <Path d={SHOE_PATH} fill="#fff" opacity={0.14} transform="translate(2 6)" />
       </Svg>
+      <Text style={[styles.initial, { fontSize: size * 0.42 }]}>{brandInitial(shoe.brand)}</Text>
     </View>
   );
 }
@@ -45,9 +54,9 @@ export function ShoeThumb({ shoe, size = 56 }: { shoe: Shoe; size?: number }) {
 const styles = StyleSheet.create({
   tile: {
     borderRadius: radius.md,
-    backgroundColor: colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
+  initial: { fontFamily: fonts.extra, color: '#fff', letterSpacing: -0.5 },
 });

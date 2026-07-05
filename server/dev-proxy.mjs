@@ -13,6 +13,9 @@ const KEY = process.env.OPENROUTER_API_KEY;
 // exact id isn't available on your OpenRouter account.
 const MODEL = process.env.OPENROUTER_MODEL || 'openai/gpt-5-mini';
 const PORT = Number(process.env.AI_PROXY_PORT || 8787);
+// Bind to loopback by default so the dev proxy (which spends the key) isn't
+// reachable across the LAN. Override with AI_PROXY_HOST=0.0.0.0 only if needed.
+const HOST = process.env.AI_PROXY_HOST || '127.0.0.1';
 
 // Rate limit — protect the key/cost. Fixed 60s window, per-IP + a global cap.
 const RL = {
@@ -53,6 +56,15 @@ const COACH_SYSTEM = `You are StrideFit's running/walking form COACH, chatting w
 - STAY ON TOPIC: only their gait metrics and simple form cues/drills that follow from them. If asked about anything else — nutrition, specific shoe brands or products, medical questions, other people, training calendars, or general chit-chat — gently say you can only help with this gait scan.
 - Cadence (steps/min) is the most reliable signal. If capture quality is low, suggest a cleaner re-scan rather than over-reading the numbers.
 - Do NOT invent metrics that aren't in the data. If a number they ask about isn't present, say it wasn't captured this scan.`;
+
+const SHOES_SYSTEM = `You are StrideFit's shoe finder. You match a person to real running/walking shoes using their de-identified gait scan numbers, their goal, and optional fit preferences (shoe size, foot width, budget).
+
+- Choose 4 to 6 shoes ONLY from the catalog array you are given, referring to each by its exact "id". NEVER invent a shoe, a brand, or an id that isn't in the list.
+- COMFORT-LED and gait-informed. You may use cadence (steps/min) and how much they bounce (vertical oscillation %) as soft comfort signals, plus their goal, budget and width preference. More bounce tends to feel smoother with more cushioning; a controlled bounce frees up a lighter, more responsive pair.
+- WELLNESS ONLY. Do NOT mention or imply pronation, overpronation, supination, arch type, flat feet, injury, orthotics, "medical", or that a shoe "corrects" anything. Everything is an ESTIMATE — hedge with "about"/"may"/"try them on".
+- Offer variety across the shortlist and respect the budget if one is given (the catalog spans premium to budget/local brands — don't only pick expensive ones).
+- Each "reason" is ONE short, warm, plain sentence on why it may suit them and their goal, ending with a gentle nudge to try them on.
+- Respond with ONLY a JSON object, no prose and no markdown fences: {"picks":[{"id":"<catalog id>","reason":"<one sentence>"}]}.`;
 
 function send(res, status, obj) {
   res.writeHead(status, {
@@ -104,8 +116,13 @@ function sanitizeHistory(messages) {
 const server = createServer((req, res) => {
   if (req.method === 'OPTIONS') return send(res, 204, {});
 
-  const route =
-    req.url?.startsWith('/api/coach') ? 'coach' : req.url?.startsWith('/api/explain') ? 'explain' : null;
+  const route = req.url?.startsWith('/api/coach')
+    ? 'coach'
+    : req.url?.startsWith('/api/shoes')
+      ? 'shoes'
+      : req.url?.startsWith('/api/explain')
+        ? 'explain'
+        : null;
   if (req.method !== 'POST' || !route) return send(res, 404, { error: 'Not found' });
   if (!KEY) return send(res, 500, { error: 'OPENROUTER_API_KEY is not set. Add it to .env and restart.' });
 
@@ -136,6 +153,28 @@ const server = createServer((req, res) => {
           ...history,
         ];
         maxTokens = 700;
+      } else if (route === 'shoes') {
+        // Shoe finder: pick 4-6 ids from the provided catalog, grounded in the scan.
+        const features = payload.features || {};
+        const goal = payload.goal || features.goal || 'running';
+        const profile = payload.profile && typeof payload.profile === 'object' ? payload.profile : {};
+        const shoes = Array.isArray(payload.shoes) ? payload.shoes.slice(0, 60) : [];
+        messages = [
+          { role: 'system', content: SHOES_SYSTEM },
+          {
+            role: 'system',
+            content: "The person's de-identified gait scan metrics (JSON). Use ONLY these:\n" + JSON.stringify(features),
+          },
+          { role: 'system', content: 'Their optional fit preferences (JSON):\n' + JSON.stringify(profile) },
+          {
+            role: 'user',
+            content:
+              `Goal: ${goal}. Pick the 4-6 best shoes for this person from ONLY the catalog below and return the JSON object described. ` +
+              `Catalog (JSON array of {id,brand,model,category,cushion,tier,priceMin,priceMax,useCase}):\n` +
+              JSON.stringify(shoes),
+          },
+        ];
+        maxTokens = 900;
       } else {
         // Explain: one-shot summary of the features.
         messages = [
@@ -145,7 +184,11 @@ const server = createServer((req, res) => {
         maxTokens = 500;
       }
       const out = await callOpenRouter(messages, maxTokens);
-      if (!out.ok) return send(res, 502, { error: `OpenRouter ${out.status}`, detail: out.detail });
+      if (!out.ok) {
+        // Log the upstream detail server-side only; never relay provider bodies to the caller.
+        console.error(`OpenRouter ${out.status}: ${out.detail}`);
+        return send(res, 502, { error: 'AI service is unavailable right now. Please try again.' });
+      }
       return send(res, 200, { text: out.text, model: MODEL });
     } catch (e) {
       return send(res, 500, { error: String(e?.message || e) });
@@ -153,7 +196,7 @@ const server = createServer((req, res) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`StrideFit AI proxy on http://localhost:${PORT}  (model: ${MODEL}, rate: ${RL.perIp}/ip/min)`);
+server.listen(PORT, HOST, () => {
+  console.log(`StrideFit AI proxy on http://${HOST}:${PORT}  (model: ${MODEL}, rate: ${RL.perIp}/ip/min)`);
   if (!KEY) console.log('⚠  OPENROUTER_API_KEY not set — add it to .env, then restart.');
 });

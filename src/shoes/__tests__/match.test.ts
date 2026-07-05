@@ -3,10 +3,10 @@ import { matchShoes, scoreTone } from '../match';
 import { Shoe } from '../../data/shoes';
 
 const shoes: Shoe[] = [
-  { id: 'run', brand: 'X', model: 'Road', category: 'neutral', cushion: 'high', useCase: ['running'], priceMin: 5000, priceMax: 6000, tags: [] },
-  { id: 'runLow', brand: 'X', model: 'Minimal', category: 'neutral', cushion: 'low', useCase: ['running'], priceMin: 5000, priceMax: 6000, tags: [] },
-  { id: 'walk', brand: 'Y', model: 'Walk', category: 'walking', cushion: 'medium', useCase: ['walking'], priceMin: 3000, priceMax: 3500, tags: [] },
-  { id: 'own', brand: 'StrideFit', model: 'Support Runner', category: 'stability', cushion: 'high', useCase: ['running', 'walking'], priceMin: 1499, priceMax: 1499, tags: [], isOwnProduct: true },
+  { id: 'run', brand: 'X', model: 'Road', category: 'neutral', cushion: 'high', useCase: ['running'], priceMin: 5000, priceMax: 6000, tier: 'premium', tags: [] },
+  { id: 'runLow', brand: 'X', model: 'Minimal', category: 'neutral', cushion: 'low', useCase: ['running'], priceMin: 5000, priceMax: 6000, tier: 'premium', tags: [] },
+  { id: 'walk', brand: 'Y', model: 'Walk', category: 'walking', cushion: 'medium', useCase: ['walking'], priceMin: 3000, priceMax: 3500, tier: 'midrange', tags: [] },
+  { id: 'own', brand: 'StrideFit', model: 'Support Runner', category: 'stability', cushion: 'high', useCase: ['running', 'walking'], priceMin: 1499, priceMax: 1499, tier: 'budget', tags: [], isOwnProduct: true },
 ];
 
 describe('matchShoes', () => {

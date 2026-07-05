@@ -5,6 +5,8 @@ export interface ShoeMatch {
   /** 0–100 comfort-led match score */
   score: number;
   reason: string;
+  /** who produced this match — the deterministic matcher, or the AI shortlist */
+  source?: 'ai' | 'rules';
 }
 
 /** Comfort-led signals pulled from the scan — preferences, never a foot-type prescription. */
