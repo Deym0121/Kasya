@@ -54,11 +54,24 @@ export default function ResultScreen({ navigation, route }: Props) {
       title="Your result"
       onBack={() => navigation.popToTop()}
       footer={
-        <Button
-          label="See shoe matches"
-          icon="shopping-bag"
-          onPress={() => navigation.navigate('ShoeMatches', { report })}
-        />
+        <View style={styles.footerRow}>
+          <View style={{ flex: 1 }}>
+            <Button
+              label="Shoe matches"
+              icon="shopping-bag"
+              onPress={() => navigation.navigate('ShoeMatches', { report })}
+            />
+          </View>
+          <View style={{ width: spacing.sm }} />
+          <View style={{ flex: 1 }}>
+            <Button
+              label="Share result"
+              icon="share-2"
+              variant="secondary"
+              onPress={() => navigation.navigate('Share', { report })}
+            />
+          </View>
+        </View>
       }
     >
       <Reveal>
@@ -192,6 +205,7 @@ export default function ResultScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
+  footerRow: { flexDirection: 'row', alignItems: 'center' },
   hero: { backgroundColor: colors.ink, borderRadius: radius.lg, padding: spacing.xl },
   heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   heroTopRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

@@ -7,10 +7,9 @@ import { PoseFrame } from './gait/types';
 /** Which camera angle a capture screen is set up for. */
 export type ScanView = 'side' | 'rear';
 
-/** The bottom tab bar (the authed hub). ScanTab is intercepted — never renders. */
+/** The bottom tab bar (the authed hub). Scanning lives on a corner FAB, not a tab. */
 export type MainTabParamList = {
   Home: undefined;
-  ScanTab: undefined;
   History: undefined;
   Profile: undefined;
 };
@@ -31,6 +30,7 @@ export type RootStackParamList = {
   Review: { report: GaitReportRecord };
   Coach: { report: GaitReportRecord };
   ShoeMatches: { report: GaitReportRecord };
+  Share: { report: GaitReportRecord };
   Paywall: undefined;
 };
 
