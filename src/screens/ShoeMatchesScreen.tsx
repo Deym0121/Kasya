@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { RootScreenProps } from '../navigation';
@@ -30,11 +30,32 @@ const TIER_BADGE = {
   budget: { tint: colors.successSoft, color: colors.success, label: 'Budget' },
 } as const;
 
+const QUALITY_TONE = {
+  well_regarded: { label: 'Well-regarded', color: colors.success },
+  solid: { label: 'Solid pick', color: colors.accentInk },
+  mixed: { label: 'Mixed reviews', color: colors.warn },
+} as const;
+
 const BUDGETS: { label: string; v?: number }[] = [
   { label: 'Any', v: undefined },
   { label: '₱2k', v: 2000 },
   { label: '₱5k', v: 5000 },
   { label: '₱10k', v: 10000 },
+];
+
+type SortKey = 'match' | 'priceAsc' | 'priceDesc';
+const SORTS: { key: SortKey; label: string }[] = [
+  { key: 'match', label: 'Best match' },
+  { key: 'priceAsc', label: 'Price: low to high' },
+  { key: 'priceDesc', label: 'Price: high to low' },
+];
+
+type TierKey = 'all' | 'budget' | 'midrange' | 'premium';
+const TIER_FILTERS: { key: TierKey; label: string }[] = [
+  { key: 'all', label: 'All prices' },
+  { key: 'budget', label: 'Budget' },
+  { key: 'midrange', label: 'Mid-range' },
+  { key: 'premium', label: 'Premium' },
 ];
 
 type Props = RootScreenProps<'ShoeMatches'>;
@@ -51,6 +72,8 @@ export default function ShoeMatchesScreen({ navigation, route }: Props) {
   const [draft, setDraft] = useState<FitProfile>({});
   const [aiLoading, setAiLoading] = useState(true);
   const [refineOpen, setRefineOpen] = useState(false);
+  const [sort, setSort] = useState<SortKey>('match');
+  const [tierFilter, setTierFilter] = useState<TierKey>('all');
 
   useEffect(() => {
     let a = true;
@@ -82,6 +105,14 @@ export default function ShoeMatchesScreen({ navigation, route }: Props) {
   const usedAi = matches.some((m) => m.source === 'ai');
   const shopQuery = { budgetMaxPhp: profile?.budgetMaxPhp, width: profile?.width };
 
+  // What's actually rendered: the ranked list, optionally tier-filtered and re-sorted by price.
+  const shown = useMemo(() => {
+    let list = tierFilter === 'all' ? matches : matches.filter((m) => m.shoe.tier === tierFilter);
+    if (sort === 'priceAsc') list = [...list].sort((a, b) => a.shoe.priceMin - b.shoe.priceMin);
+    else if (sort === 'priceDesc') list = [...list].sort((a, b) => b.shoe.priceMin - a.shoe.priceMin);
+    return list;
+  }, [matches, sort, tierFilter]);
+
   const applyFit = async () => {
     await setFitProfile(draft);
     setProfile(await getFitProfile());
@@ -93,7 +124,12 @@ export default function ShoeMatchesScreen({ navigation, route }: Props) {
       <Label>{usedAi ? 'AI-matched to your scan' : 'Comfort-led match'}</Label>
       <Text style={[T.h1, { marginTop: 4 }]}>Best for {humanize(report.scanType)}</Text>
       <Text style={[T.bodyMuted, { marginTop: spacing.xs }]}>
-        {matches.length} real shoes — from budget Shopee/TikTok finds to premium — ranked to your goal and how you move.
+        {shown.length} real shoes{tierFilter === 'all' ? ' — from budget Shopee/TikTok finds to premium —' : ''}{' '}
+        {sort === 'match'
+          ? 'matched to your goal and how you move.'
+          : sort === 'priceAsc'
+            ? 'sorted by price, low to high.'
+            : 'sorted by price, high to low.'}
       </Text>
       <Text style={[T.small, { marginTop: spacing.sm }]}>
         Tap “Find it” to see the real photo and live price, and buy, on Shopee, TikTok Shop or Lazada. Match % is an
@@ -148,9 +184,24 @@ export default function ShoeMatchesScreen({ navigation, route }: Props) {
         </View>
       )}
 
-      <View style={{ height: spacing.lg }} />
+      {/* Sort + price-tier filter */}
+      <View style={{ marginTop: spacing.lg }}>
+        <Label>Sort</Label>
+        <View style={[styles.chipRow, { marginTop: spacing.sm }]}>
+          {SORTS.map((s) => (
+            <Chip key={s.key} label={s.label} selected={sort === s.key} onPress={() => setSort(s.key)} />
+          ))}
+        </View>
+        <View style={[styles.chipRow, { marginTop: spacing.xs }]}>
+          {TIER_FILTERS.map((t) => (
+            <Chip key={t.key} label={t.label} selected={tierFilter === t.key} onPress={() => setTierFilter(t.key)} />
+          ))}
+        </View>
+      </View>
 
-      {matches.map((m, i) => {
+      <View style={{ height: spacing.md }} />
+
+      {shown.map((m, i) => {
         const tone = TONES[scoreTone(m.score)];
         const tier = TIER_BADGE[m.shoe.tier];
         return (
@@ -158,9 +209,11 @@ export default function ShoeMatchesScreen({ navigation, route }: Props) {
             <View style={styles.row}>
               <View>
                 <ShoeThumb shoe={m.shoe} size={56} />
-                <View style={styles.rank}>
-                  <Text style={styles.rankText}>{i + 1}</Text>
-                </View>
+                {sort === 'match' && tierFilter === 'all' && (
+                  <View style={styles.rank}>
+                    <Text style={styles.rankText}>{i + 1}</Text>
+                  </View>
+                )}
               </View>
               <View style={{ flex: 1, marginLeft: spacing.md }}>
                 <Text style={styles.name}>
@@ -182,6 +235,14 @@ export default function ShoeMatchesScreen({ navigation, route }: Props) {
               {m.shoe.isOwnProduct && <Badge label="Our product" />}
             </View>
 
+            {m.shoe.quality && (
+              <Text style={styles.quality}>
+                <Text style={{ fontFamily: fonts.semibold, color: QUALITY_TONE[m.shoe.quality.tone].color }}>
+                  {QUALITY_TONE[m.shoe.quality.tone].label}
+                </Text>
+                <Text style={{ color: colors.muted }}> — {m.shoe.quality.note} · per public reviews</Text>
+              </Text>
+            )}
             <Text style={[T.body, { marginTop: spacing.md }]}>{m.reason}</Text>
             <ShopLinksRow shoe={m.shoe} query={shopQuery} />
           </Card>
@@ -224,5 +285,6 @@ const styles = StyleSheet.create({
   scoreText: { fontFamily: fonts.bold, fontSize: 14 },
   scoreCaption: { fontFamily: fonts.regular, fontSize: 9, marginTop: 1 },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md },
+  quality: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, marginTop: spacing.md },
   ftc: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, color: colors.muted, marginTop: spacing.lg },
 });

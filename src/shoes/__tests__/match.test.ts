@@ -45,6 +45,23 @@ describe('matchShoes', () => {
   });
 });
 
+describe('budget-aware matching', () => {
+  it('ranks a within-budget shoe above an over-budget rival for the same goal', () => {
+    const ranked = matchShoes(shoes, { useCase: 'running', budgetMaxPhp: 4000 });
+    const ownIdx = ranked.findIndex((m) => m.shoe.id === 'own'); // ₱1,499 — fits the budget
+    const runIdx = ranked.findIndex((m) => m.shoe.id === 'run'); // ₱5,000+ — over budget
+    expect(ownIdx).toBeLessThan(runIdx);
+    expect(ranked.find((m) => m.shoe.id === 'own')!.reason).toMatch(/budget/i);
+    expect(ranked.find((m) => m.shoe.id === 'run')!.reason).toMatch(/above your/i);
+  });
+
+  it('never mentions budget when none is set', () => {
+    for (const m of matchShoes(shoes, { useCase: 'running' })) {
+      expect(m.reason.toLowerCase()).not.toContain('budget');
+    }
+  });
+});
+
 describe('scoreTone', () => {
   it('buckets scores into strong / good / fair', () => {
     expect(scoreTone(95)).toBe('strong');

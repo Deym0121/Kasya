@@ -1,3 +1,5 @@
+import { SHOE_QUALITY } from './shoeQuality';
+
 /** A shoe in the catalog. Facts only (no scraped prose, no generated images). */
 export interface Shoe {
   id: string;
@@ -17,8 +19,18 @@ export interface Shoe {
    * hotlink retailer CDNs (hotlink protection + CORS + link rot) and never use a
    * generated/random image. When absent the UI shows an honest brand glyph and
    * taps through to the live Shopee/TikTok listing where the authentic photo lives.
+   * (Bundled local photos live in src/viz/shoeImages.ts, keyed by id.)
    */
   image?: string;
+  /**
+   * What public reviews say about the shoe — researched consensus, shown hedged
+   * ("per public reviews"), never an invented lab score. Omitted when the review
+   * signal is too thin to be honest about.
+   */
+  quality?: {
+    tone: 'well_regarded' | 'solid' | 'mixed';
+    note: string;
+  };
 }
 
 /**
@@ -30,7 +42,7 @@ export interface Shoe {
  * Seeded from a verified 2026 research pass. Swap this static seed for a live
  * marketplace/affiliate feed later — the UI + matcher don't care where it comes from.
  */
-export const SHOES: Shoe[] = [
+const CATALOG: Shoe[] = [
   // ── Premium / global ────────────────────────────────────────────────────────
   { id: 'asics-gel-nimbus-27', brand: 'Asics', model: 'Gel-Nimbus 27', category: 'max_cushion', cushion: 'high', useCase: ['running', 'daily_comfort'], priceMin: 11000, priceMax: 13000, tier: 'premium', tags: ['plush', 'neutral', 'long-run'] },
   { id: 'asics-gel-kayano-32', brand: 'Asics', model: 'Gel-Kayano 32', category: 'stability', cushion: 'high', useCase: ['running', 'daily_comfort'], priceMin: 10500, priceMax: 12000, tier: 'premium', tags: ['stability', 'support', 'structured'] },
@@ -88,3 +100,6 @@ export const SHOES: Shoe[] = [
   { id: 'rake-lifestyle-runner', brand: 'RAKÉ', model: 'Lifestyle Runner', category: 'neutral', cushion: 'medium', useCase: ['running', 'walking', 'daily_comfort'], priceMin: 300, priceMax: 900, tier: 'budget', tags: ['ultra-budget', 'tiktok-viral', 'lifestyle'] },
   { id: 'sacnix-sport-runner', brand: 'Sacnix', model: 'Sport Running Sneakers', category: 'neutral', cushion: 'medium', useCase: ['running', 'walking', 'gym'], priceMin: 300, priceMax: 1000, tier: 'budget', tags: ['ultra-budget', 'shopee-find', 'value'] },
 ];
+
+// Attach the researched public-review reputation (shoeQuality.ts) to each entry.
+export const SHOES: Shoe[] = CATALOG.map((s) => (SHOE_QUALITY[s.id] ? { ...s, quality: SHOE_QUALITY[s.id] } : s));

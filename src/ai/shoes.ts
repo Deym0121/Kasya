@@ -42,7 +42,7 @@ export async function recommendShoes(
     cadenceSpm: report.result.cadence.value,
     bouncePct: report.metrics?.verticalOscillationPct,
   };
-  const opts: MatchOptions = { useCase: report.scanType, gait };
+  const opts: MatchOptions = { useCase: report.scanType, gait, budgetMaxPhp: profile.budgetMaxPhp };
   // Only the structured preferences reach the third-party LLM — never the free-text
   // size field (keeps the payload strictly de-identified; size isn't used for ranking).
   const llmProfile = { width: profile.width, budgetMaxPhp: profile.budgetMaxPhp };

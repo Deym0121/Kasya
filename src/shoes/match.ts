@@ -21,6 +21,8 @@ export interface MatchOptions {
   useCase: string;
   /** optional gait read from the latest scan */
   gait?: MatchGait;
+  /** optional budget cap (PHP) — within-budget shoes rank up, over-budget down */
+  budgetMaxPhp?: number;
 }
 
 /** Tone bucket for a match score — drives the score pill's tint in the UI. */
@@ -62,6 +64,15 @@ function cushionComfort(cushion: Shoe['cushion'], bouncePct?: number): { delta: 
   };
 }
 
+/** How the shoe's price band sits against the user's stated budget cap. */
+function budgetFit(shoe: Shoe, budgetMaxPhp?: number): { delta: number; note: string } {
+  if (!budgetMaxPhp || budgetMaxPhp <= 0) return { delta: 0, note: '' };
+  const b = `₱${budgetMaxPhp.toLocaleString()}`;
+  if (shoe.priceMin > budgetMaxPhp) return { delta: -18, note: `Usually sells above your ${b} budget.` };
+  if (shoe.priceMax <= budgetMaxPhp) return { delta: 6, note: `Usually fits your ${b} budget.` };
+  return { delta: 2, note: `Right around your ${b} budget cap.` };
+}
+
 /**
  * Comfort-led, gait-informed matching (re-plan): rank the WHOLE catalog by how
  * well each shoe fits the user's goal AND the way they actually move (soft
@@ -78,19 +89,23 @@ export function matchShoes(shoes: Shoe[], opts: MatchOptions): ShoeMatch[] {
     .map((shoe) => {
       const fits = shoe.useCase.includes(goal);
       const cushion = cushionComfort(shoe.cushion, bounce);
+      const budget = budgetFit(shoe, opts.budgetMaxPhp);
       let score = 55;
       if (fits) score += 25;
       if (suited.includes(shoe.category)) score += 5;
       score += cushion.delta;
+      score += budget.delta;
       score = Math.max(0, Math.min(100, score));
 
       let reason: string;
       if (fits) {
         reason = `Good for ${humanize(goal)} with ${shoe.cushion} cushioning`;
         reason += cushion.note ? ` — ${cushion.note}.` : '.';
+        if (budget.note) reason += ` ${budget.note}`;
         reason += ' Try a pair on and see how they feel.';
       } else {
         reason = `A comfortable all-rounder — not specialized for ${humanize(goal)}, but comfort is what matters most.`;
+        if (budget.note) reason += ` ${budget.note}`;
       }
 
       return { shoe, score, reason };

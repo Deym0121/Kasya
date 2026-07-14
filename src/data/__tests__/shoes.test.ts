@@ -43,4 +43,16 @@ describe('shoe catalog integrity', () => {
   it('is a broad catalog, not a hand-picked few', () => {
     expect(SHOES.length).toBeGreaterThanOrEqual(30);
   });
+
+  it('keeps quality notes short, hedged-safe and honestly toned', () => {
+    for (const s of SHOES) {
+      if (!s.quality) continue;
+      expect(['well_regarded', 'solid', 'mixed']).toContain(s.quality.tone);
+      expect(s.quality.note.trim().length).toBeGreaterThan(0);
+      expect(s.quality.note.length).toBeLessThanOrEqual(90);
+      expect(s.quality.note.toLowerCase()).not.toMatch(
+        /injur|diagnos|pronat|abnormal|medical|disease|corrects|guarantee|best in the world/,
+      );
+    }
+  });
 });
