@@ -18,6 +18,9 @@ import {
 import { explainGait } from '../ai/explain';
 import { frontalSummary } from '../gait';
 import { METRIC_INFO } from '../gait/metricInfo';
+import { buildReportHtml } from '../report/reportHtml';
+import { exportReport } from '../report/exportReport';
+import { getUser } from '../storage/session';
 
 type Props = RootScreenProps<'Result'>;
 
@@ -33,6 +36,24 @@ export default function ResultScreen({ navigation, route }: Props) {
   const [tip, setTip] = useState(report.cadenceTip);
   const [aiOn, setAiOn] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  // The paywall sells PDF export, so the gate is real: free users land on Premium.
+  const exportPdf = async () => {
+    const u = await getUser();
+    if (u?.plan !== 'premium') {
+      navigation.navigate('Paywall');
+      return;
+    }
+    setExporting(true);
+    try {
+      await exportReport(buildReportHtml(report));
+    } catch {
+      // pop-up blocked / share cancelled — nothing to clean up
+    } finally {
+      setExporting(false);
+    }
+  };
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -197,6 +218,14 @@ export default function ResultScreen({ navigation, route }: Props) {
         variant="secondary"
         icon="film"
         onPress={() => navigation.navigate('Review', { report })}
+      />
+      <View style={{ height: spacing.md }} />
+      <Button
+        label={exporting ? 'Preparing report…' : 'Export PDF report'}
+        variant="secondary"
+        icon="download"
+        loading={exporting}
+        onPress={exportPdf}
       />
 
       <Disclaimer />

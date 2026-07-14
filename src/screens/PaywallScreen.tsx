@@ -6,11 +6,11 @@ import { colors, spacing, radius, type as T, fonts } from '../theme';
 import { ScreenContainer, Button, IconBubble } from '../components';
 import { getUser, setUser } from '../storage/session';
 
+// Only benefits that are REALLY gated in the app — scans, history, progress and
+// shoe matches are free for everyone (and stay that way in the copy).
 const FEATURES = [
-  'Unlimited gait scans',
+  'AI coach chat — ask anything about your scan (50 replies/day)',
   'PDF report export',
-  'Scan history & progress',
-  'AI-written coaching',
 ];
 
 type Props = RootScreenProps<'Paywall'>;
@@ -44,7 +44,7 @@ export default function PaywallScreen({ navigation }: Props) {
           <IconBubble icon="check-circle" tint={colors.successSoft} color={colors.success} size={72} />
           <Text style={[T.h1, { marginTop: spacing.xl, textAlign: 'center' }]}>Premium unlocked</Text>
           <Text style={[T.bodyMuted, { marginTop: spacing.sm, textAlign: 'center' }]}>
-            Demo entitlement — no payment was made. Full shoe matches, history and progress are now open.
+            Demo entitlement — no payment was made. The AI coach chat and PDF report export are now open.
           </Text>
           <View style={{ height: spacing.xl, alignSelf: 'stretch' }} />
           <View style={{ alignSelf: 'stretch' }}>
@@ -92,7 +92,7 @@ export default function PaywallScreen({ navigation }: Props) {
 
       <Text style={styles.note}>
         Demo: no real billing yet. In-app purchases (App Store / Google Play via RevenueCat) come in a
-        later milestone. Fair-use limits apply to “unlimited” scans.
+        later milestone. Scans, history and shoe matches stay free for everyone.
       </Text>
     </ScreenContainer>
   );
