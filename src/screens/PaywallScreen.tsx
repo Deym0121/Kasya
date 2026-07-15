@@ -113,7 +113,7 @@ export default function PaywallScreen({ navigation }: Props) {
           <Text style={styles.livePrice}>{packages[0].price}</Text>
         ) : (
           <View style={styles.priceRow}>
-            <Text style={styles.price}>₱299</Text>
+            <Text style={styles.price}>$9.99</Text>
             <Text style={styles.per}>/ month</Text>
           </View>
         )}
@@ -139,7 +139,7 @@ export default function PaywallScreen({ navigation }: Props) {
         )}
       </View>
 
-      {!live && <Button label="Lifetime access — ₱1,499" variant="secondary" onPress={() => buy()} />}
+      {!live && <Button label="Yearly — $79.99 · save 33%" variant="secondary" onPress={() => buy()} />}
       {live && (
         <Button label="Restore purchases" variant="secondary" onPress={restore} disabled={busy} />
       )}

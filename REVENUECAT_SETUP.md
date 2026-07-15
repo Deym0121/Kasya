@@ -26,7 +26,9 @@ Nothing else in the app may check `user.plan` directly for gating.
 
 ## Your dashboard checklist (app.revenuecat.com)
 
-1. **Products** (Test Store while testing): `monthly` and `yearly` — done per your plan.
+1. **Products** (Test Store while testing): `monthly` at **$9.99/mo** and `yearly` at **$79.99/yr**
+   (~33% saving) — set these prices on the products in the dashboard; the app displays whatever
+   the offering's `priceString` says. The demo paywall mirrors the same numbers.
 2. **Entitlement**: create identifier exactly **`Kasya Pro`** and attach both products to it.
 3. **Offering**: put both packages in the **default (current) Offering** — the app lists whatever
    packages the current offering has (monthly first is the headline).
