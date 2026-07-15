@@ -13,6 +13,7 @@ const PATTERNS = [
   { name: 'Anthropic key', re: /sk-ant-[a-z0-9-]{20,}/i },
   { name: 'OpenAI key', re: /sk-(?:proj-)?[A-Za-z0-9]{40,}/ },
   { name: 'RevenueCat secret key', re: /\bsk_[A-Za-z0-9]{16,}\b/ },
+  { name: 'Supabase secret key', re: /\bsb_secret_[A-Za-z0-9_-]{10,}\b/ },
   // A secret must never ship behind EXPO_PUBLIC_ (the anon key is fine; a
   // service_role / OpenRouter / private key is not).
   { name: 'secret behind EXPO_PUBLIC_', re: /EXPO_PUBLIC_[A-Z0-9_]*(?:SERVICE_ROLE|SECRET|PRIVATE_KEY|OPENROUTER)[A-Z0-9_]*\s*=/ },
