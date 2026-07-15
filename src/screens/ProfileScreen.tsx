@@ -15,6 +15,7 @@ import {
   scheduleRescanReminder,
   cancelRescanReminder,
 } from '../notifications/reminders';
+import { isBillingLive, presentCustomerCenter } from '../monetization/entitlements';
 
 type RowProps = { icon: ComponentProps<typeof Feather>['name']; label: string; onPress: () => void; danger?: boolean };
 function Row({ icon, label, onPress, danger }: RowProps) {
@@ -123,7 +124,7 @@ export default function ProfileScreen({ navigation }: Props) {
           </View>
           <View style={{ flex: 1, marginLeft: spacing.lg }}>
             <Text style={styles.name}>{user?.name ?? 'Runner'}</Text>
-            <Text style={styles.email}>{user?.email ?? 'demo@stridefit.app'}</Text>
+            <Text style={styles.email}>{user?.email ?? 'demo@kasya.app'}</Text>
           </View>
         </View>
         <View style={{ marginTop: spacing.lg }}>
@@ -152,6 +153,21 @@ export default function ProfileScreen({ navigation }: Props) {
       <View style={{ height: spacing.xl }} />
       <Card style={styles.menu}>
         <Row icon="star" label="Upgrade to Premium" onPress={() => navigation.navigate('Paywall')} />
+        {isBillingLive() && (
+          <>
+            <View style={styles.div} />
+            <Row
+              icon="credit-card"
+              label="Manage subscription"
+              onPress={async () => {
+                // Customer Center handles cancel/refund/restore; falls back to the paywall.
+                const shown = await presentCustomerCenter();
+                if (!shown) navigation.navigate('Paywall');
+                else getUser().then(setUser); // plan may have changed inside
+              }}
+            />
+          </>
+        )}
         <View style={styles.div} />
         <Row icon="refresh-ccw" label="Replay intro" onPress={replayIntro} />
         <View style={styles.div} />

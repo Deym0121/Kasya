@@ -17,7 +17,7 @@ import { colors, spacing, fonts, radius, type as T } from '../theme';
 import { Button } from '../components';
 import { coachChat, CoachRateLimited, ChatMessage } from '../ai/coach';
 import { buildCoachPlan } from '../gait/coach';
-import { getUser } from '../storage/session';
+import { getPlan } from '../monetization/entitlements';
 import { getAiUsage, bumpAiUsage, aiRemaining, DAILY_AI_LIMIT } from '../storage/aiQuota';
 
 type Props = RootScreenProps<'Coach'>;
@@ -61,7 +61,7 @@ export default function CoachScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     let active = true;
-    getUser().then((u) => active && setPremium(u?.plan === 'premium'));
+    getPlan().then((p) => active && setPremium(p === 'premium'));
     getAiUsage().then((u) => active && setRemaining(aiRemaining(u)));
     return () => {
       active = false;

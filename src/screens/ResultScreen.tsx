@@ -20,7 +20,7 @@ import { frontalSummary } from '../gait';
 import { METRIC_INFO } from '../gait/metricInfo';
 import { buildReportHtml } from '../report/reportHtml';
 import { exportReport } from '../report/exportReport';
-import { getUser } from '../storage/session';
+import { getPlan } from '../monetization/entitlements';
 
 type Props = RootScreenProps<'Result'>;
 
@@ -40,8 +40,7 @@ export default function ResultScreen({ navigation, route }: Props) {
 
   // The paywall sells PDF export, so the gate is real: free users land on Premium.
   const exportPdf = async () => {
-    const u = await getUser();
-    if (u?.plan !== 'premium') {
+    if ((await getPlan()) !== 'premium') {
       navigation.navigate('Paywall');
       return;
     }

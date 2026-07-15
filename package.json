@@ -1,5 +1,5 @@
 {
-  "name": "stridefit-ai",
+  "name": "kasya",
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {
@@ -30,6 +30,8 @@
     "react-dom": "19.2.3",
     "react-native": "0.85.3",
     "react-native-mediapipe-posedetection": "^0.4.0",
+    "react-native-purchases": "^10.4.2",
+    "react-native-purchases-ui": "^10.4.2",
     "react-native-reanimated": "4.3.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "4.25.2",
