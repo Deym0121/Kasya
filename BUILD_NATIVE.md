@@ -1,7 +1,7 @@
-# Building StrideFit with real on-device pose tracking
+# Building Kasya with real on-device pose tracking
 
 The live camera + skeleton tracking is **native** — it does **not** run in Expo Go or the
-browser. You build a one-time **development build** of StrideFit and install it on your phone.
+browser. You build a one-time **development build** of Kasya and install it on your phone.
 Everything else (onboarding, dashboard, shoe matches, the simulated scan) keeps working in Expo
 Go / web; only the real camera screen needs the dev build.
 
@@ -69,11 +69,11 @@ npx expo run:android --device
 
 ## Step 4 — everyday development
 
-Once the StrideFit dev build is installed, you only run the JS server:
+Once the Kasya dev build is installed, you only run the JS server:
 ```
 npx expo start --dev-client
 ```
-Open the **StrideFit** app on your phone (not Expo Go) and it loads your JS over LAN/tunnel.
+Open the **Kasya** app on your phone (not Expo Go) and it loads your JS over LAN/tunnel.
 JS edits hot-reload. Re-run `prebuild` + the build only when native deps or `app.json` change.
 
 ## Step 5 — verify on device (the spike checklist)

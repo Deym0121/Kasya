@@ -73,7 +73,7 @@ describe('reports storage', () => {
   });
 
   it('tolerates corrupt stored JSON', async () => {
-    store.set('stridefit:reports:v1', '{not json');
+    store.set('kasya:reports:v1', '{not json');
     expect(await listReports()).toEqual([]);
   });
 });

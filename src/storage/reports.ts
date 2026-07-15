@@ -5,7 +5,7 @@ import { GaitReportRecord } from './reportRecord';
  * On-device persistence of gait reports. Only the derived structured result is
  * stored — never video or frames. (Cloud sync to Supabase comes in Phase 2.)
  */
-const KEY = 'stridefit:reports:v1';
+const KEY = 'kasya:reports:v1';
 
 export async function listReports(): Promise<GaitReportRecord[]> {
   const raw = await AsyncStorage.getItem(KEY);

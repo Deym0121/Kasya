@@ -1,4 +1,4 @@
--- StrideFit AI — initial schema (corrected per the re-plan).
+-- Kasya — initial schema (corrected per the re-plan).
 --
 -- Privacy-first: no raw video or frames are ever stored; only derived gait JSON.
 -- Wellness-only: the dropped prescriptive columns (pronation_tendency,

@@ -69,7 +69,7 @@ describe('planFromCustomerInfo — Kasya Pro entitlement', () => {
 
 describe('getPlan (demo fallback path)', () => {
   it('reads the local session plan when billing is not live', async () => {
-    store.set('stridefit:user:v1', JSON.stringify({ email: 'a@b.c', name: 'A', plan: 'premium' }));
+    store.set('kasya:user:v1', JSON.stringify({ email: 'a@b.c', name: 'A', plan: 'premium' }));
     expect(await getPlan()).toBe('premium');
   });
 

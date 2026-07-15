@@ -15,7 +15,7 @@ export interface FitProfile {
   budgetMaxPhp?: number;
 }
 
-const KEY = 'stridefit:fit:v1';
+const KEY = 'kasya:fit:v1';
 
 /** Keep only valid, cleaned fields — junk never persists or reaches the AI. */
 export function normalizeFitProfile(raw: unknown): FitProfile {

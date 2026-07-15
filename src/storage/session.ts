@@ -7,8 +7,8 @@ export interface MockUser {
   plan: 'free' | 'premium';
 }
 
-const ONBOARDED = 'stridefit:onboarded:v1';
-const USER = 'stridefit:user:v1';
+const ONBOARDED = 'kasya:onboarded:v1';
+const USER = 'kasya:user:v1';
 
 export async function getOnboarded(): Promise<boolean> {
   return (await AsyncStorage.getItem(ONBOARDED)) === '1';

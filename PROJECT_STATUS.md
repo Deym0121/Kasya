@@ -1,4 +1,6 @@
-# StrideFit AI — Project Status & Handoff
+# Kasya — Project Status & Handoff
+
+> **Renamed:** this app is now **Kasya** (2026-07-16). Older references to "StrideFit" in dated docs are historical.
 
 _Last updated: 2026-07-01. This is the single source of truth for picking the project back up._
 
@@ -183,7 +185,7 @@ faece44  Add review, slow-mo replay, form feedback and a saved gait graph
 b64e8c7  Add OpenRouter AI explanation (secure proxy + graceful fallback)
 a536e7c  Real webcam gait analysis on the web (MediaPipe BlazePose)
 b380f0d  Add real on-device pose tracking (camera + skeleton) for the dev build
-c1904f2  Initial commit: StrideFit AI - gait analysis + shoe match app
+c1904f2  Initial commit: Kasya - gait analysis + shoe match app
 ```
 
 ---

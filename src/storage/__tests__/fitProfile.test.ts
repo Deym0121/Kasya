@@ -53,7 +53,7 @@ describe('fit profile storage', () => {
   });
 
   it('tolerates corrupt stored JSON', async () => {
-    store.set('stridefit:fit:v1', '{broken');
+    store.set('kasya:fit:v1', '{broken');
     expect(await getFitProfile()).toEqual({});
   });
 });

@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * the product rule for the demo and as the client half of the eventual check.
  */
 export const DAILY_AI_LIMIT = 50;
-const KEY = 'stridefit:aiquota:v1';
+const KEY = 'kasya:aiquota:v1';
 
 export interface AiUsage {
   /** YYYY-MM-DD the count applies to */

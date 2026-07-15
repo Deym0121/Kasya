@@ -1,4 +1,4 @@
-# StrideFit AI
+# Kasya
 
 A wellness-grade running/walking **form coach** + comfort-led shoe finder. Capture your stride
 with your phone, get personalized form estimates **led by cadence** (the one strongly-validated
@@ -62,5 +62,5 @@ supabase/migrations/        # Postgres schema + RLS
 
 ## Disclaimer
 
-StrideFit gives wellness and shoe-selection estimates, not medical advice or a diagnosis. For pain
+Kasya gives wellness and shoe-selection estimates, not medical advice or a diagnosis. For pain
 or injury, consult a qualified professional.

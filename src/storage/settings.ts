@@ -8,7 +8,7 @@ export interface ReminderSettings {
   notificationId?: string | null;
 }
 
-const KEY = 'stridefit:settings:v1';
+const KEY = 'kasya:settings:v1';
 
 const DEFAULTS: ReminderSettings = { cadence: 'off', notificationId: null };
 
