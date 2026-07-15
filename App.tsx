@@ -45,7 +45,7 @@ export default function App() {
     return (
       <SafeAreaProvider>
         <View style={styles.splash}>
-          <Text style={styles.brand}>StrideFit</Text>
+          <Text style={styles.brand}>Kasya</Text>
           <ActivityIndicator color={colors.accent} />
         </View>
       </SafeAreaProvider>

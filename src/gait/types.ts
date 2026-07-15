@@ -1,5 +1,5 @@
 /**
- * Domain types for the StrideFit gait core.
+ * Domain types for the Kasya gait core.
  *
  * The core is intentionally pure TypeScript (no React Native imports) so it can
  * be unit-tested in isolation and reused by both the mock and the real

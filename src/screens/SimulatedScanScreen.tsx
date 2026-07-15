@@ -33,7 +33,7 @@ export default function SimulatedScanScreen({ navigation, route }: Props) {
       <Text style={[T.h1, styles.h]}>Live tracking runs in the app build</Text>
       <Text style={[T.bodyMuted, styles.p]}>
         Real camera tracking with the skeleton on your legs and feet runs in the browser (open
-        StrideFit on the web) or the StrideFit development build — not in Expo Go. Run a simulated
+        Kasya on the web) or the Kasya development build — not in Expo Go. Run a simulated
         scan here to see the full flow.
       </Text>
       <Disclaimer />

@@ -59,7 +59,7 @@ export function buildReportHtml(report: GaitReportRecord): string {
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>StrideFit gait report — ${date}</title>
+<title>Kasya gait report — ${date}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; color: #15161B; padding: 40px 44px; }
@@ -87,7 +87,7 @@ export function buildReportHtml(report: GaitReportRecord): string {
 </style>
 </head>
 <body>
-  <div class="brand"><span class="dot"></span><b>StrideFit</b></div>
+  <div class="brand"><span class="dot"></span><b>Kasya</b></div>
   <div class="sub">Gait scan report · ${goal} · ${date}</div>
 
   <div class="hero">
@@ -109,8 +109,8 @@ export function buildReportHtml(report: GaitReportRecord): string {
   <div class="muted" style="margin-top:8px">Comfort-led estimates matched to your goal and movement — prices are approximate bands; try shoes on before buying.</div>
 
   <div class="disc">
-    StrideFit gives wellness and shoe-selection estimates — not medical advice or a diagnosis. For pain
-    or concerns, see a qualified professional. Generated on-device by StrideFit; this report contains only
+    Kasya gives wellness and shoe-selection estimates — not medical advice or a diagnosis. For pain
+    or concerns, see a qualified professional. Generated on-device by Kasya; this report contains only
     derived numbers, never video.
   </div>
 </body>

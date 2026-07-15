@@ -44,7 +44,7 @@ export default function ShareCardScreen({ navigation, route }: Props) {
       <Label>Strava-style sticker</Label>
       <Text style={[T.h1, { marginTop: 4 }]}>Post your stride</Text>
       <Text style={[T.bodyMuted, { marginTop: spacing.xs }]}>
-        A clean card of your scan numbers with the StrideFit mark — pick a solid card, or a transparent sticker to lay
+        A clean card of your scan numbers with the Kasya mark — pick a solid card, or a transparent sticker to lay
         over your own photo or video.
       </Text>
 

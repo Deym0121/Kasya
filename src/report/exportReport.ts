@@ -8,6 +8,6 @@ export async function exportReport(html: string): Promise<void> {
   const { uri } = await Print.printToFileAsync({ html });
   const Sharing = require('expo-sharing');
   if (await Sharing.isAvailableAsync()) {
-    await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Share your StrideFit report' });
+    await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Share your Kasya report' });
   }
 }

@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "stridefit",
-    "slug": "stridefit",
+    "name": "Kasya",
+    "slug": "kasya",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -28,7 +28,7 @@
       [
         "react-native-vision-camera",
         {
-          "cameraPermissionText": "StrideFit needs camera access to track your stride. Nothing is recorded or uploaded.",
+          "cameraPermissionText": "Kasya needs camera access to track your stride. Nothing is recorded or uploaded.",
           "enableMicrophonePermission": false,
           "enableCodeScanner": false
         }

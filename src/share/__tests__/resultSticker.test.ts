@@ -29,7 +29,7 @@ describe('buildResultStickerSvg', () => {
     const svg = buildResultStickerSvg(report, { background: 'brand' });
     expect(svg).toContain('168'); // rounded cadence
     expect(svg).toContain('spm');
-    expect(svg).toContain('StrideFit');
+    expect(svg).toContain('Kasya');
   });
 
   it('brand mode paints a background, transparent mode paints none', () => {

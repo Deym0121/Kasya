@@ -278,7 +278,7 @@ export function Dots({ count, index }: { count: number; index: number }) {
 export function Disclaimer() {
   return (
     <Text style={styles.disc}>
-      StrideFit gives wellness and shoe-selection estimates — not medical advice or a diagnosis. For
+      Kasya gives wellness and shoe-selection estimates — not medical advice or a diagnosis. For
       pain or injury, see a qualified professional.
     </Text>
   );

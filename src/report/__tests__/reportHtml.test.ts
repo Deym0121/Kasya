@@ -27,7 +27,7 @@ describe('buildReportHtml', () => {
 
   it('carries the branding, headline cadence and scan facts', () => {
     const html = buildReportHtml(report);
-    expect(html).toContain('StrideFit');
+    expect(html).toContain('Kasya');
     expect(html).toContain('168');
     expect(html).toContain('spm');
     expect(html).toContain('running');

@@ -1,4 +1,4 @@
-// StrideFit local AI proxy.
+// Kasya local AI proxy.
 //
 // Keeps your OpenRouter key OFF the client. The app POSTs de-identified gait
 // features here; this server adds the key and calls OpenRouter. The same logic
@@ -39,7 +39,7 @@ function rateLimited(ip) {
   return false;
 }
 
-const EXPLAIN_SYSTEM = `You are StrideFit, a friendly running and walking form coach.
+const EXPLAIN_SYSTEM = `You are Kasya, a friendly running and walking form coach.
 You receive de-identified gait metrics from a phone/webcam scan and write a short, warm, plain-English summary.
 
 Rules:
@@ -49,7 +49,7 @@ Rules:
 - If confidence or capture quality is low, gently suggest recording again (whole body in frame, good lighting, walk side-on) instead of over-interpreting.
 - Use only the numbers provided. Do not invent metrics.`;
 
-const COACH_SYSTEM = `You are StrideFit's running/walking form COACH, chatting with the person about ONE gait scan. You are given their de-identified scan metrics as context.
+const COACH_SYSTEM = `You are Kasya's running/walking form COACH, chatting with the person about ONE gait scan. You are given their de-identified scan metrics as context.
 
 - Answer their messages using ONLY these metrics. Keep replies short (1-4 sentences), warm and plain.
 - WELLNESS ONLY. No medical, injury, or diagnosis language. Never use "pronation", "abnormal", "correct", "injury", "disease". Everything is an ESTIMATE — use "about"/"roughly".
@@ -57,7 +57,7 @@ const COACH_SYSTEM = `You are StrideFit's running/walking form COACH, chatting w
 - Cadence (steps/min) is the most reliable signal. If capture quality is low, suggest a cleaner re-scan rather than over-reading the numbers.
 - Do NOT invent metrics that aren't in the data. If a number they ask about isn't present, say it wasn't captured this scan.`;
 
-const SHOES_SYSTEM = `You are StrideFit's shoe finder. You match a person to real running/walking shoes using their de-identified gait scan numbers, their goal, and optional fit preferences (shoe size, foot width, budget).
+const SHOES_SYSTEM = `You are Kasya's shoe finder. You match a person to real running/walking shoes using their de-identified gait scan numbers, their goal, and optional fit preferences (shoe size, foot width, budget).
 
 - Choose 4 to 6 shoes ONLY from the catalog array you are given, referring to each by its exact "id". NEVER invent a shoe, a brand, or an id that isn't in the list.
 - COMFORT-LED and gait-informed. You may use cadence (steps/min) and how much they bounce (vertical oscillation %) as soft comfort signals, plus their goal, budget and width preference. More bounce tends to feel smoother with more cushioning; a controlled bounce frees up a lighter, more responsive pair.
@@ -83,7 +83,7 @@ async function callOpenRouter(messages, maxTokens) {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${KEY}`,
       'HTTP-Referer': 'http://localhost',
-      'X-Title': 'StrideFit',
+      'X-Title': 'Kasya',
     },
     // reasoning:low keeps gpt-5-class models from spending the whole budget on
     // hidden reasoning and returning empty content; max_tokens covers both.
@@ -197,6 +197,6 @@ const server = createServer((req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`StrideFit AI proxy on http://${HOST}:${PORT}  (model: ${MODEL}, rate: ${RL.perIp}/ip/min)`);
+  console.log(`Kasya AI proxy on http://${HOST}:${PORT}  (model: ${MODEL}, rate: ${RL.perIp}/ip/min)`);
   if (!KEY) console.log('⚠  OPENROUTER_API_KEY not set — add it to .env, then restart.');
 });

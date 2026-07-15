@@ -77,7 +77,7 @@ export function buildResultStickerSvg(report: GaitReportRecord, opts: StickerOpt
 
   <!-- logo lockup -->
   <circle cx="112" cy="122" r="22" fill="#FF5436"${textFilter}/>
-  <text x="156" y="140" font-family="${FONT}" font-size="52" letter-spacing="-1" fill="#FFFFFF"${textFilter}>StrideFit</text>
+  <text x="156" y="140" font-family="${FONT}" font-size="52" letter-spacing="-1" fill="#FFFFFF"${textFilter}>Kasya</text>
 
   <text x="90" y="356" font-family="${FONT_MED}" font-size="34" letter-spacing="6" fill="#FF5436"${textFilter}>AI GAIT SCAN</text>
 
@@ -90,6 +90,6 @@ export function buildResultStickerSvg(report: GaitReportRecord, opts: StickerOpt
 
   <!-- footer -->
   <text x="90" y="990" font-family="${FONT_MED}" font-size="30" fill="rgba(255,255,255,0.78)"${textFilter}>${goal} · ${date}</text>
-  <text x="${S - 90}" y="990" text-anchor="end" font-family="${FONT_MED}" font-size="26" fill="rgba(255,255,255,0.55)"${textFilter}>wellness estimate · stridefit</text>
+  <text x="${S - 90}" y="990" text-anchor="end" font-family="${FONT_MED}" font-size="26" fill="rgba(255,255,255,0.55)"${textFilter}>wellness estimate · kasya</text>
 </svg>`;
 }

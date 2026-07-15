@@ -17,7 +17,7 @@ export default function SignInScreen({ navigation }: Props) {
   const [password, setPassword] = useState('');
 
   async function proceed() {
-    const trimmed = email.trim() || 'demo@stridefit.app';
+    const trimmed = email.trim() || 'demo@kasya.app';
     const name = trimmed.split('@')[0] || 'Runner';
     // Preserve an existing plan — re-login must never silently downgrade premium.
     const existing = await getUser();
@@ -34,7 +34,7 @@ export default function SignInScreen({ navigation }: Props) {
         </Pressable>
         <View style={styles.brandRow}>
           <View style={styles.brandDot} />
-          <Text style={styles.brand}>StrideFit</Text>
+          <Text style={styles.brand}>Kasya</Text>
         </View>
         <Text style={styles.heroTitle}>
           {mode === 'signup' ? 'Your stride,\nunderstood.' : 'Welcome\nback.'}

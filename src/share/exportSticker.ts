@@ -11,6 +11,6 @@ export async function exportSticker(_svg: string, viewRef: unknown): Promise<voi
   const uri: string = await captureRef(viewRef as any, { format: 'png', quality: 1 });
   const Sharing = require('expo-sharing');
   if (await Sharing.isAvailableAsync()) {
-    await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share your StrideFit result' });
+    await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share your Kasya result' });
   }
 }

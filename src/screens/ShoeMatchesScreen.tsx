@@ -251,7 +251,7 @@ export default function ShoeMatchesScreen({ navigation, route }: Props) {
 
       <Text style={styles.ftc}>
         Prices are approximate bands — the live store shows the real current price and the authentic photo. Brand names
-        belong to their owners; StrideFit isn’t affiliated with them or the stores, and shoe matches are comfort-led
+        belong to their owners; Kasya isn’t affiliated with them or the stores, and shoe matches are comfort-led
         estimates, not a medical or foot-type prescription.
       </Text>
     </ScreenContainer>

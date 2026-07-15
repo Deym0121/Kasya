@@ -87,7 +87,7 @@ export default function OnboardingScreen({ navigation }: Props) {
       <View style={styles.head}>
         <View style={styles.brandRow}>
           <View style={styles.brandDot} />
-          <Text style={styles.brand}>StrideFit</Text>
+          <Text style={styles.brand}>Kasya</Text>
         </View>
         <Pressable onPress={() => navigation.navigate('SignIn')} hitSlop={10} accessibilityRole="button" accessibilityLabel="Skip onboarding">
           <Text style={styles.skip}>Skip</Text>

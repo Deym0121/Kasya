@@ -28,11 +28,11 @@ export async function exportSticker(svg: string, _viewRef: unknown): Promise<voi
       canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('PNG export failed'))), 'image/png'),
     );
 
-    const file = new File([png], 'stridefit-result.png', { type: 'image/png' });
+    const file = new File([png], 'kasya-result.png', { type: 'image/png' });
     const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
     if (nav.share && nav.canShare?.({ files: [file] })) {
       try {
-        await nav.share({ files: [file], title: 'My StrideFit result' });
+        await nav.share({ files: [file], title: 'My Kasya result' });
         return;
       } catch {
         // fall through to download if the user cancels or share fails
@@ -40,7 +40,7 @@ export async function exportSticker(svg: string, _viewRef: unknown): Promise<voi
     }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(png);
-    a.download = 'stridefit-result.png';
+    a.download = 'kasya-result.png';
     a.click();
     URL.revokeObjectURL(a.href);
   } finally {

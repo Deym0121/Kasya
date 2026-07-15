@@ -3,7 +3,7 @@
 // Real on-device camera + BlazePose skeleton + landmark capture.
 // Loaded ONLY by PoseScanScreen.native.tsx when NOT running in Expo Go, so its
 // native imports (vision-camera / skia / pose) never execute in Expo Go.
-// Runs in the StrideFit custom dev build. See BUILD_NATIVE.md.
+// Runs in the Kasya custom dev build. See BUILD_NATIVE.md.
 //
 // Types suppressed (@ts-nocheck): native modules aren't verifiable headless.
 // The data contract — toPoseFrame() — is unit-tested in poseMapper.test.ts.
@@ -186,7 +186,7 @@ export default function PoseScanCamera({ navigation, route }) {
       <View style={styles.perm}>
         <Text style={styles.permTitle}>Camera access needed</Text>
         <Text style={styles.permBody}>
-          StrideFit uses your camera to track your stride on-device. Nothing is recorded or uploaded.
+          Kasya uses your camera to track your stride on-device. Nothing is recorded or uploaded.
         </Text>
         <View style={{ height: spacing.xl }} />
         <Button label="Allow camera" icon="camera" onPress={requestPermission} />
