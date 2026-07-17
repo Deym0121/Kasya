@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,7 +7,14 @@ import { RootScreenProps } from '../navigation';
 import { colors, spacing, radius, type as T, fonts } from '../theme';
 import { Button, TextField, Disclaimer } from '../components';
 import { getUser, setOnboarded, setUser } from '../storage/session';
-import { isCloudEnabled, signUpWithEmail, signInWithEmail } from '../supabase/auth';
+import {
+  isCloudEnabled,
+  signUpWithEmail,
+  signInWithEmail,
+  signInWithProvider,
+  currentUserEmail,
+  OAuthProvider,
+} from '../supabase/auth';
 import { syncReports } from '../sync/reportSync';
 
 type Props = RootScreenProps<'SignIn'>;
@@ -30,6 +37,41 @@ export default function SignInScreen({ navigation }: Props) {
     await setUser({ email: trimmed, name, plan: existing?.plan ?? 'free' });
     await setOnboarded(true);
     navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
+  }
+
+  // Completes the web OAuth return (and any restored session): if Supabase
+  // already has a signed-in user when this screen mounts, walk straight in.
+  useEffect(() => {
+    if (!cloud) return;
+    let active = true;
+    currentUserEmail().then((e) => {
+      if (active && e) enterApp(e).then(() => syncReports().catch(() => {}));
+    });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Google / Apple via Supabase OAuth. On web this navigates away and back. */
+  async function social(provider: OAuthProvider) {
+    setBusy(true);
+    setNotice(null);
+    try {
+      const res = await signInWithProvider(provider);
+      if (!res.ok) {
+        setNotice({ tone: 'error', text: res.error ?? 'Sign-in failed — try again.' });
+        return;
+      }
+      // Native resolves with a live session; web resolves by redirecting away.
+      const e = await currentUserEmail();
+      if (e) {
+        await enterApp(e);
+        syncReports().catch(() => {});
+      }
+    } finally {
+      setBusy(false);
+    }
   }
 
   /** Real Supabase auth when configured; the honest local demo otherwise. */
@@ -93,6 +135,38 @@ export default function SignInScreen({ navigation }: Props) {
               </Pressable>
             ))}
           </View>
+
+          {cloud && (
+            <>
+              <Pressable
+                onPress={() => social('google')}
+                disabled={busy}
+                accessibilityRole="button"
+                accessibilityLabel="Continue with Google"
+                style={({ pressed }) => [styles.socialBtn, pressed && { opacity: 0.9 }]}
+              >
+                <Text style={styles.socialG}>G</Text>
+                <Text style={styles.socialText}>Continue with Google</Text>
+              </Pressable>
+              {Platform.OS !== 'android' && (
+                <Pressable
+                  onPress={() => social('apple')}
+                  disabled={busy}
+                  accessibilityRole="button"
+                  accessibilityLabel="Continue with Apple"
+                  style={({ pressed }) => [styles.socialBtn, styles.socialApple, pressed && { opacity: 0.9 }]}
+                >
+                  <Feather name="smartphone" size={17} color={colors.onDark} />
+                  <Text style={[styles.socialText, { color: colors.onDark }]}>Continue with Apple</Text>
+                </Pressable>
+              )}
+              <View style={styles.orRow}>
+                <View style={styles.orLine} />
+                <Text style={styles.orText}>or use email</Text>
+                <View style={styles.orLine} />
+              </View>
+            </>
+          )}
 
           <TextField
             label="Email"
@@ -185,6 +259,24 @@ const styles = StyleSheet.create({
   segmentText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.muted },
   segmentTextOn: { color: colors.onDark },
   notice: { fontFamily: fonts.semibold, fontSize: 14, lineHeight: 20, marginBottom: spacing.md },
+  socialBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    minHeight: 52,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.surface,
+    marginBottom: spacing.sm,
+  },
+  socialApple: { backgroundColor: colors.ink, borderColor: colors.ink },
+  socialG: { fontFamily: fonts.extra, fontSize: 17, color: '#4285F4' },
+  socialText: { fontFamily: fonts.semibold, fontSize: 15, color: colors.ink },
+  orRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginVertical: spacing.lg },
+  orLine: { flex: 1, height: 1, backgroundColor: colors.line },
+  orText: { fontFamily: fonts.medium, fontSize: 12, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.8 },
   demoNote: { flexDirection: 'row', gap: 8, marginTop: spacing.lg },
   demoText: { flex: 1, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, color: colors.muted },
 });

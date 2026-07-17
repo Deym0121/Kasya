@@ -33,6 +33,52 @@ export async function signInWithEmail(email: string, password: string): Promise<
   return { ok: true };
 }
 
+export type OAuthProvider = 'google' | 'apple';
+
+/**
+ * Social sign-in through Supabase OAuth (PKCE).
+ *  - web: full-page redirect to the provider; on return, detectSessionInUrl
+ *    picks up the ?code and the SignIn screen's session check enters the app.
+ *  - native: system browser via expo-web-browser, returning to kasya://auth-callback,
+ *    then the code is exchanged for a session here.
+ * Resolves ok:false with a readable message when the provider isn't enabled yet.
+ */
+export async function signInWithProvider(provider: OAuthProvider): Promise<AuthResult> {
+  const sb = getSupabase();
+  if (!sb) return { ok: false, error: 'Cloud accounts are not configured on this build.' };
+  try {
+    const { Platform } = require('react-native');
+    if (Platform.OS === 'web') {
+      const { error } = await sb.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: (globalThis as any).window?.location?.origin },
+      });
+      if (error) return { ok: false, error: error.message };
+      return { ok: true }; // the page is navigating away; session lands on return
+    }
+
+    const redirectTo = 'kasya://auth-callback';
+    const { data, error } = await sb.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo, skipBrowserRedirect: true },
+    });
+    if (error || !data?.url) return { ok: false, error: error?.message ?? 'Could not start the sign-in.' };
+
+    const WebBrowser = require('expo-web-browser');
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+    if (result.type !== 'success' || !result.url) {
+      return { ok: false, error: 'Sign-in was cancelled.' };
+    }
+    const code = new global.URL(result.url).searchParams.get('code');
+    if (!code) return { ok: false, error: 'The provider did not return a sign-in code.' };
+    const { error: exchangeError } = await sb.auth.exchangeCodeForSession(code);
+    if (exchangeError) return { ok: false, error: exchangeError.message };
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? 'Sign-in failed — try again.' };
+  }
+}
+
 /** Sign out of the cloud session; never throws (local sign-out must always work). */
 export async function signOutCloud(): Promise<void> {
   try {

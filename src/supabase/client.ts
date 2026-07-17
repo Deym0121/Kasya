@@ -79,7 +79,10 @@ export function getSupabase(): SupabaseClient | null {
         storage: Platform.OS === 'web' ? undefined : largeSecureStore(),
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: false,
+        // PKCE + URL detection make the OAuth (Google/Apple) redirect flows work:
+        // web returns to the site with ?code=…, native returns via kasya://auth-callback.
+        flowType: 'pkce',
+        detectSessionInUrl: Platform.OS === 'web',
       },
     });
   } catch {

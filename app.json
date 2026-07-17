@@ -2,6 +2,7 @@
   "expo": {
     "name": "Kasya",
     "slug": "kasya",
+    "scheme": "kasya",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -47,7 +48,8 @@
       ],
       "expo-video",
       "expo-sharing",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-web-browser"
     ]
   }
 }
