@@ -2,6 +2,8 @@ import { useRef, useState } from 'react';
 import {
   View,
   Text,
+  Image,
+  ImageSourcePropType,
   StyleSheet,
   ScrollView,
   Pressable,
@@ -10,7 +12,6 @@ import {
   NativeScrollEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation';
@@ -20,16 +21,14 @@ import { Button, Dots } from '../components';
 type ChipSpec = { icon: React.ComponentProps<typeof Feather>['name']; text: string; top: number; side: 'left' | 'right' };
 
 const SLIDES: {
-  icon: React.ComponentProps<typeof Feather>['name'];
-  gradient: [string, string];
+  art: ImageSourcePropType;
   kicker: string;
   title: string;
   body: string;
   chips: ChipSpec[];
 }[] = [
   {
-    icon: 'video',
-    gradient: ['#4A1B0B', '#170C07'],
+    art: require('../../assets/art/onboarding-1.webp'),
     kicker: '30-SECOND SCAN',
     title: 'Record your stride,\nprivately',
     body: 'Walk or run side-on to your camera. By default we read motion only — no video is saved or uploaded, ever.',
@@ -39,8 +38,7 @@ const SLIDES: {
     ],
   },
   {
-    icon: 'activity',
-    gradient: ['#3A3D47', '#15161B'],
+    art: require('../../assets/art/onboarding-2.webp'),
     kicker: 'REAL FORM INSIGHTS',
     title: 'See how you\nactually move',
     body: 'Cadence, rhythm, symmetry and a step-by-step walkthrough — clear estimates from your real movement.',
@@ -50,8 +48,7 @@ const SLIDES: {
     ],
   },
   {
-    icon: 'shopping-bag',
-    gradient: ['#0F5A42', '#0A2B21'],
+    art: require('../../assets/art/onboarding-3.webp'),
     kicker: 'SHOES THAT FIT YOU',
     title: 'Shop shoes matched\nto your movement',
     body: 'Real shoes from budget finds to premium — matched to your goal and comfort, with live Shopee, TikTok Shop and Lazada links.',
@@ -106,10 +103,7 @@ export default function OnboardingScreen({ navigation }: Props) {
         {SLIDES.map((s, idx) => (
           <View key={idx} style={[styles.slide, { width }]}>
             <View style={styles.artWrap}>
-              <LinearGradient colors={s.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.art}>
-                <View style={styles.artGlow} />
-                <Feather name={s.icon} size={84} color="rgba(255,255,255,0.95)" />
-              </LinearGradient>
+              <Image source={s.art} style={styles.art} resizeMode="cover" accessible={false} />
               {s.chips.map((c, ci) => (
                 <View
                   key={ci}
@@ -157,18 +151,8 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 300,
     borderRadius: radius.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
     overflow: 'hidden',
-  },
-  artGlow: {
-    position: 'absolute',
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    top: -70,
-    right: -60,
+    backgroundColor: colors.surfaceAlt,
   },
   chip: {
     position: 'absolute',

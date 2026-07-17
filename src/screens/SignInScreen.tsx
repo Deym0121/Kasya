@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, Image, StyleSheet, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
@@ -120,6 +120,12 @@ export default function SignInScreen({ navigation }: Props) {
         <Text style={styles.heroSub}>
           {mode === 'signup' ? 'Create an account and take your first free gait scan.' : 'Log in to pick up where you left off.'}
         </Text>
+        <Image
+          source={require('../../assets/art/auth-hero.webp')}
+          style={styles.heroArt}
+          resizeMode="contain"
+          accessible={false}
+        />
       </LinearGradient>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -215,6 +221,12 @@ export default function SignInScreen({ navigation }: Props) {
           </View>
 
           <Disclaimer />
+          <Image
+            source={require('../../assets/art/auth-footer.webp')}
+            style={styles.footArt}
+            resizeMode="contain"
+            accessible={false}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -237,6 +249,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
   },
   heroSub: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, color: colors.onDarkMuted, marginTop: spacing.sm },
+  heroArt: { width: '100%', height: 150, marginTop: spacing.md },
+  footArt: { width: '100%', height: 150, marginTop: spacing.lg },
   sheet: {
     flex: 1,
     backgroundColor: colors.surface,
