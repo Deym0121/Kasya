@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { RootScreenProps } from '../navigation';
 import { colors, spacing, radius, type as T, fonts } from '../theme';
-import { Button, TextField, Disclaimer } from '../components';
+import { Button, TextField } from '../components';
 import { getUser, setOnboarded, setUser } from '../storage/session';
 import {
   isCloudEnabled,
@@ -237,7 +237,6 @@ export default function SignInScreen({ navigation }: Props) {
             </Text>
           </View>
 
-          <Disclaimer />
           <Image
             source={require('../../assets/art/auth-footer.webp')}
             style={styles.footArt}
