@@ -1,5 +1,15 @@
 import { useEffect, useState } from 'react';
-import { View, Text, Image, StyleSheet, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  Pressable,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
@@ -25,6 +35,10 @@ type Mode = 'signup' | 'login';
 const APPLE_SIGNIN_ENABLED = ((globalThis as any)?.process?.env?.EXPO_PUBLIC_APPLE_SIGNIN as string) === '1';
 
 export default function SignInScreen({ navigation }: Props) {
+  // On narrow phones the walker art and the 34px title can't share the hero
+  // width — scale both down so the title never wraps mid-word.
+  const { width } = useWindowDimensions();
+  const compact = width < 420;
   const [mode, setMode] = useState<Mode>('signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -114,15 +128,18 @@ export default function SignInScreen({ navigation }: Props) {
           <View style={styles.brandDot} />
           <Text style={styles.brand}>Kasya</Text>
         </View>
-        <Text style={styles.heroTitle}>
-          {mode === 'signup' ? 'Your stride,\nunderstood.' : 'Welcome\nback.'}
-        </Text>
-        <Text style={styles.heroSub}>
-          {mode === 'signup' ? 'Create an account and take your first free gait scan.' : 'Log in to pick up where you left off.'}
-        </Text>
+        <View style={styles.heroText}>
+          <Text style={[styles.heroTitle, compact && styles.heroTitleCompact]}>
+            {mode === 'signup' ? 'Your stride,\nunderstood.' : 'Welcome\nback.'}
+          </Text>
+          <Text style={styles.heroSub}>
+            {mode === 'signup' ? 'Create an account and take your first free gait scan.' : 'Log in to pick up where you left off.'}
+          </Text>
+        </View>
+        <View style={styles.heroGlow} pointerEvents="none" />
         <Image
           source={require('../../assets/art/auth-hero.webp')}
-          style={styles.heroArt}
+          style={[styles.heroArt, compact && styles.heroArtCompact]}
           resizeMode="contain"
           accessible={false}
         />
@@ -235,7 +252,7 @@ export default function SignInScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  hero: { paddingHorizontal: spacing.xl, paddingTop: spacing.sm, paddingBottom: spacing.xxl },
+  hero: { paddingHorizontal: spacing.xl, paddingTop: spacing.sm, paddingBottom: spacing.xxl + spacing.md, overflow: 'hidden' },
   back: { width: 36, height: 36, justifyContent: 'center', marginLeft: -8 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: spacing.xs },
   brandDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.accent },
@@ -249,7 +266,29 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
   },
   heroSub: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, color: colors.onDarkMuted, marginTop: spacing.sm },
-  heroArt: { width: '100%', height: 150, marginTop: spacing.md },
+  /** text column stays clear of the walker art anchored to the right */
+  heroText: { maxWidth: '58%' },
+  heroTitleCompact: { fontSize: 28, lineHeight: 34, letterSpacing: -0.5 },
+  heroArt: {
+    position: 'absolute',
+    right: 4,
+    // keep the walker's feet + glow trail clear of the sheet's rounded top,
+    // which overlaps the hero by radius.xl
+    bottom: radius.xl + 6,
+    width: 216,
+    height: 176, // art is 569x463 — keep its ratio (RNW ignores aspectRatio here)
+    pointerEvents: 'none',
+  },
+  heroArtCompact: { width: 150, height: 122 },
+  heroGlow: {
+    position: 'absolute',
+    right: -50,
+    bottom: -50,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: 'rgba(255,77,13,0.10)',
+  },
   footArt: { width: '100%', height: 150, marginTop: spacing.lg },
   sheet: {
     flex: 1,
