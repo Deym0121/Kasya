@@ -7,6 +7,8 @@ import { RootScreenProps } from '../navigation';
 import { colors, spacing, radius, type as T, fonts } from '../theme';
 import { Button, TextField, Disclaimer } from '../components';
 import { getUser, setOnboarded, setUser } from '../storage/session';
+import { isCloudEnabled, signUpWithEmail, signInWithEmail } from '../supabase/auth';
+import { syncReports } from '../sync/reportSync';
 
 type Props = RootScreenProps<'SignIn'>;
 type Mode = 'signup' | 'login';
@@ -15,15 +17,45 @@ export default function SignInScreen({ navigation }: Props) {
   const [mode, setMode] = useState<Mode>('signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<{ tone: 'error' | 'info'; text: string } | null>(null);
+  const cloud = isCloudEnabled();
 
-  async function proceed() {
-    const trimmed = email.trim() || 'demo@kasya.app';
+  /** Mirror the identity locally and enter the app (works for cloud and guest). */
+  async function enterApp(emailAddr: string) {
+    const trimmed = emailAddr.trim() || 'demo@kasya.app';
     const name = trimmed.split('@')[0] || 'Runner';
     // Preserve an existing plan — re-login must never silently downgrade premium.
     const existing = await getUser();
     await setUser({ email: trimmed, name, plan: existing?.plan ?? 'free' });
     await setOnboarded(true);
     navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
+  }
+
+  /** Real Supabase auth when configured; the honest local demo otherwise. */
+  async function proceed() {
+    if (!cloud) return enterApp(email);
+    const e = email.trim();
+    if (!/.+@.+\..+/.test(e)) return setNotice({ tone: 'error', text: 'Enter a valid email address.' });
+    if (password.length < 8) return setNotice({ tone: 'error', text: 'Password needs at least 8 characters.' });
+    setBusy(true);
+    setNotice(null);
+    try {
+      const res = mode === 'signup' ? await signUpWithEmail(e, password) : await signInWithEmail(e, password);
+      if (!res.ok) {
+        setNotice({ tone: 'error', text: res.error ?? 'Something went wrong — try again.' });
+        return;
+      }
+      if (res.needsConfirmation) {
+        setNotice({ tone: 'info', text: 'Almost there — tap the link in the email we just sent you, then log in here.' });
+        setMode('login');
+        return;
+      }
+      await enterApp(e);
+      syncReports().catch(() => {}); // push any scans made before signing in
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -80,14 +112,27 @@ export default function SignInScreen({ navigation }: Props) {
             icon="lock"
           />
 
-          <Button label={mode === 'signup' ? 'Create account' : 'Log in'} variant="accent" onPress={proceed} />
+          {notice && (
+            <Text style={[styles.notice, notice.tone === 'error' ? { color: colors.danger } : { color: colors.success }]}>
+              {notice.text}
+            </Text>
+          )}
+
+          <Button
+            label={busy ? 'One moment…' : mode === 'signup' ? 'Create account' : 'Log in'}
+            variant="accent"
+            loading={busy}
+            onPress={proceed}
+          />
           <View style={{ height: spacing.sm }} />
-          <Button label="Continue as guest" variant="ghost" onPress={proceed} />
+          <Button label="Continue as guest" variant="ghost" onPress={() => enterApp('')} />
 
           <View style={styles.demoNote}>
             <Feather name="info" size={14} color={colors.muted} style={{ marginTop: 2 }} />
             <Text style={styles.demoText}>
-              Demo mode — any email works and the password isn't checked. Real accounts come later.
+              {cloud
+                ? 'Accounts back up your scan numbers only — never video. Guest mode keeps everything on this device.'
+                : "Demo mode — any email works and the password isn't checked. Real accounts come later."}
             </Text>
           </View>
 
@@ -139,6 +184,7 @@ const styles = StyleSheet.create({
   segmentOn: { backgroundColor: colors.ink },
   segmentText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.muted },
   segmentTextOn: { color: colors.onDark },
+  notice: { fontFamily: fonts.semibold, fontSize: 14, lineHeight: 20, marginBottom: spacing.md },
   demoNote: { flexDirection: 'row', gap: 8, marginTop: spacing.lg },
   demoText: { flex: 1, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, color: colors.muted },
 });

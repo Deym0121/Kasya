@@ -25,6 +25,7 @@ import { ShoeThumb } from '../viz/ShoeThumb';
 import { pickCoachTip } from '../gait/coach';
 import { getReminderSettings } from '../storage/settings';
 import { isRescanDue, dueBannerCopy } from '../storage/reminderDue';
+import { syncReports } from '../sync/reportSync';
 
 type Props = TabScreenProps<'Home'>;
 
@@ -47,6 +48,7 @@ export default function HomeScreen({ navigation }: Props) {
         setLoaded(true);
         setDue(isRescanDue(r?.createdAt ?? null, s.cadence, new Date()));
       })();
+      syncReports().catch(() => {}); // catch up any scans made offline (no-op when signed out)
       return () => {
         active = false;
       };

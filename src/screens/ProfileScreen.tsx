@@ -16,6 +16,8 @@ import {
   cancelRescanReminder,
 } from '../notifications/reminders';
 import { isBillingLive, presentCustomerCenter } from '../monetization/entitlements';
+import { signOutCloud } from '../supabase/auth';
+import { clearRemoteReports } from '../sync/reportSync';
 
 type RowProps = { icon: ComponentProps<typeof Feather>['name']; label: string; onPress: () => void; danger?: boolean };
 function Row({ icon, label, onPress, danger }: RowProps) {
@@ -62,6 +64,7 @@ export default function ProfileScreen({ navigation }: Props) {
   );
 
   async function handleSignOut() {
+    await signOutCloud(); // end the Supabase session too (no-op when cloud is off)
     await signOut();
     // Reset the ROOT stack (the tabs live inside it), not the tab navigator.
     navigation.getParent()?.reset({ index: 0, routes: [{ name: 'Onboarding' }] });
@@ -82,6 +85,7 @@ export default function ProfileScreen({ navigation }: Props) {
     if (confirmTimer.current) clearTimeout(confirmTimer.current);
     setConfirmClear(false);
     clearReports();
+    clearRemoteReports().catch(() => {}); // clear the cloud copies too (fire-and-forget)
   }
 
   async function pickCadence(cadence: ReminderCadence) {

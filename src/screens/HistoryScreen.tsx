@@ -17,6 +17,7 @@ import {
   Button,
 } from '../components';
 import { listReports, deleteReport } from '../storage/reports';
+import { deleteRemoteReport } from '../sync/reportSync';
 import { GaitReportRecord } from '../storage/reportRecord';
 import { buildTrends, cadenceDelta, deltaCopy } from '../gait/progress';
 import { TrendChart } from '../viz/TrendChart';
@@ -59,6 +60,7 @@ export default function HistoryScreen({ navigation }: Props) {
 
   const remove = async (id: string) => {
     await deleteReport(id);
+    deleteRemoteReport(id).catch(() => {}); // drop the cloud copy too (fire-and-forget)
     setConfirmId(null);
     setReports(await listReports());
   };

@@ -8,6 +8,7 @@ import { colors, spacing, fonts } from '../theme';
 import { analyzeGait, makeSyntheticWalk, makeSyntheticRearWalk } from '../gait';
 import { buildGaitReport, GaitReportRecord } from '../storage/reportRecord';
 import { saveReport } from '../storage/reports';
+import { syncReports } from '../sync/reportSync';
 import { tagPendingVideo, clearPendingVideo } from '../viz/videoHolder';
 import { successHaptic } from '../haptics';
 import { Button } from '../components';
@@ -49,6 +50,7 @@ export default function ProcessingScreen({ navigation, route }: Props) {
       const id = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
       const record = buildGaitReport(result, goal, id, new Date().toISOString(), captured, rear);
       await saveReport(record);
+      syncReports().catch(() => {}); // cloud push is fire-and-forget; local save is the source of truth
       // Bind any opt-in clip to THIS report so its Review can show it (never saved
       // with the report); a simulated scan never has one.
       if (simulated) clearPendingVideo();
