@@ -20,6 +20,10 @@ import { syncReports } from '../sync/reportSync';
 type Props = RootScreenProps<'SignIn'>;
 type Mode = 'signup' | 'login';
 
+// Shown once the Apple provider is configured in Supabase (see SOCIAL_AUTH_SETUP.md).
+// Must be '1' on iOS builds that ship social login (App Review guideline 4.8).
+const APPLE_SIGNIN_ENABLED = ((globalThis as any)?.process?.env?.EXPO_PUBLIC_APPLE_SIGNIN as string) === '1';
+
 export default function SignInScreen({ navigation }: Props) {
   const [mode, setMode] = useState<Mode>('signup');
   const [email, setEmail] = useState('');
@@ -148,7 +152,7 @@ export default function SignInScreen({ navigation }: Props) {
                 <Text style={styles.socialG}>G</Text>
                 <Text style={styles.socialText}>Continue with Google</Text>
               </Pressable>
-              {Platform.OS !== 'android' && (
+              {Platform.OS !== 'android' && APPLE_SIGNIN_ENABLED && (
                 <Pressable
                   onPress={() => social('apple')}
                   disabled={busy}

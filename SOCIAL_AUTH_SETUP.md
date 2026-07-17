@@ -41,9 +41,16 @@ the Apple button on Android.
    - Return URLs: the callback URL above.
 4. **Keys → create a key** with Sign in with Apple enabled → download the `.p8` (once!), note
    the Key ID and your Team ID.
-5. Supabase dashboard → **Authentication → Sign In / Providers → Apple**: enable · Services ID
-   as Client ID · generate the client secret from Team ID + Key ID + `.p8` per the form · Save.
-6. Test on web first; native needs the dev build.
+5. Generate the **Secret Key** locally (the `.p8` never leaves your machine):
+
+       node scripts/apple-secret.mjs ./AuthKey_XXXX.p8 <TEAM_ID> <KEY_ID> <SERVICES_ID>
+
+   Paste the printed JWT into Supabase → **Authentication → Sign In / Providers → Apple**
+   (enable · Client ID = the Services ID · Secret Key = the JWT). ⚠ Apple caps the secret at
+   **6 months** — the script prints the expiry date; calendar a re-run.
+6. Set `EXPO_PUBLIC_APPLE_SIGNIN=1` in `.env` — the Apple button stays hidden until this flag
+   is on, so users never meet a dead button.
+7. Test on web first; native needs the dev build.
 
 ## How it behaves in the app
 
