@@ -73,6 +73,10 @@ export function getSupabase(): SupabaseClient | null {
   tried = true;
   if (!URL || !ANON) return null;
   try {
+    if (Platform.OS !== 'web') {
+      // Hermes lacks a complete URL/URLSearchParams — supabase-js requires them.
+      require('react-native-url-polyfill/auto');
+    }
     const { createClient } = require('@supabase/supabase-js');
     client = createClient(URL, ANON, {
       auth: {

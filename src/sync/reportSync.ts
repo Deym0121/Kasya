@@ -34,8 +34,20 @@ export interface SyncOutcome {
   skipped: 'cloud-off' | 'signed-out' | null;
 }
 
+// Serialize concurrent calls — sign-in and Home-focus can fire together, and two
+// parallel syncs would each push the same pending reports (duplicate cloud rows).
+let inFlight: Promise<SyncOutcome> | null = null;
+
 /** Push any local reports that don't have a cloud row yet. Safe to call anytime. */
-export async function syncReports(): Promise<SyncOutcome> {
+export function syncReports(): Promise<SyncOutcome> {
+  if (inFlight) return inFlight;
+  inFlight = doSyncReports().finally(() => {
+    inFlight = null;
+  });
+  return inFlight;
+}
+
+async function doSyncReports(): Promise<SyncOutcome> {
   const sb = getSupabase();
   if (!sb) return { pushed: 0, skipped: 'cloud-off' };
   const { data } = await sb.auth.getSession();

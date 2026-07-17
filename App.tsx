@@ -7,7 +7,9 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { fontMap, colors } from './src/theme';
 import { RootStackParamList } from './src/navigation';
-import { getOnboarded } from './src/storage/session';
+import { getOnboarded, getUser, setUser, setOnboarded } from './src/storage/session';
+import { currentUserEmail } from './src/supabase/auth';
+import { syncReports } from './src/sync/reportSync';
 import MainTabs from './src/MainTabs';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import SignInScreen from './src/screens/SignInScreen';
@@ -35,10 +37,23 @@ export default function App() {
   const [initial, setInitial] = useState<'Onboarding' | 'Tabs'>('Onboarding');
 
   useEffect(() => {
-    getOnboarded().then((ob) => {
-      setInitial(ob ? 'Tabs' : 'Onboarding');
+    (async () => {
+      const [ob, cloudEmail] = await Promise.all([getOnboarded(), currentUserEmail()]);
+      // A live cloud session (e.g. returning from the Google/Apple redirect on a
+      // fresh browser) walks straight in — claim it locally first.
+      if (cloudEmail && !ob) {
+        const existing = await getUser();
+        await setUser({
+          email: cloudEmail,
+          name: cloudEmail.split('@')[0] || 'Runner',
+          plan: existing?.plan ?? 'free',
+        });
+        await setOnboarded(true);
+      }
+      if (cloudEmail) syncReports().catch(() => {});
+      setInitial(ob || cloudEmail ? 'Tabs' : 'Onboarding');
       setReady(true);
-    });
+    })();
   }, []);
 
   if (!fontsLoaded || !ready) {
