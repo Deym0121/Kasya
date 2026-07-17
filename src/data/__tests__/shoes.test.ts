@@ -44,6 +44,13 @@ describe('shoe catalog integrity', () => {
     expect(SHOES.length).toBeGreaterThanOrEqual(30);
   });
 
+  it('has a meaningful set of broadly-praised shoes (drives the Top quality badge)', () => {
+    const top = SHOES.filter((s) => s.quality?.tone === 'well_regarded');
+    expect(top.length).toBeGreaterThanOrEqual(5);
+    // and the badge tier spans price tiers, not just premium
+    expect(top.some((s) => s.tier !== 'premium')).toBe(true);
+  });
+
   it('keeps quality notes short, hedged-safe and honestly toned', () => {
     for (const s of SHOES) {
       if (!s.quality) continue;

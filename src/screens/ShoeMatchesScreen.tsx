@@ -239,6 +239,10 @@ export default function ShoeMatchesScreen({ navigation, route }: Props) {
             <View style={styles.badges}>
               {m.source === 'ai' && <Badge label="✦ AI pick" tint={colors.ink} color="#fff" />}
               <Badge label={tier.label} tint={tier.tint} color={tier.color} />
+              {/* Broadly praised in public reviews — the honest "best quality" tier. */}
+              {m.shoe.quality?.tone === 'well_regarded' && (
+                <Badge label="★ Top quality" tint={colors.warnSoft} color={colors.warn} />
+              )}
               {m.shoe.isOwnProduct && <Badge label="Our product" />}
             </View>
 
