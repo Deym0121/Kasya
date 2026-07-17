@@ -166,7 +166,9 @@ export default function PaywallScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   plan: {
-    backgroundColor: colors.ink,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.line,
     borderRadius: radius.lg,
     padding: spacing.xl,
     marginTop: spacing.xl,
@@ -174,11 +176,11 @@ const styles = StyleSheet.create({
   },
   planName: { fontFamily: fonts.semibold, fontSize: 14, letterSpacing: 0.5, color: colors.accent },
   priceRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: spacing.sm },
-  price: { fontFamily: fonts.extra, fontSize: 40, color: '#fff', letterSpacing: -1 },
-  per: { fontFamily: fonts.medium, fontSize: 15, color: 'rgba(255,255,255,0.7)', marginLeft: 8 },
-  livePrice: { fontFamily: fonts.extra, fontSize: 34, color: '#fff', letterSpacing: -0.8, marginTop: spacing.sm },
+  price: { fontFamily: fonts.extra, fontSize: 40, color: colors.onDark, letterSpacing: -1 },
+  per: { fontFamily: fonts.medium, fontSize: 15, color: colors.onDarkMuted, marginLeft: 8 },
+  livePrice: { fontFamily: fonts.extra, fontSize: 34, color: colors.onDark, letterSpacing: -0.8, marginTop: spacing.sm },
   feature: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.md },
-  featureText: { fontFamily: fonts.regular, fontSize: 15, color: '#fff', flex: 1 },
+  featureText: { fontFamily: fonts.regular, fontSize: 15, color: colors.onDark, flex: 1 },
   later: { alignItems: 'center', marginTop: spacing.lg, minHeight: 44, justifyContent: 'center' },
   laterText: { fontFamily: fonts.medium, fontSize: 15, color: colors.muted },
   notice: { fontFamily: fonts.semibold, fontSize: 13, color: colors.accentInk, marginTop: spacing.md, textAlign: 'center' },

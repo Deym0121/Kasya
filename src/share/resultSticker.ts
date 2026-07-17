@@ -6,7 +6,7 @@ import { GaitReportRecord } from '../storage/reportRecord';
  * (web canvas / native view-shot).
  *
  * Two backgrounds:
- *  - 'brand'       — dark ink card with an accent glow, ready to post as-is
+ *  - 'brand'       — near-black card with an accent glow, ready to post as-is
  *  - 'transparent' — no background at all (Strava-sticker style): white text with
  *                    a soft shadow, made to overlay the user's own photo/video
  *
@@ -62,12 +62,12 @@ export function buildResultStickerSvg(report: GaitReportRecord, opts: StickerOpt
   return `<svg width="${S}" height="${S}" viewBox="0 0 ${S} ${S}" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="ink" x1="0" y1="0" x2="${S}" y2="${S}" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#1B1D24"/>
-      <stop offset="1" stop-color="#101116"/>
+      <stop offset="0" stop-color="#15161B"/>
+      <stop offset="1" stop-color="#0B0C0E"/>
     </linearGradient>
     <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0" stop-color="#FF5436" stop-opacity="0.34"/>
-      <stop offset="1" stop-color="#FF5436" stop-opacity="0"/>
+      <stop offset="0" stop-color="#FF4D0D" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#FF4D0D" stop-opacity="0"/>
     </radialGradient>
     <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
       <feDropShadow dx="0" dy="4" stdDeviation="10" flood-color="#000000" flood-opacity="0.55"/>
@@ -76,10 +76,10 @@ export function buildResultStickerSvg(report: GaitReportRecord, opts: StickerOpt
   ${background}
 
   <!-- logo lockup -->
-  <circle cx="112" cy="122" r="22" fill="#FF5436"${textFilter}/>
+  <circle cx="112" cy="122" r="22" fill="#FF4D0D"${textFilter}/>
   <text x="156" y="140" font-family="${FONT}" font-size="52" letter-spacing="-1" fill="#FFFFFF"${textFilter}>Kasya</text>
 
-  <text x="90" y="356" font-family="${FONT_MED}" font-size="34" letter-spacing="6" fill="#FF5436"${textFilter}>AI GAIT SCAN</text>
+  <text x="90" y="356" font-family="${FONT_MED}" font-size="34" letter-spacing="6" fill="#FF8A54"${textFilter}>AI GAIT SCAN</text>
 
   <!-- headline cadence -->
   <text x="82" y="620" font-family="${FONT}" font-size="290" letter-spacing="-10" fill="#FFFFFF"${textFilter}>${cadence}</text>

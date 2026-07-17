@@ -7,7 +7,7 @@ import { LANDMARK } from '../gait/types';
 import type { PoseFrame } from '../gait/types';
 
 const LEFT_TONE = '#1D9E75'; // teal — left leg
-const RIGHT_TONE = '#FF5436'; // coral — right leg
+const RIGHT_TONE = colors.accent; // brand orange — right leg (matches LeftRightCompare legend)
 
 // BlazePose bones (torso, arms, legs, feet).
 const BONES = [
@@ -21,7 +21,7 @@ const SPEEDS = [0.25, 0.5, 1];
 /**
  * Slow-mo replay of the captured skeleton, reconstructed from saved landmarks.
  * `alignment` overlays a straight hip→ankle line down each leg (left teal, right
- * coral) — the rear-view "how each leg tracks" line, honest (not pronation).
+ * orange) — the rear-view "how each leg tracks" line, honest (not pronation).
  */
 export function SkeletonPlayer({
   frames,
@@ -158,7 +158,11 @@ export function SkeletonPlayer({
 
 const styles = StyleSheet.create({
   stage: {
-    backgroundColor: colors.ink,
+    // Deliberate near-black literal (matches the VideoReplay stage) so the neon
+    // skeleton pops; colors.ink is now a LIGHT fill and would wash it out.
+    backgroundColor: '#070B12',
+    borderWidth: 1,
+    borderColor: colors.line,
     borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
@@ -187,7 +191,7 @@ const styles = StyleSheet.create({
   },
   speedOn: { backgroundColor: colors.ink, borderColor: colors.ink },
   speedText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.inkSoft },
-  speedTextOn: { color: '#fff' },
+  speedTextOn: { color: colors.bg },
   track: { height: 4, borderRadius: 2, backgroundColor: colors.line, marginTop: spacing.md, overflow: 'hidden' },
   trackFill: { height: 4, backgroundColor: colors.accent },
 });

@@ -3,7 +3,7 @@ import { colors, spacing, radius, fonts } from '../theme';
 import type { FrontalSides } from '../gait/frontal';
 
 const LEFT_TONE = '#1D9E75'; // teal — matches the left leg line
-const RIGHT_TONE = '#FF5436'; // coral — matches the right leg line
+const RIGHT_TONE = colors.accent; // brand orange — matches the right leg line
 
 function Side({ name, tone, liftPct, placementPct }: { name: string; tone: string; liftPct: number; placementPct: number }) {
   return (

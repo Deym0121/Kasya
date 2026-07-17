@@ -359,9 +359,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.4)',
     marginRight: spacing.sm,
   },
-  leadChipOn: { backgroundColor: '#fff' },
+  leadChipOn: { backgroundColor: colors.ink },
   leadChipText: { fontFamily: fonts.semibold, fontSize: 14, color: '#fff' },
-  leadChipTextOn: { color: colors.ink },
+  leadChipTextOn: { color: colors.bg },
   vidToggle: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md },
   check: {
     width: 22,

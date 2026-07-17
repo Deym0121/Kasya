@@ -407,8 +407,8 @@ export default function PoseScanScreen({ navigation, route }) {
           ✕ Close
         </div>
         {topText ? (
-          // retry tint = colors.accentInk (#B3290F) at 85%
-          <div style={{ ...hintStyle, background: retryMsg ? 'rgba(179,41,15,0.85)' : 'rgba(0,0,0,0.5)' }}>
+          // retry tint = dark danger scrim (white HUD text stays readable over video)
+          <div style={{ ...hintStyle, background: retryMsg ? 'rgba(140,43,36,0.92)' : 'rgba(0,0,0,0.5)' }}>
             {topText}
           </div>
         ) : null}
@@ -475,7 +475,7 @@ export default function PoseScanScreen({ navigation, route }) {
         {status === 'ready' && !choice && view === 'side' ? (
           <Pressable style={styles.vidToggle} onPress={() => setRecordVideo((v) => !v)} accessibilityRole="switch" accessibilityState={{ checked: recordVideo }}>
             <View style={[styles.check, recordVideo && styles.checkOn]}>
-              {recordVideo ? <Feather name="check" size={14} color="#fff" /> : null}
+              {recordVideo ? <Feather name="check" size={14} color={colors.onDark} /> : null}
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.vidTitle}>Record my video (just this once)</Text>
@@ -556,7 +556,8 @@ const choiceStyle = {
   left: spacing.lg,
   right: spacing.lg,
   bottom: spacing.lg,
-  background: 'rgba(21,22,27,0.92)', // colors.ink (#15161B) at 92%
+  background: 'rgba(30,32,38,0.92)', // colors.surfaceAlt (#1E2026) at 92% — stays translucent over video
+  border: `1px solid ${colors.lineStrong}`,
   borderRadius: radius.lg,
   padding: spacing.lg,
   zIndex: 3,
@@ -630,7 +631,7 @@ const styles = StyleSheet.create({
   },
   leadChipOn: { backgroundColor: colors.ink, borderColor: colors.ink },
   leadChipText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.inkSoft },
-  leadChipTextOn: { color: colors.onDark },
+  leadChipTextOn: { color: colors.bg },
   vidToggle: {
     flexDirection: 'row',
     alignItems: 'center',

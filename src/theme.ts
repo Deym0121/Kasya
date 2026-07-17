@@ -24,25 +24,30 @@ export const fonts = {
   extra: 'Sora_800ExtraBold',
 };
 
-/** Ink + coral on warm off-white — premium athletic, not template orange. */
+/**
+ * Kasya brand dark mode — near-black + logo orange (#FF4D0D), matching the app icon.
+ * `ink` is the PRIMARY TEXT color (near-white on dark). Where `ink` is used as a
+ * FILL (primary button, selected chips) the fg on top must be `bg`, not `onDark`.
+ * Accent fills keep `onDark` white fg. Dark hero cards sit on `surfaceAlt`.
+ */
 export const colors = {
-  ink: '#15161B',
-  inkSoft: '#3A3D47',
-  bg: '#FBFAF8',
-  surface: '#FFFFFF',
-  surfaceAlt: '#F4F2EC',
-  accent: '#FF5436',
-  accentSoft: '#FFEAE3',
-  accentInk: '#B3290F',
-  line: '#ECEAE4',
+  ink: '#F3F4F6',
+  inkSoft: '#C6C9D1',
+  bg: '#0B0C0E',
+  surface: '#15161B',
+  surfaceAlt: '#1E2026',
+  accent: '#FF4D0D',
+  accentSoft: '#33170B',
+  accentInk: '#FF8A54',
+  line: '#24262C',
   /** stronger border for interactive outlines needing ≥3:1 non-text contrast */
-  lineStrong: '#D8D5CC',
-  muted: '#6B6E76',
-  success: '#0E7C5A',
-  successSoft: '#E3F4EC',
-  warn: '#B26A00',
-  warnSoft: '#FBEFD9',
-  danger: '#C0392B',
+  lineStrong: '#3D414B',
+  muted: '#959AA4',
+  success: '#2FBF8F',
+  successSoft: '#123227',
+  warn: '#F5A83C',
+  warnSoft: '#2E2412',
+  danger: '#FF6257',
   onDark: '#FFFFFF',
   onDarkMuted: 'rgba(255,255,255,0.66)',
 };
@@ -52,15 +57,15 @@ export const radius = { sm: 10, md: 14, lg: 20, xl: 28, pill: 999 };
 
 export const shadow = {
   card: {
-    shadowColor: '#15161B',
-    shadowOpacity: 0.05,
+    shadowColor: '#000000',
+    shadowOpacity: 0.35,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },
     elevation: 2,
   },
   lift: {
-    shadowColor: '#15161B',
-    shadowOpacity: 0.12,
+    shadowColor: '#000000',
+    shadowOpacity: 0.5,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 12 },
     elevation: 6,

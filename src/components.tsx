@@ -78,9 +78,9 @@ export function ScreenContainer({
 }
 
 const BTN = {
-  primary: { box: { backgroundColor: colors.ink }, fg: colors.onDark },
+  primary: { box: { backgroundColor: colors.ink }, fg: colors.bg },
   accent: { box: { backgroundColor: colors.accent }, fg: colors.onDark },
-  secondary: { box: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.ink }, fg: colors.ink },
+  secondary: { box: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.lineStrong }, fg: colors.ink },
   ghost: { box: { backgroundColor: 'transparent' }, fg: colors.ink },
 } as const;
 
@@ -231,7 +231,7 @@ export function Chip({
         <Feather
           name={icon}
           size={15}
-          color={selected ? colors.onDark : colors.inkSoft}
+          color={selected ? colors.bg : colors.inkSoft}
           style={{ marginRight: 7 }}
         />
       )}
@@ -260,7 +260,7 @@ export function ConfidenceChip({ confidence }: { confidence: string }) {
   const c = confidenceColor[confidence] ?? colors.muted;
   return (
     <View style={[styles.badge, { backgroundColor: c }]} accessibilityLabel={`${confidence} confidence estimate`}>
-      <Text style={[styles.badgeText, { color: '#fff' }]}>{confidence} confidence</Text>
+      <Text style={[styles.badgeText, { color: colors.bg }]}>{confidence} confidence</Text>
     </View>
   );
 }
@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
   },
   chipOn: { backgroundColor: colors.ink, borderColor: colors.ink },
   chipText: { fontFamily: fonts.medium, fontSize: 15, color: colors.inkSoft },
-  chipTextOn: { color: colors.onDark },
+  chipTextOn: { color: colors.bg },
   badge: { alignSelf: 'flex-start', paddingVertical: 5, paddingHorizontal: 10, borderRadius: radius.sm },
   badgeText: { fontFamily: fonts.bold, fontSize: 11, letterSpacing: 0.5, textTransform: 'uppercase' },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: spacing.sm },

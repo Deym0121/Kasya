@@ -99,7 +99,7 @@ export default function ResultScreen({ navigation, route }: Props) {
           <View style={styles.heroTop}>
             <Text style={styles.kicker}>CADENCE</Text>
             <View style={styles.heroTopRight}>
-              <Badge label={frontal ? 'Side + Rear' : 'Side view'} tint="rgba(255,255,255,0.14)" color="#fff" />
+              <Badge label={frontal ? 'Side + Rear' : 'Side view'} tint="rgba(255,255,255,0.14)" color={colors.onDark} />
               <Pressable
                 onPress={() => setCadenceInfo((v) => !v)}
                 hitSlop={12}
@@ -138,7 +138,7 @@ export default function ResultScreen({ navigation, route }: Props) {
             {aiLoading ? (
               <ActivityIndicator color={colors.accent} />
             ) : aiOn ? (
-              <Badge label="AI" tint={colors.ink} color="#fff" />
+              <Badge label="AI" tint={colors.ink} color={colors.bg} />
             ) : null}
           </View>
           <Text style={[T.body, { marginTop: spacing.md }]}>{tip}</Text>
@@ -234,14 +234,20 @@ export default function ResultScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   footerRow: { flexDirection: 'row', alignItems: 'center' },
-  hero: { backgroundColor: colors.ink, borderRadius: radius.lg, padding: spacing.xl },
+  hero: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
   heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   heroTopRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   infoBtn: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
   kicker: { fontFamily: fonts.semibold, fontSize: 12, letterSpacing: 1.4, color: colors.accent },
   statRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: spacing.sm },
-  big: { fontFamily: fonts.extra, fontSize: 60, color: '#fff', letterSpacing: -1.5 },
-  unit: { fontFamily: fonts.semibold, fontSize: 22, color: 'rgba(255,255,255,0.7)', marginLeft: 8 },
+  big: { fontFamily: fonts.extra, fontSize: 60, color: colors.onDark, letterSpacing: -1.5 },
+  unit: { fontFamily: fonts.semibold, fontSize: 22, color: colors.onDarkMuted, marginLeft: 8 },
   unitCaption: { fontFamily: fonts.regular, fontSize: 13, color: colors.onDarkMuted, marginTop: 2 },
   infoPanel: {
     backgroundColor: colors.surfaceAlt,

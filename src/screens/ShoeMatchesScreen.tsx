@@ -237,7 +237,7 @@ export default function ShoeMatchesScreen({ navigation, route }: Props) {
             </View>
 
             <View style={styles.badges}>
-              {m.source === 'ai' && <Badge label="✦ AI pick" tint={colors.ink} color="#fff" />}
+              {m.source === 'ai' && <Badge label="✦ AI pick" tint={colors.ink} color={colors.bg} />}
               <Badge label={tier.label} tint={tier.tint} color={tier.color} />
               {/* Broadly praised in public reviews — the honest "best quality" tier. */}
               {m.shoe.quality?.tone === 'well_regarded' && (
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.surface,
   },
-  rankText: { fontFamily: fonts.bold, fontSize: 11, color: '#fff' },
+  rankText: { fontFamily: fonts.bold, fontSize: 11, color: colors.bg },
   name: { fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
   meta: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted, marginTop: 2, textTransform: 'capitalize' },
   scorePill: { borderRadius: radius.md, paddingVertical: 6, paddingHorizontal: 12, alignItems: 'center' },

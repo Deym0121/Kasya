@@ -106,7 +106,7 @@ export default function SignInScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <LinearGradient colors={[colors.ink, '#23252d']} style={styles.hero}>
+      <LinearGradient colors={[colors.surfaceAlt, '#101114']} style={styles.hero}>
         <Pressable onPress={() => navigation.goBack()} hitSlop={12} style={styles.back} accessibilityRole="button" accessibilityLabel="Go back">
           <Feather name="chevron-left" size={24} color={colors.onDark} />
         </Pressable>
@@ -160,8 +160,8 @@ export default function SignInScreen({ navigation }: Props) {
                   accessibilityLabel="Continue with Apple"
                   style={({ pressed }) => [styles.socialBtn, styles.socialApple, pressed && { opacity: 0.9 }]}
                 >
-                  <Feather name="smartphone" size={17} color={colors.onDark} />
-                  <Text style={[styles.socialText, { color: colors.onDark }]}>Continue with Apple</Text>
+                  <Feather name="smartphone" size={17} color="#000000" />
+                  <Text style={[styles.socialText, { color: '#000000' }]}>Continue with Apple</Text>
                 </Pressable>
               )}
               <View style={styles.orRow}>
@@ -222,7 +222,7 @@ export default function SignInScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.ink },
+  screen: { flex: 1, backgroundColor: colors.bg },
   hero: { paddingHorizontal: spacing.xl, paddingTop: spacing.sm, paddingBottom: spacing.xxl },
   back: { width: 36, height: 36, justifyContent: 'center', marginLeft: -8 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: spacing.xs },
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
   heroSub: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, color: colors.onDarkMuted, marginTop: spacing.sm },
   sheet: {
     flex: 1,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     marginTop: -radius.xl,
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   },
   segmentOn: { backgroundColor: colors.ink },
   segmentText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.muted },
-  segmentTextOn: { color: colors.onDark },
+  segmentTextOn: { color: colors.bg },
   notice: { fontFamily: fonts.semibold, fontSize: 14, lineHeight: 20, marginBottom: spacing.md },
   socialBtn: {
     flexDirection: 'row',
@@ -272,12 +272,15 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1.5,
     borderColor: colors.lineStrong,
-    backgroundColor: colors.surface,
+    // Deliberate literal: Google-brand white button on a dark theme (dark text set below).
+    backgroundColor: '#FFFFFF',
     marginBottom: spacing.sm,
   },
-  socialApple: { backgroundColor: colors.ink, borderColor: colors.ink },
+  // Deliberate literals: Apple HIG mandates a white sign-in button with black
+  // logo/text on dark backgrounds (fg overridden inline to #000000).
+  socialApple: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
   socialG: { fontFamily: fonts.extra, fontSize: 17, color: '#4285F4' },
-  socialText: { fontFamily: fonts.semibold, fontSize: 15, color: colors.ink },
+  socialText: { fontFamily: fonts.semibold, fontSize: 15, color: colors.bg },
   orRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginVertical: spacing.lg },
   orLine: { flex: 1, height: 1, backgroundColor: colors.line },
   orText: { fontFamily: fonts.medium, fontSize: 12, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.8 },

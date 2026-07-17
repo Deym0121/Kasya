@@ -184,7 +184,7 @@ export default function HomeScreen({ navigation }: Props) {
 
       {!firstRun && user?.plan !== 'premium' && (
         <View style={styles.upsell}>
-          <IconBubble icon="zap" tint="rgba(255,255,255,0.18)" color="#fff" size={44} />
+          <IconBubble icon="zap" tint="rgba(255,255,255,0.18)" color={colors.onDark} size={44} />
           <Text style={styles.upTitle}>Go Premium</Text>
           <Text style={styles.upBody}>Unlimited scans, full shoe matches, history and progress.</Text>
           <View style={{ height: spacing.lg }} />
@@ -206,13 +206,15 @@ const styles = StyleSheet.create({
   },
   avatarText: { fontFamily: fonts.bold, fontSize: 15, color: colors.ink },
   hero: {
-    backgroundColor: colors.ink,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.line,
     borderRadius: radius.lg,
     padding: spacing.xl,
     marginTop: spacing.xl,
   },
   heroKicker: { fontFamily: fonts.semibold, fontSize: 12, letterSpacing: 1.2, color: colors.accent },
-  heroTitle: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 28, color: '#fff', marginTop: spacing.sm },
+  heroTitle: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 28, color: colors.onDark, marginTop: spacing.sm },
   heroPrivacy: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, color: colors.onDarkMuted, marginTop: spacing.sm },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   date: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted },
@@ -240,6 +242,6 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     marginTop: spacing.lg,
   },
-  upTitle: { fontFamily: fonts.bold, fontSize: 20, color: '#fff', marginTop: spacing.md },
-  upBody: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 21, color: 'rgba(255,255,255,0.9)', marginTop: spacing.xs },
+  upTitle: { fontFamily: fonts.bold, fontSize: 20, color: colors.onDark, marginTop: spacing.md },
+  upBody: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 21, color: colors.onDark, marginTop: spacing.xs },
 });

@@ -176,7 +176,7 @@ export default function CoachScreen({ navigation, route }: Props) {
                 accessibilityRole="button"
                 accessibilityLabel="Send"
               >
-                <Feather name="arrow-up" size={20} color="#fff" />
+                <Feather name="arrow-up" size={20} color={colors.onDark} />
               </Pressable>
             </View>
             <Text style={styles.quota}>
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   typing: { paddingVertical: spacing.md },
   msg: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
   assistantMsg: { color: colors.ink },
-  userMsg: { color: '#fff' },
+  userMsg: { color: colors.bg },
   quickRow: { flexGrow: 0 },
   quickInner: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, gap: spacing.sm },
   quick: {

@@ -34,7 +34,15 @@ export function ShoeThumb({ shoe, size = 56 }: { shoe: Shoe; size?: number }) {
     return (
       <Image
         source={bundled}
-        style={{ width: size, height: size, borderRadius: radius.md, backgroundColor: '#fff' }}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: radius.md,
+          // Product photos are shot on white — the tile deliberately stays white.
+          backgroundColor: '#fff',
+          borderWidth: 1,
+          borderColor: colors.line,
+        }}
         resizeMode="contain"
         accessibilityLabel={`${shoe.brand} ${shoe.model}`}
       />
@@ -44,7 +52,14 @@ export function ShoeThumb({ shoe, size = 56 }: { shoe: Shoe; size?: number }) {
     return (
       <Image
         source={{ uri: shoe.image }}
-        style={{ width: size, height: size, borderRadius: radius.md, backgroundColor: colors.surfaceAlt }}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: radius.md,
+          backgroundColor: colors.surfaceAlt,
+          borderWidth: 1,
+          borderColor: colors.line,
+        }}
         resizeMode="cover"
         accessibilityLabel={`${shoe.brand} ${shoe.model}`}
       />
@@ -53,13 +68,13 @@ export function ShoeThumb({ shoe, size = 56 }: { shoe: Shoe; size?: number }) {
   const tint = tintFor(shoe.id);
   return (
     <View
-      style={[styles.tile, { width: size, height: size, backgroundColor: tint }]}
+      style={[styles.tile, { width: size, height: size, backgroundColor: colors.surfaceAlt }]}
       accessibilityLabel={`${shoe.brand} ${shoe.model}`}
     >
       <Svg width={size * 0.9} height={size * 0.9} viewBox="0 0 100 60" style={StyleSheet.absoluteFill as any}>
-        <Path d={SHOE_PATH} fill="#fff" opacity={0.14} transform="translate(2 6)" />
+        <Path d={SHOE_PATH} fill={tint} opacity={0.2} transform="translate(2 6)" />
       </Svg>
-      <Text style={[styles.initial, { fontSize: size * 0.42 }]}>{brandInitial(shoe.brand)}</Text>
+      <Text style={[styles.initial, { fontSize: size * 0.42, color: tint }]}>{brandInitial(shoe.brand)}</Text>
     </View>
   );
 }
@@ -67,9 +82,11 @@ export function ShoeThumb({ shoe, size = 56 }: { shoe: Shoe; size?: number }) {
 const styles = StyleSheet.create({
   tile: {
     borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  initial: { fontFamily: fonts.extra, color: '#fff', letterSpacing: -0.5 },
+  initial: { fontFamily: fonts.extra, letterSpacing: -0.5 },
 });

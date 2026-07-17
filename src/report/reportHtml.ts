@@ -64,11 +64,11 @@ export function buildReportHtml(report: GaitReportRecord): string {
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; color: #15161B; padding: 40px 44px; }
   .brand { display: flex; align-items: center; gap: 10px; }
-  .dot { width: 14px; height: 14px; border-radius: 7px; background: #FF5436; }
+  .dot { width: 14px; height: 14px; border-radius: 7px; background: #FF4D0D; }
   .brand b { font-size: 22px; letter-spacing: -0.4px; }
   .sub { color: #6B6E76; font-size: 13px; margin-top: 4px; }
   .hero { background: #15161B; color: #fff; border-radius: 16px; padding: 26px 28px; margin-top: 22px; }
-  .hero .kicker { color: #FF5436; font-size: 12px; letter-spacing: 2px; font-weight: 700; }
+  .hero .kicker { color: #FF8A54; font-size: 12px; letter-spacing: 2px; font-weight: 700; }
   .hero .num { font-size: 64px; font-weight: 800; letter-spacing: -2px; line-height: 1.1; }
   .hero .unit { font-size: 20px; color: rgba(255,255,255,0.8); margin-left: 6px; }
   .hero .cap { color: rgba(255,255,255,0.72); font-size: 13px; margin-top: 2px; }
@@ -82,7 +82,7 @@ export function buildReportHtml(report: GaitReportRecord): string {
   .match-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #ECEAE4; font-size: 14px; }
   .rank { width: 22px; height: 22px; border-radius: 11px; background: #15161B; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none; }
   .muted { color: #6B6E76; font-size: 12.5px; margin-top: 2px; }
-  .tip { background: #FFEAE3; border-radius: 12px; padding: 14px 16px; font-size: 14px; line-height: 1.5; margin-top: 10px; }
+  .tip { background: #FFE9DF; border-radius: 12px; padding: 14px 16px; font-size: 14px; line-height: 1.5; margin-top: 10px; }
   .disc { color: #6B6E76; font-size: 11.5px; line-height: 1.6; margin-top: 30px; border-top: 1px solid #ECEAE4; padding-top: 14px; }
 </style>
 </head>

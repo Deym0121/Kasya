@@ -86,7 +86,7 @@ export function VideoReplay({ videoUri, frames, height = 340 }) {
 }
 
 const styles = StyleSheet.create({
-  stage: { backgroundColor: '#070B12', borderRadius: radius.lg, overflow: 'hidden' },
+  stage: { backgroundColor: '#070B12', borderWidth: 1, borderColor: colors.line, borderRadius: radius.lg, overflow: 'hidden' },
   controls: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.md, gap: spacing.md },
   play: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
   note: { fontFamily: fonts.regular, fontSize: 12, color: colors.muted, flex: 1 },

@@ -29,7 +29,7 @@ const SLIDES: {
 }[] = [
   {
     icon: 'video',
-    gradient: ['#FF5436', '#B3290F'],
+    gradient: ['#4A1B0B', '#170C07'],
     kicker: '30-SECOND SCAN',
     title: 'Record your stride,\nprivately',
     body: 'Walk or run side-on to your camera. By default we read motion only — no video is saved or uploaded, ever.',
@@ -51,7 +51,7 @@ const SLIDES: {
   },
   {
     icon: 'shopping-bag',
-    gradient: ['#0E7C5A', '#0A5540'],
+    gradient: ['#0F5A42', '#0A2B21'],
     kicker: 'SHOES THAT FIT YOU',
     title: 'Shop shoes matched\nto your movement',
     body: 'Real shoes from budget finds to premium — matched to your goal and comfort, with live Shopee, TikTok Shop and Lazada links.',
@@ -115,7 +115,7 @@ export default function OnboardingScreen({ navigation }: Props) {
                   key={ci}
                   style={[styles.chip, { top: c.top }, c.side === 'left' ? { left: -6 } : { right: -6 }]}
                 >
-                  <Feather name={c.icon} size={14} color={colors.accentInk} />
+                  <Feather name={c.icon} size={14} color={colors.accent} />
                   <Text style={styles.chipText}>{c.text}</Text>
                 </View>
               ))}
@@ -139,7 +139,7 @@ export default function OnboardingScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.ink },
+  screen: { flex: 1, backgroundColor: colors.bg },
   head: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.surface,
+    backgroundColor: '#FFFFFF',
     borderRadius: radius.pill,
     paddingVertical: 8,
     paddingHorizontal: 12,
@@ -185,8 +185,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 5,
   },
-  chipText: { fontFamily: fonts.semibold, fontSize: 12.5, color: colors.ink },
-  kicker: { fontFamily: fonts.semibold, fontSize: 12, letterSpacing: 1.4, color: colors.accent },
+  chipText: { fontFamily: fonts.semibold, fontSize: 12.5, color: colors.bg },
+  kicker: { fontFamily: fonts.semibold, fontSize: 12, letterSpacing: 1.4, color: colors.accentInk },
   title: {
     fontFamily: fonts.extra,
     fontSize: 32,

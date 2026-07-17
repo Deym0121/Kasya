@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontFamily: fonts.bold, fontSize: 22, color: '#fff' },
+  avatarText: { fontFamily: fonts.bold, fontSize: 22, color: colors.bg },
   name: { fontFamily: fonts.bold, fontSize: 20, color: colors.ink },
   email: { fontFamily: fonts.regular, fontSize: 14, color: colors.muted, marginTop: 2 },
   chips: { flexDirection: 'row', flexWrap: 'wrap' },

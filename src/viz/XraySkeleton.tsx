@@ -175,7 +175,7 @@ export function XraySkeleton({
           accessibilityLabel={playing ? 'Pause replay' : 'Play replay'}
           style={styles.play}
         >
-          <Feather name={playing ? 'pause' : 'play'} size={20} color="#fff" />
+          <Feather name={playing ? 'pause' : 'play'} size={20} color={colors.onDark} />
         </Pressable>
         <View style={styles.speeds}>
           {SPEEDS.map((s) => (
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  empty: { fontFamily: fonts.regular, color: 'rgba(255,255,255,0.7)', fontSize: 14 },
+  empty: { fontFamily: fonts.regular, color: colors.onDarkMuted, fontSize: 14 },
   controls: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.md, gap: spacing.md },
   play: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
   speeds: { flexDirection: 'row', gap: spacing.sm },
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   },
   speedOn: { backgroundColor: colors.ink, borderColor: colors.ink },
   speedText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.inkSoft },
-  speedTextOn: { color: '#fff' },
+  speedTextOn: { color: colors.bg },
   track: { height: 4, borderRadius: 2, backgroundColor: colors.line, marginTop: spacing.md, overflow: 'hidden' },
   trackFill: { height: 4, backgroundColor: colors.accent },
 });

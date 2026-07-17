@@ -103,6 +103,7 @@ const stageStyle = {
   position: 'relative',
   width: '100%',
   background: '#070B12',
+  border: `1px solid ${colors.line}`,
   borderRadius: 20,
   overflow: 'hidden',
   display: 'flex',
