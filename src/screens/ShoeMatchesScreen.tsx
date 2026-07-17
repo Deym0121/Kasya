@@ -113,6 +113,13 @@ export default function ShoeMatchesScreen({ navigation, route }: Props) {
     return list;
   }, [matches, sort, tierFilter]);
 
+  // Paginate: the top picks matter most — render a page at a time ("load more"
+  // beats page numbers on mobile). Resets whenever the list itself changes.
+  const PAGE_SIZE = 10;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  useEffect(() => setVisibleCount(PAGE_SIZE), [matches, sort, tierFilter]);
+  const visibleMatches = shown.slice(0, visibleCount);
+
   const applyFit = async () => {
     await setFitProfile(draft);
     setProfile(await getFitProfile());
@@ -201,7 +208,7 @@ export default function ShoeMatchesScreen({ navigation, route }: Props) {
 
       <View style={{ height: spacing.md }} />
 
-      {shown.map((m, i) => {
+      {visibleMatches.map((m, i) => {
         const tone = TONES[scoreTone(m.score)];
         const tier = TIER_BADGE[m.shoe.tier];
         return (
@@ -248,6 +255,17 @@ export default function ShoeMatchesScreen({ navigation, route }: Props) {
           </Card>
         );
       })}
+
+      {visibleCount < shown.length && (
+        <View style={{ marginTop: spacing.sm, marginBottom: spacing.md }}>
+          <Button
+            label={`Show more shoes (${shown.length - visibleCount} more)`}
+            variant="secondary"
+            iconRight="chevron-down"
+            onPress={() => setVisibleCount((c) => c + PAGE_SIZE)}
+          />
+        </View>
+      )}
 
       <Text style={styles.ftc}>
         Prices are approximate bands — the live store shows the real current price and the authentic photo. Brand names
