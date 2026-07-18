@@ -1,4 +1,5 @@
 import { GaitReportRecord } from '../storage/reportRecord';
+import type { CoachLang } from '../storage/settings';
 import { buildCoachFeatures } from './features';
 
 // Coach endpoint sits next to the explain endpoint behind the same proxy.
@@ -29,13 +30,14 @@ export class CoachRateLimited extends Error {
 export async function coachChat(
   report: GaitReportRecord,
   history: ChatMessage[],
+  lang: CoachLang = 'taglish',
   signal?: AbortSignal,
 ): Promise<string> {
   const features = buildCoachFeatures(report);
   const res = await fetch(COACH_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ features, messages: history }),
+    body: JSON.stringify({ features, messages: history, lang }),
     signal,
   });
   if (res.status === 429) throw new CoachRateLimited();

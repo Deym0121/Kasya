@@ -19,6 +19,12 @@ import { coachChat, CoachRateLimited, ChatMessage } from '../ai/coach';
 import { buildCoachPlan } from '../gait/coach';
 import { getPlan } from '../monetization/entitlements';
 import { getAiUsage, bumpAiUsage, aiRemaining, DAILY_AI_LIMIT } from '../storage/aiQuota';
+import { CoachLang, getCoachLang, setCoachLang } from '../storage/settings';
+
+const LANGS: { key: CoachLang; label: string }[] = [
+  { key: 'taglish', label: 'Taglish' },
+  { key: 'english', label: 'English' },
+];
 
 type Props = RootScreenProps<'Coach'>;
 
@@ -56,6 +62,7 @@ export default function CoachScreen({ navigation, route }: Props) {
   const [busy, setBusy] = useState(false);
   const [premium, setPremium] = useState<boolean | null>(null);
   const [remaining, setRemaining] = useState(DAILY_AI_LIMIT);
+  const [lang, setLang] = useState<CoachLang>('taglish');
   const scrollRef = useRef<ScrollView>(null);
   const ctrl = useRef<AbortController | null>(null);
 
@@ -63,10 +70,16 @@ export default function CoachScreen({ navigation, route }: Props) {
     let active = true;
     getPlan().then((p) => active && setPremium(p === 'premium'));
     getAiUsage().then((u) => active && setRemaining(aiRemaining(u)));
+    getCoachLang().then((l) => active && setLang(l));
     return () => {
       active = false;
     };
   }, []);
+
+  const pickLang = (l: CoachLang) => {
+    setLang(l);
+    setCoachLang(l).catch(() => {});
+  };
 
   useEffect(() => {
     const t = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 60);
@@ -92,7 +105,7 @@ export default function CoachScreen({ navigation, route }: Props) {
     ctrl.current?.abort();
     const c = new AbortController();
     ctrl.current = c;
-    coachChat(report, next, c.signal)
+    coachChat(report, next, lang, c.signal)
       .then((reply) => {
         setMessages((m) => [...m, { role: 'assistant', content: reply }]);
         bumpAiUsage().then((u) => setRemaining(aiRemaining(u))); // count real replies against the daily 50
@@ -120,6 +133,20 @@ export default function CoachScreen({ navigation, route }: Props) {
         <View style={{ width: 40 }} />
       </View>
       <Text style={styles.scope}>Only sees this scan's numbers · only talks about your gait</Text>
+      <View style={styles.langRow} accessibilityRole="tablist">
+        {LANGS.map((l) => (
+          <Pressable
+            key={l.key}
+            onPress={() => pickLang(l.key)}
+            accessibilityRole="tab"
+            accessibilityLabel={`Coach replies in ${l.label}`}
+            accessibilityState={{ selected: lang === l.key }}
+            style={[styles.langBtn, lang === l.key && styles.langOn]}
+          >
+            <Text style={[styles.langText, lang === l.key && styles.langTextOn]}>{l.label}</Text>
+          </Pressable>
+        ))}
+      </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
@@ -197,6 +224,24 @@ const styles = StyleSheet.create({
   back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   title: { flex: 1, textAlign: 'center', fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
   scope: { textAlign: 'center', fontFamily: fonts.regular, fontSize: 12, color: colors.muted, marginBottom: spacing.sm },
+  langRow: {
+    flexDirection: 'row',
+    alignSelf: 'center',
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.pill,
+    padding: 3,
+    marginBottom: spacing.sm,
+  },
+  langBtn: {
+    minHeight: 30,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  langOn: { backgroundColor: colors.ink },
+  langText: { fontFamily: fonts.semibold, fontSize: 12.5, color: colors.muted },
+  langTextOn: { color: colors.bg },
   thread: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, gap: spacing.sm },
   bubble: { maxWidth: '86%', borderRadius: radius.lg, paddingVertical: spacing.md, paddingHorizontal: spacing.lg },
   assistant: { alignSelf: 'flex-start', backgroundColor: colors.surfaceAlt, borderTopLeftRadius: radius.sm },

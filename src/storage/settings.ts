@@ -26,3 +26,17 @@ export async function getReminderSettings(): Promise<ReminderSettings> {
 export async function setReminderSettings(settings: ReminderSettings): Promise<void> {
   await AsyncStorage.setItem(KEY, JSON.stringify(settings));
 }
+
+/** AI coach reply language. Taglish by default — Kasya ships for the PH market. */
+export type CoachLang = 'taglish' | 'english';
+
+const COACH_LANG_KEY = 'kasya:coachLang:v1';
+
+export async function getCoachLang(): Promise<CoachLang> {
+  const raw = await AsyncStorage.getItem(COACH_LANG_KEY);
+  return raw === 'english' ? 'english' : 'taglish';
+}
+
+export async function setCoachLang(lang: CoachLang): Promise<void> {
+  await AsyncStorage.setItem(COACH_LANG_KEY, lang);
+}
