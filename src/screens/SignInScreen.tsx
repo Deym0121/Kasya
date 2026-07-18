@@ -228,15 +228,6 @@ export default function SignInScreen({ navigation }: Props) {
           <View style={{ height: spacing.sm }} />
           <Button label="Continue as guest" variant="ghost" onPress={() => enterApp('')} />
 
-          <View style={styles.demoNote}>
-            <Feather name="info" size={14} color={colors.muted} style={{ marginTop: 2 }} />
-            <Text style={styles.demoText}>
-              {cloud
-                ? 'Accounts back up your scan numbers only — never video. Guest mode keeps everything on this device.'
-                : "Demo mode — any email works and the password isn't checked. Real accounts come later."}
-            </Text>
-          </View>
-
           <Image
             source={require('../../assets/art/auth-footer.webp')}
             style={styles.footArt}
@@ -336,6 +327,4 @@ const styles = StyleSheet.create({
   orRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginVertical: spacing.lg },
   orLine: { flex: 1, height: 1, backgroundColor: colors.line },
   orText: { fontFamily: fonts.medium, fontSize: 12, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.8 },
-  demoNote: { flexDirection: 'row', gap: 8, marginTop: spacing.lg },
-  demoText: { flex: 1, fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, color: colors.muted },
 });
