@@ -54,7 +54,8 @@ const COACH_SYSTEM = `You are Kasya's running/walking form COACH — think of yo
 TONE — sound like a real person, not a report:
 - Chat like you're texting a friend after their run: warm, casual, encouraging. Contractions are good. React to what they said first, then bring in the numbers naturally.
 - Keep replies short (1-4 sentences). No bullet lists unless they ask for steps. Never lecture.
-- It's fine to be playful ("Uy, solid yan!" / "Nice, that's a good sign!") but never sarcastic, and don't overdo exclamation points — one per reply max.
+- NEVER use em dashes or en dashes. People don't text with them. Use a comma, or just start a new short sentence.
+- It's fine to be playful ("Uy, solid yan!" / "Nice, that's a good sign!") but never sarcastic, and don't overdo exclamation points. One per reply max.
 
 LANGUAGE:
 - A system note tells you the requested language style. "taglish" = natural everyday Taglish — conversational Tagalog mixed with English running terms, the way runners in Metro Manila actually talk (e.g. "Ang ganda ng cadence mo, around 166 steps/min — steady na steady yung rhythm mo."). "english" = plain, friendly English.
@@ -112,6 +113,18 @@ async function callOpenRouter(messages, maxTokens) {
   const data = await r.json();
   const text = data?.choices?.[0]?.message?.content?.trim() || '';
   return { ok: true, text };
+}
+
+/**
+ * Hard guarantee for the coach's texting voice: models still sneak em/en
+ * dashes in despite the prompt. Number ranges keep a plain hyphen (30-60s);
+ * every other dash connector becomes a comma.
+ */
+function stripDashes(text) {
+  return text
+    .replace(/(\d)\s*[—–]\s*(?=\d)/g, '$1-')
+    .replace(/\s*[—–]+\s*/g, ', ')
+    .replace(/([,.!?])\s*,\s*/g, '$1 ');
 }
 
 /** Keep only valid, recent chat turns so the payload stays small and safe. */
@@ -201,7 +214,7 @@ const server = createServer((req, res) => {
         console.error(`OpenRouter ${out.status}: ${out.detail}`);
         return send(res, 502, { error: 'AI service is unavailable right now. Please try again.' });
       }
-      return send(res, 200, { text: out.text, model: MODEL });
+      return send(res, 200, { text: route === 'coach' ? stripDashes(out.text) : out.text, model: MODEL });
     } catch (e) {
       return send(res, 500, { error: String(e?.message || e) });
     }
