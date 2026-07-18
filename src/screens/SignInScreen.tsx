@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   heroTitleCompact: { fontSize: 28, lineHeight: 34, letterSpacing: -0.5 },
   heroArt: {
     position: 'absolute',
-    right: 4,
+    right: 18,
     // keep the walker's feet + glow trail clear of the sheet's rounded top,
     // which overlaps the hero by radius.xl
     bottom: radius.xl + 6,
