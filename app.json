@@ -14,7 +14,8 @@
       "bundleIdentifier": "com.kasya.app",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "Kasya needs camera access to track your stride. Nothing is recorded or uploaded."
+        "NSCameraUsageDescription": "Kasya needs camera access to track your stride. Nothing is recorded or uploaded.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
