@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -38,6 +38,26 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
+      // Demo tour helper (web only): opening the site with ?demo=1 seeds a
+      // premium account with a finished two-angle scan, so the whole app can be
+      // toured from any phone browser — no camera, no devtools console needed.
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location.search.includes('demo=1')) {
+        try {
+          const res = await fetch('/demo-report.seed.json');
+          if (res.ok) {
+            window.localStorage.setItem('kasya:reports:v1', await res.text());
+            window.localStorage.setItem('kasya:onboarded:v1', '1');
+            window.localStorage.setItem(
+              'kasya:user:v1',
+              JSON.stringify({ email: 'demo@kasya.app', name: 'Demo', plan: 'premium' }),
+            );
+          }
+        } catch {
+          // no seed available — fall through to the normal boot
+        }
+        window.location.replace(window.location.pathname); // drop the param and reboot seeded
+        return;
+      }
       const [ob, cloudEmail] = await Promise.all([getOnboarded(), currentUserEmail()]);
       // A live cloud session (e.g. returning from the Google/Apple redirect on a
       // fresh browser) walks straight in — claim it locally first.
