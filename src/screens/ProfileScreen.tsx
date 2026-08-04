@@ -16,7 +16,7 @@ import {
   cancelRescanReminder,
 } from '../notifications/reminders';
 import { isBillingLive, presentCustomerCenter } from '../monetization/entitlements';
-import { signOutCloud } from '../supabase/auth';
+import { signOutCloud } from '../convex/auth';
 import { clearRemoteReports } from '../sync/reportSync';
 
 type RowProps = { icon: ComponentProps<typeof Feather>['name']; label: string; onPress: () => void; danger?: boolean };

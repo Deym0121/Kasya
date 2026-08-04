@@ -24,14 +24,16 @@ import {
   signInWithProvider,
   currentUserEmail,
   OAuthProvider,
-} from '../supabase/auth';
+} from '../convex/auth';
 import { syncReports } from '../sync/reportSync';
 
 type Props = RootScreenProps<'SignIn'>;
 type Mode = 'signup' | 'login';
 
-// Shown once the Apple provider is configured in Supabase (see SOCIAL_AUTH_SETUP.md).
-// Must be '1' on iOS builds that ship social login (App Review guideline 4.8).
+// Social sign-in is STAGED on Convex Auth — flip these once the Google/Apple
+// providers are configured in convex/auth.ts. Apple must be '1' on iOS builds
+// that ship social login (App Review guideline 4.8).
+const GOOGLE_SIGNIN_ENABLED = ((globalThis as any)?.process?.env?.EXPO_PUBLIC_GOOGLE_SIGNIN as string) === '1';
 const APPLE_SIGNIN_ENABLED = ((globalThis as any)?.process?.env?.EXPO_PUBLIC_APPLE_SIGNIN as string) === '1';
 
 export default function SignInScreen({ navigation }: Props) {
@@ -163,7 +165,7 @@ export default function SignInScreen({ navigation }: Props) {
             ))}
           </View>
 
-          {cloud && (
+          {cloud && GOOGLE_SIGNIN_ENABLED && (
             <>
               <Pressable
                 onPress={() => social('google')}

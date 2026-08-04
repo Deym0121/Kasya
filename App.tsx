@@ -1,14 +1,19 @@
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
+import { ConvexAuthProvider } from '@convex-dev/auth/react';
+import * as SecureStore from 'expo-secure-store';
 import { fontMap, colors } from './src/theme';
 import { RootStackParamList } from './src/navigation';
 import { getOnboarded, getUser, setUser, setOnboarded } from './src/storage/session';
-import { currentUserEmail } from './src/supabase/auth';
+import { getConvex } from './src/convex/client';
+import { AuthActionsBridge } from './src/convex/authBridge';
+import { currentUserEmail } from './src/convex/auth';
 import { syncReports } from './src/sync/reportSync';
 import MainTabs from './src/MainTabs';
 import OnboardingScreen from './src/screens/OnboardingScreen';
@@ -29,6 +34,13 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const navTheme = {
   ...DarkTheme,
   colors: { ...DarkTheme.colors, background: colors.bg, card: colors.surface, primary: colors.accent },
+};
+
+// Convex Auth session storage: OS keychain on device, localStorage on web.
+const secureStorage = {
+  getItem: SecureStore.getItemAsync,
+  setItem: SecureStore.setItemAsync,
+  removeItem: SecureStore.deleteItemAsync,
 };
 
 export default function App() {
@@ -76,18 +88,31 @@ export default function App() {
     })();
   }, []);
 
+  // With cloud configured the whole app lives inside ConvexAuthProvider so the
+  // session restores/attaches to the shared client; without it, plain local app.
+  const convex = getConvex();
+  const withProviders = (children: ReactNode) =>
+    convex ? (
+      <ConvexAuthProvider client={convex} storage={Platform.OS === 'web' ? undefined : secureStorage}>
+        <AuthActionsBridge />
+        {children}
+      </ConvexAuthProvider>
+    ) : (
+      <>{children}</>
+    );
+
   if (!fontsLoaded || !ready) {
-    return (
+    return withProviders(
       <SafeAreaProvider>
         <View style={styles.splash}>
           <Text style={styles.brand}>Kasya</Text>
           <ActivityIndicator color={colors.accent} />
         </View>
-      </SafeAreaProvider>
+      </SafeAreaProvider>,
     );
   }
 
-  return (
+  return withProviders(
     <SafeAreaProvider>
       <NavigationContainer theme={navTheme}>
         <StatusBar style="light" />
