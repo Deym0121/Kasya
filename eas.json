@@ -33,10 +33,20 @@
         "EXPO_PUBLIC_REVENUECAT_KEY": "test_ccNMWeYzOHdaMotKBviFYFdGpir",
         "EXPO_PUBLIC_CONVEX_URL": "https://youthful-civet-99.convex.cloud",
         "EXPO_PUBLIC_AI_PROXY_URL": "https://youthful-civet-99.convex.site/api/explain"
+      },
+      "ios": {
+        "credentialsSource": "local"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascApiKeyPath": "./AuthKey_7AHM7AUHJ7.p8",
+        "ascApiKeyId": "7AHM7AUHJ7",
+        "ascApiKeyIssuerId": "edb70a08-d422-4c9f-86e4-a44f810109ed",
+        "ascAppId": "6792974071"
+      }
+    }
   }
 }
