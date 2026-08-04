@@ -9,7 +9,7 @@
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0B0C0E",
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.kasya.app",
       "usesAppleSignIn": true,
       "infoPlist": {
