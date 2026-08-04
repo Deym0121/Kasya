@@ -1,0 +1,51 @@
+# EAS build archive ignore. NOTE: when this file exists EAS uses it INSTEAD of
+# .gitignore, so it must repeat everything there — plus the agent worktrees in
+# .claude/, which hold a full duplicate project and stall archiving (OneDrive).
+
+# agent worktrees / assistant state
+.claude/
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+.env
+
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android
+
+# repo extras the build never needs
+docs/
+*.md
