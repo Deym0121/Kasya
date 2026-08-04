@@ -242,8 +242,53 @@ const revenuecat = httpAction(async (ctx, req) => {
   return json(200, { ok: true });
 });
 
+/** Minimal hosted pages so App Store review has live Support + Privacy URLs. */
+function page(title: string, body: string): Response {
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#0B0C0E;color:#F3F4F6;margin:0;padding:40px 20px}main{max-width:640px;margin:0 auto;line-height:1.6}h1{color:#FF4D0D;font-size:28px}h2{font-size:18px;margin-top:28px}a{color:#FF8A54}p,li{color:#C6C9D1;font-size:15px}footer{margin-top:40px;font-size:12px;color:#959AA4}</style></head><body><main>${body}<footer>Kasya · wellness estimates, not medical advice · <a href="mailto:lloyd.bbedigital@gmail.com">lloyd.bbedigital@gmail.com</a></footer></main></body></html>`;
+  return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+}
+
+const privacyPage = httpAction(async () =>
+  page(
+    'Kasya — Privacy Policy',
+    `<h1>Kasya Privacy Policy</h1>
+<p>Kasya estimates walking/running cadence and form from your phone camera and suggests comfort-led shoe matches. Privacy is the product's core design constraint.</p>
+<h2>What never leaves your phone</h2>
+<ul><li><b>No video is recorded or uploaded by default.</b> The camera is read live on your device as body landmark positions; only derived numbers (like steps per minute) are kept.</li>
+<li>The optional "keep a clip for review" toggle stores the clip in memory only and deletes it right after you view it. It is never uploaded.</li>
+<li>Raw landmark motion used for the in-app replay stays on your device and is never synced.</li></ul>
+<h2>What we collect</h2>
+<ul><li><b>Account (optional):</b> your email address and a password (stored as a salted hash). Guest mode collects nothing.</li>
+<li><b>Scan results (signed-in users):</b> derived numbers only — cadence, rhythm, symmetry and similar scores — backed up so you can keep your history.</li>
+<li><b>AI coach chats:</b> your messages and de-identified scan numbers are processed transiently by our AI provider to generate replies. They are not used to identify you.</li>
+<li><b>Purchases:</b> subscription status is managed by RevenueCat and the app stores. We never see your payment details.</li></ul>
+<h2>Where it lives</h2>
+<p>Backend data is stored with Convex (convex.dev). We don't sell or share your data with advertisers.</p>
+<h2>Deleting your data</h2>
+<p>In the app: Profile → Delete account removes your account and every scan row we hold, immediately. You can also email us and we'll do it for you.</p>
+<h2>Contact</h2>
+<p>Questions: <a href="mailto:lloyd.bbedigital@gmail.com">lloyd.bbedigital@gmail.com</a></p>`,
+  ),
+);
+
+const supportPage = httpAction(async () =>
+  page(
+    'Kasya — Support',
+    `<h1>Kasya Support</h1>
+<h2>Common questions</h2>
+<ul><li><b>The scan says capture failed.</b> Prop your phone side-on, step 3–4 meters back, make sure your whole body is in frame with decent lighting, then follow the countdown.</li>
+<li><b>Does Kasya record video?</b> No — by default nothing is recorded or uploaded. See our <a href="/privacy">privacy policy</a>.</li>
+<li><b>How do I cancel my subscription?</b> Subscriptions are billed by the App Store / Google Play — manage or cancel them in your store account settings, or in the app under Profile → Manage subscription.</li>
+<li><b>How do I delete my account?</b> Profile → Delete account, or email us.</li></ul>
+<h2>Contact us</h2>
+<p>Email <a href="mailto:lloyd.bbedigital@gmail.com">lloyd.bbedigital@gmail.com</a> — we usually reply within a couple of days.</p>`,
+  ),
+);
+
 const http = httpRouter();
 auth.addHttpRoutes(http);
+http.route({ path: '/privacy', method: 'GET', handler: privacyPage });
+http.route({ path: '/support', method: 'GET', handler: supportPage });
 http.route({ path: '/api/coach', method: 'POST', handler: coach });
 http.route({ path: '/api/coach', method: 'OPTIONS', handler: preflight });
 http.route({ path: '/api/shoes', method: 'POST', handler: shoes });

@@ -73,6 +73,22 @@ export async function signOutCloud(): Promise<void> {
   }
 }
 
+/**
+ * Permanently delete the signed-in user's account and every cloud row
+ * (App Review 5.1.1(v)). Clears the local token afterwards.
+ */
+export async function deleteCloudAccount(): Promise<AuthResult> {
+  const convex = getConvex();
+  if (!convex) return { ok: true }; // nothing in the cloud to delete
+  try {
+    await convex.mutation(api.users.deleteAccount, {});
+  } catch (e) {
+    return { ok: false, error: 'Could not delete the account — check your connection and try again.' };
+  }
+  await signOutCloud(); // the server session is gone; this clears the stored tokens
+  return { ok: true };
+}
+
 /** The signed-in user's id, or null (signed out / cloud off). */
 export async function currentUserId(): Promise<string | null> {
   const convex = getConvex();

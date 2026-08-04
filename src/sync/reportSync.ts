@@ -107,6 +107,14 @@ export async function deleteRemoteReport(localId: string): Promise<void> {
   }
 }
 
+/**
+ * Forget which reports were synced — used after account deletion so a future
+ * account gets a fresh push of everything still on the device.
+ */
+export async function clearSyncedMap(): Promise<void> {
+  await writeMap({});
+}
+
 /** Remove ALL of the user's cloud scan rows (History → Clear all). */
 export async function clearRemoteReports(): Promise<void> {
   const convex = getConvex();

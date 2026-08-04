@@ -16,8 +16,8 @@ import {
   cancelRescanReminder,
 } from '../notifications/reminders';
 import { isBillingLive, presentCustomerCenter } from '../monetization/entitlements';
-import { signOutCloud } from '../convex/auth';
-import { clearRemoteReports } from '../sync/reportSync';
+import { signOutCloud, deleteCloudAccount, currentUserEmail } from '../convex/auth';
+import { clearRemoteReports, clearSyncedMap } from '../sync/reportSync';
 
 type RowProps = { icon: ComponentProps<typeof Feather>['name']; label: string; onPress: () => void; danger?: boolean };
 function Row({ icon, label, onPress, danger }: RowProps) {
@@ -50,15 +50,21 @@ export default function ProfileScreen({ navigation }: Props) {
   const [reminderNote, setReminderNote] = useState('');
   const [confirmClear, setConfirmClear] = useState(false);
   const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [cloudEmail, setCloudEmail] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const deleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
       getUser().then((u) => active && setUser(u));
       getReminderSettings().then((s) => active && setSettings(s));
+      currentUserEmail().then((e) => active && setCloudEmail(e));
       return () => {
         active = false;
         if (confirmTimer.current) clearTimeout(confirmTimer.current);
+        if (deleteTimer.current) clearTimeout(deleteTimer.current);
       };
     }, []),
   );
@@ -86,6 +92,26 @@ export default function ProfileScreen({ navigation }: Props) {
     setConfirmClear(false);
     clearReports();
     clearRemoteReports().catch(() => {}); // clear the cloud copies too (fire-and-forget)
+  }
+
+  /** Two-tap confirm, then permanent cloud-account deletion (App Review 5.1.1). */
+  async function handleDeleteAccount() {
+    if (deleting) return;
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      if (deleteTimer.current) clearTimeout(deleteTimer.current);
+      deleteTimer.current = setTimeout(() => setConfirmDelete(false), 5000);
+      return;
+    }
+    if (deleteTimer.current) clearTimeout(deleteTimer.current);
+    setConfirmDelete(false);
+    setDeleting(true);
+    const res = await deleteCloudAccount();
+    setDeleting(false);
+    if (!res.ok) return; // connection hiccup — the row stays, user can retry
+    await clearSyncedMap(); // scans still on-device would re-sync to a future account
+    await signOut();
+    navigation.getParent()?.reset({ index: 0, routes: [{ name: 'Onboarding' }] });
   }
 
   async function pickCadence(cadence: ReminderCadence) {
@@ -183,6 +209,23 @@ export default function ProfileScreen({ navigation }: Props) {
         />
         <View style={styles.div} />
         <Row icon="log-out" label="Sign out" onPress={handleSignOut} danger />
+        {cloudEmail != null && (
+          <>
+            <View style={styles.div} />
+            <Row
+              icon="user-x"
+              label={
+                deleting
+                  ? 'Deleting account…'
+                  : confirmDelete
+                    ? 'Tap again to permanently delete'
+                    : 'Delete account'
+              }
+              onPress={handleDeleteAccount}
+              danger
+            />
+          </>
+        )}
       </Card>
 
       <Disclaimer />
