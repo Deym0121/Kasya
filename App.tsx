@@ -91,15 +91,26 @@ export default function App() {
   // With cloud configured the whole app lives inside ConvexAuthProvider so the
   // session restores/attaches to the shared client; without it, plain local app.
   const convex = getConvex();
-  const withProviders = (children: ReactNode) =>
-    convex ? (
+  const withProviders = (children: ReactNode) => {
+    // On web, keep the app a centered phone-width column instead of stretching
+    // across the desktop — every screen and the tab bar stay phone-shaped.
+    const framed =
+      Platform.OS === 'web' ? (
+        <View style={styles.webFrame}>
+          <View style={styles.webColumn}>{children}</View>
+        </View>
+      ) : (
+        children
+      );
+    return convex ? (
       <ConvexAuthProvider client={convex} storage={Platform.OS === 'web' ? undefined : secureStorage}>
         <AuthActionsBridge />
-        {children}
+        {framed}
       </ConvexAuthProvider>
     ) : (
-      <>{children}</>
+      <>{framed}</>
     );
+  };
 
   if (!fontsLoaded || !ready) {
     return withProviders(
@@ -152,4 +163,6 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   brand: { fontSize: 26, fontWeight: '800', color: colors.ink, letterSpacing: -0.5 },
+  webFrame: { flex: 1, backgroundColor: colors.bg, alignItems: 'center' },
+  webColumn: { flex: 1, width: '100%', maxWidth: 480 },
 });
