@@ -23,3 +23,34 @@ export const bumpUsage = internalMutation({
     return { allowed: true, remaining: DAILY_LIMIT - count - 1 };
   },
 });
+
+/** Abuse backstop for the public AI endpoints: 10/min per IP, 60/min global. */
+const RL_PER_IP = 10;
+const RL_GLOBAL = 60;
+
+export const checkRateLimit = internalMutation({
+  args: { ip: v.string() },
+  handler: async (ctx, { ip }) => {
+    const windowStart = Math.floor(Date.now() / 60_000);
+    async function bump(key: string, limit: number): Promise<boolean> {
+      const row = await ctx.db
+        .query('rateLimits')
+        .withIndex('by_key', (q) => q.eq('key', key))
+        .unique();
+      if (!row) {
+        await ctx.db.insert('rateLimits', { key, windowStart, count: 1 });
+        return true;
+      }
+      if (row.windowStart !== windowStart) {
+        await ctx.db.patch(row._id, { windowStart, count: 1 });
+        return true;
+      }
+      if (row.count >= limit) return false;
+      await ctx.db.patch(row._id, { count: row.count + 1 });
+      return true;
+    }
+    const ipOk = await bump('ip:' + ip, RL_PER_IP);
+    const globalOk = await bump('global', RL_GLOBAL);
+    return { allowed: ipOk && globalOk };
+  },
+});

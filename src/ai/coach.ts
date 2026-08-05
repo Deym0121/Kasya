@@ -1,5 +1,6 @@
 import { GaitReportRecord } from '../storage/reportRecord';
 import type { CoachLang } from '../storage/settings';
+import { getAuthToken } from '../convex/authBridge';
 import { buildCoachFeatures } from './features';
 
 // Coach endpoint sits next to the explain endpoint behind the same proxy.
@@ -34,9 +35,12 @@ export async function coachChat(
   signal?: AbortSignal,
 ): Promise<string> {
   const features = buildCoachFeatures(report);
+  // Signed-in users authenticate to our backend so the server-side daily quota
+  // and entitlement checks apply to them (guests stay rate-limited by IP).
+  const token = getAuthToken();
   const res = await fetch(COACH_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify({ features, messages: history, lang }),
     signal,
   });

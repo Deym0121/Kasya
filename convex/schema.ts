@@ -55,4 +55,11 @@ export default defineSchema({
     day: v.string(),
     count: v.float64(),
   }).index('by_user_day', ['userId', 'day']),
+
+  /** Fixed-window rate limiting for the public AI endpoints (per-IP + global). */
+  rateLimits: defineTable({
+    key: v.string(),
+    windowStart: v.float64(),
+    count: v.float64(),
+  }).index('by_key', ['key']),
 });
