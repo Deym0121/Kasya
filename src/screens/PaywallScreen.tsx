@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { RootScreenProps } from '../navigation';
-import { colors, spacing, radius, type as T, fonts } from '../theme';
+import { colors, spacing, radius, type as T, fonts, shadow } from '../theme';
 import { ScreenContainer, Button, IconBubble } from '../components';
 import {
   getPlan,
@@ -10,16 +11,31 @@ import {
   getPremiumPackages,
   purchasePremium,
   restorePurchases,
-  presentRcPaywall,
   PremiumPackage,
 } from '../monetization/entitlements';
 
 // Only benefits that are REALLY gated in the app — scans, history, progress and
 // shoe matches are free for everyone (and stay that way in the copy).
-const FEATURES = [
-  'AI coach chat — ask anything about your scan (50 replies/day)',
-  'PDF report export',
+const BENEFITS: { icon: 'message-circle' | 'file-text'; title: string; sub: string }[] = [
+  {
+    icon: 'message-circle',
+    title: 'AI coach chat',
+    sub: 'Ask anything about your scan — English or Taglish, up to 50 replies a day.',
+  },
+  {
+    icon: 'file-text',
+    title: 'PDF report export',
+    sub: 'A clean, shareable report of your gait numbers.',
+  },
 ];
+
+// Demo-mode price display; live mode shows the store's own priceString.
+const DEMO = {
+  yearly: { price: '$69.99/y', perMonth: '$5.83/mo', foot: '$69.99 per year, cancel anytime.' },
+  monthly: { price: '$9.99/mo', perMonth: null, foot: '$9.99 per month, cancel anytime.' },
+};
+
+type PlanChoice = 'yearly' | 'monthly';
 
 type Props = RootScreenProps<'Paywall'>;
 
@@ -29,6 +45,7 @@ export default function PaywallScreen({ navigation }: Props) {
   const [packages, setPackages] = useState<PremiumPackage[]>([]);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
+  const [sel, setSel] = useState<PlanChoice>('yearly');
 
   useEffect(() => {
     let active = true;
@@ -39,28 +56,29 @@ export default function PaywallScreen({ navigation }: Props) {
     };
   }, [live]);
 
+  const yearlyPkg = useMemo(
+    () => packages.find((p) => /year|annual/i.test(`${p.id} ${p.label}`)),
+    [packages],
+  );
+  const monthlyPkg = useMemo(
+    () => packages.find((p) => /month/i.test(`${p.id} ${p.label}`) && p !== yearlyPkg) ?? packages[0],
+    [packages, yearlyPkg],
+  );
+
+  const yearlyPrice = live && yearlyPkg ? yearlyPkg.price : DEMO.yearly.price;
+  const monthlyPrice = live && monthlyPkg ? monthlyPkg.price : DEMO.monthly.price;
+  const footnote = sel === 'yearly' ? DEMO.yearly.foot : DEMO.monthly.foot;
+
   /** Live: a real store purchase (RevenueCat). Demo: the local flip — and the UI says so. */
-  async function buy(pkg?: unknown) {
+  async function buy() {
     setBusy(true);
     setNote('');
     try {
+      const pkg = live ? (sel === 'yearly' ? yearlyPkg?.pkg : monthlyPkg?.pkg) : undefined;
       const plan = await purchasePremium(pkg);
       setPremium(plan === 'premium');
     } catch {
       setNote('Purchase didn’t complete — you haven’t been charged.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  /** Prefer the dashboard-configured RevenueCat Paywall; fall back to the in-app buttons. */
-  async function openStorePaywall() {
-    setBusy(true);
-    setNote('');
-    try {
-      const plan = await presentRcPaywall();
-      if (plan === 'premium') setPremium(true);
-      else if (plan === null) setNote('Store paywall unavailable — you can subscribe with the buttons below.');
     } finally {
       setBusy(false);
     }
@@ -100,48 +118,98 @@ export default function PaywallScreen({ navigation }: Props) {
     );
   }
 
-  return (
-    <ScreenContainer title="Premium" onBack={() => navigation.goBack()}>
-      <Text style={[T.h1, { marginTop: spacing.sm }]}>Unlock your full stride</Text>
-      <Text style={[T.bodyMuted, { marginTop: spacing.xs }]}>
-        Everything you need to dial in your form and your shoes.
-      </Text>
+  const planCard = (choice: PlanChoice, name: string, price: string, perMonth: string | null) => {
+    const on = sel === choice;
+    return (
+      <Pressable
+        onPress={() => setSel(choice)}
+        accessibilityRole="radio"
+        accessibilityState={{ selected: on }}
+        accessibilityLabel={`${name} plan, ${price}`}
+        style={[styles.planCard, on && styles.planCardOn]}
+      >
+        <View style={{ flex: 1 }}>
+          <Text style={styles.planTitle}>{name}</Text>
+          <Text style={styles.planPrice}>{price}</Text>
+        </View>
+        {perMonth ? <Text style={styles.planEquiv}>{perMonth}</Text> : null}
+        <View style={[styles.radio, on && styles.radioOn]}>{on ? <View style={styles.radioDot} /> : null}</View>
+      </Pressable>
+    );
+  };
 
-      <View style={styles.plan}>
-        <Text style={styles.planName}>Kasya Premium</Text>
-        {live && packages.length > 0 ? (
-          <Text style={styles.livePrice}>{packages[0].price}</Text>
-        ) : (
-          <View style={styles.priceRow}>
-            <Text style={styles.price}>$9.99</Text>
-            <Text style={styles.per}>/ month</Text>
-          </View>
-        )}
-        <View style={{ height: spacing.lg }} />
-        {FEATURES.map((f) => (
-          <View key={f} style={styles.feature}>
-            <Feather name="check" size={18} color={colors.accent} />
-            <Text style={styles.featureText}>{f}</Text>
-          </View>
-        ))}
-        <View style={{ height: spacing.xl }} />
-        {live ? (
-          <>
-            <Button label="View subscription options" variant="accent" loading={busy} onPress={openStorePaywall} />
-            {packages.map((p) => (
-              <View key={p.id} style={{ marginTop: spacing.sm }}>
-                <Button label={`${p.label} — ${p.price}`} variant="primary" loading={busy} onPress={() => buy(p.pkg)} />
-              </View>
-            ))}
-          </>
-        ) : (
-          <Button label="Start free trial" variant="accent" loading={busy} onPress={() => buy()} />
-        )}
+  return (
+    <ScreenContainer>
+      <Pressable
+        onPress={() => navigation.goBack()}
+        hitSlop={12}
+        style={styles.close}
+        accessibilityRole="button"
+        accessibilityLabel="Close"
+      >
+        <Feather name="x" size={24} color={colors.ink} />
+      </Pressable>
+
+      <View style={styles.heroWrap}>
+        <View style={styles.heroCard}>
+          <Image source={require('../../assets/icon.png')} style={styles.heroImg} accessible={false} />
+        </View>
       </View>
 
-      {!live && <Button label="Yearly — $69.99 · save 42%" variant="secondary" onPress={() => buy()} />}
+      <Text style={styles.wordmark}>
+        Kasya <Text style={styles.wordmarkPro}>premium</Text>
+      </Text>
+      <Text style={styles.tag}>Unlock your full stride.</Text>
+      <Text style={styles.tagSub}>Everything you need to dial in your form and your shoes.</Text>
+
+      <View style={{ height: spacing.xl }} />
+
+      <View>
+        {planCard('yearly', 'Yearly', yearlyPrice, live ? null : DEMO.yearly.perMonth)}
+        <View style={styles.saveBadge} pointerEvents="none">
+          <Text style={styles.saveBadgeText}>SAVE 42%</Text>
+        </View>
+      </View>
+      <View style={{ height: spacing.md }} />
+      {planCard('monthly', 'Monthly', monthlyPrice, null)}
+
+      <View style={{ height: spacing.xl }} />
+      <Text style={styles.benefitsHead}>Premium benefits</Text>
+      {BENEFITS.map((b) => (
+        <View key={b.title} style={styles.benefit}>
+          <IconBubble icon={b.icon} tint={colors.accentSoft} color={colors.accentInk} size={42} />
+          <View style={{ flex: 1, marginLeft: spacing.md }}>
+            <Text style={styles.benefitTitle}>{b.title}</Text>
+            <Text style={styles.benefitSub}>{b.sub}</Text>
+          </View>
+        </View>
+      ))}
+
+      <View style={{ height: spacing.xl }} />
+      <Pressable
+        onPress={buy}
+        disabled={busy}
+        accessibilityRole="button"
+        accessibilityLabel={sel === 'yearly' ? 'Subscribe yearly' : 'Subscribe monthly'}
+        style={({ pressed }) => [pressed && { opacity: 0.9 }, busy && { opacity: 0.6 }]}
+      >
+        <LinearGradient
+          colors={[colors.accent, '#FF7A3D']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.cta}
+        >
+          <Text style={styles.ctaText}>
+            {busy ? 'One moment…' : sel === 'yearly' ? 'Subscribe Yearly' : 'Subscribe Monthly'}
+          </Text>
+        </LinearGradient>
+      </Pressable>
+      <Text style={styles.foot}>{footnote}</Text>
+
       {live && (
-        <Button label="Restore purchases" variant="secondary" onPress={restore} disabled={busy} />
+        <Pressable onPress={restore} disabled={busy} style={styles.restore} accessibilityRole="button" accessibilityLabel="Restore purchases">
+          <Text style={styles.restoreText}>Restore purchases</Text>
+        </Pressable>
       )}
 
       {note ? <Text style={styles.notice}>{note}</Text> : null}
@@ -157,7 +225,7 @@ export default function PaywallScreen({ navigation }: Props) {
 
       <Text style={styles.note}>
         {live
-          ? 'Billing is handled by the App Store / Google Play. Subscriptions renew until cancelled in your store account settings.'
+          ? 'Billing is handled by the App Store / Google Play. Subscriptions renew until cancelled in your store account settings. Scans, history and shoe matches stay free for everyone.'
           : 'Demo: no real billing yet. In-app purchases (App Store / Google Play via RevenueCat) activate once store products are configured. Scans, history and shoe matches stay free for everyone.'}
       </Text>
     </ScreenContainer>
@@ -165,25 +233,78 @@ export default function PaywallScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  plan: {
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
+  close: { position: 'absolute', top: spacing.sm, right: spacing.md, zIndex: 2, width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  heroWrap: { alignItems: 'center', marginTop: spacing.xl },
+  heroCard: {
+    borderRadius: 34,
+    transform: [{ rotate: '-8deg' }],
+    ...shadow.lift,
+  },
+  heroImg: { width: 132, height: 132, borderRadius: 30 },
+  wordmark: {
+    fontFamily: fonts.extra,
+    fontSize: 30,
+    letterSpacing: -0.6,
+    color: colors.ink,
+    textAlign: 'center',
+    marginTop: spacing.xl,
+  },
+  wordmarkPro: { color: colors.accent },
+  tag: { fontFamily: fonts.semibold, fontSize: 16, color: colors.inkSoft, textAlign: 'center', marginTop: spacing.sm },
+  tagSub: { fontFamily: fonts.regular, fontSize: 14, color: colors.muted, textAlign: 'center', marginTop: 2 },
+  planCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
     borderColor: colors.line,
     borderRadius: radius.lg,
-    padding: spacing.xl,
-    marginTop: spacing.xl,
-    marginBottom: spacing.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
   },
-  planName: { fontFamily: fonts.semibold, fontSize: 14, letterSpacing: 0.5, color: colors.accent },
-  priceRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: spacing.sm },
-  price: { fontFamily: fonts.extra, fontSize: 40, color: colors.onDark, letterSpacing: -1 },
-  per: { fontFamily: fonts.medium, fontSize: 15, color: colors.onDarkMuted, marginLeft: 8 },
-  livePrice: { fontFamily: fonts.extra, fontSize: 34, color: colors.onDark, letterSpacing: -0.8, marginTop: spacing.sm },
-  feature: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.md },
-  featureText: { fontFamily: fonts.regular, fontSize: 15, color: colors.onDark, flex: 1 },
-  later: { alignItems: 'center', marginTop: spacing.lg, minHeight: 44, justifyContent: 'center' },
-  laterText: { fontFamily: fonts.medium, fontSize: 15, color: colors.muted },
+  planCardOn: { borderColor: colors.accent, backgroundColor: colors.surfaceAlt },
+  planTitle: { fontFamily: fonts.bold, fontSize: 17, color: colors.ink },
+  planPrice: { fontFamily: fonts.medium, fontSize: 14, color: colors.muted, marginTop: 2 },
+  planEquiv: { fontFamily: fonts.medium, fontSize: 14, color: colors.inkSoft },
+  radio: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: colors.lineStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioOn: { borderColor: colors.accent },
+  radioDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.accent },
+  saveBadge: {
+    position: 'absolute',
+    top: -11,
+    left: spacing.lg,
+    backgroundColor: colors.accent,
+    borderRadius: radius.pill,
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+  },
+  saveBadgeText: { fontFamily: fonts.bold, fontSize: 11, letterSpacing: 0.6, color: colors.onDark },
+  benefitsHead: { fontFamily: fonts.bold, fontSize: 18, color: colors.ink, marginBottom: spacing.md },
+  benefit: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.md },
+  benefitTitle: { fontFamily: fonts.semibold, fontSize: 15, color: colors.ink },
+  benefitSub: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: colors.muted, marginTop: 1 },
+  cta: {
+    minHeight: 56,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaText: { fontFamily: fonts.bold, fontSize: 17, color: colors.onDark },
+  foot: { fontFamily: fonts.regular, fontSize: 12, color: colors.muted, textAlign: 'center', marginTop: spacing.md },
+  restore: { alignItems: 'center', marginTop: spacing.lg, minHeight: 40, justifyContent: 'center' },
+  restoreText: { fontFamily: fonts.medium, fontSize: 14, color: colors.inkSoft },
   notice: { fontFamily: fonts.semibold, fontSize: 13, color: colors.accentInk, marginTop: spacing.md, textAlign: 'center' },
-  note: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, color: colors.muted, marginTop: spacing.xl },
+  later: { alignItems: 'center', marginTop: spacing.sm, minHeight: 44, justifyContent: 'center' },
+  laterText: { fontFamily: fonts.medium, fontSize: 15, color: colors.muted },
+  note: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, color: colors.muted, marginTop: spacing.lg },
   successWrap: { alignItems: 'center', marginTop: spacing.xxl },
 });
