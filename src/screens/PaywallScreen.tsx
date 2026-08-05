@@ -139,7 +139,7 @@ export default function PaywallScreen({ navigation }: Props) {
         )}
       </View>
 
-      {!live && <Button label="Yearly — $79.99 · save 33%" variant="secondary" onPress={() => buy()} />}
+      {!live && <Button label="Yearly — $69.99 · save 42%" variant="secondary" onPress={() => buy()} />}
       {live && (
         <Button label="Restore purchases" variant="secondary" onPress={restore} disabled={busy} />
       )}
