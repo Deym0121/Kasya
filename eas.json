@@ -32,7 +32,8 @@
       "env": {
         "EXPO_PUBLIC_REVENUECAT_KEY": "test_ccNMWeYzOHdaMotKBviFYFdGpir",
         "EXPO_PUBLIC_CONVEX_URL": "https://youthful-civet-99.convex.cloud",
-        "EXPO_PUBLIC_AI_PROXY_URL": "https://youthful-civet-99.convex.site/api/explain"
+        "EXPO_PUBLIC_AI_PROXY_URL": "https://youthful-civet-99.convex.site/api/explain",
+        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_WzYTJcrgTBlwlVlIlspGDHhRHLQ"
       },
       "ios": {
         "credentialsSource": "local"
