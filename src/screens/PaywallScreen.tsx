@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Image, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { RootScreenProps } from '../navigation';
@@ -225,9 +225,30 @@ export default function PaywallScreen({ navigation }: Props) {
 
       <Text style={styles.note}>
         {live
-          ? 'Billing is handled by the App Store / Google Play. Subscriptions renew until cancelled in your store account settings. Scans, history and shoe matches stay free for everyone.'
+          ? 'Subscriptions are billed to your App Store / Google Play account and renew automatically until cancelled at least 24 hours before the end of the current period, in your store account settings. Scans, history and shoe matches stay free for everyone.'
           : 'Demo: no real billing yet. In-app purchases (App Store / Google Play via RevenueCat) activate once store products are configured. Scans, history and shoe matches stay free for everyone.'}
       </Text>
+
+      {/* App Review 3.1.2: functional Privacy Policy + Terms links on the paywall. */}
+      <View style={styles.legalRow}>
+        <Pressable
+          onPress={() => Linking.openURL('https://youthful-civet-99.convex.site/privacy')}
+          accessibilityRole="link"
+          accessibilityLabel="Privacy Policy"
+          hitSlop={8}
+        >
+          <Text style={styles.legalLink}>Privacy Policy</Text>
+        </Pressable>
+        <Text style={styles.legalDot}>·</Text>
+        <Pressable
+          onPress={() => Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}
+          accessibilityRole="link"
+          accessibilityLabel="Terms of Use"
+          hitSlop={8}
+        >
+          <Text style={styles.legalLink}>Terms of Use (EULA)</Text>
+        </Pressable>
+      </View>
     </ScreenContainer>
   );
 }
@@ -306,5 +327,15 @@ const styles = StyleSheet.create({
   later: { alignItems: 'center', marginTop: spacing.sm, minHeight: 44, justifyContent: 'center' },
   laterText: { fontFamily: fonts.medium, fontSize: 15, color: colors.muted },
   note: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, color: colors.muted, marginTop: spacing.lg },
+  legalRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  legalLink: { fontFamily: fonts.medium, fontSize: 12, color: colors.accentInk },
+  legalDot: { color: colors.muted },
   successWrap: { alignItems: 'center', marginTop: spacing.xxl },
 });
