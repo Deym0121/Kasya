@@ -9,8 +9,27 @@ import {
   FrontalMetrics,
 } from '../frontal';
 import { makeSyntheticRearWalk } from '../synthetic';
+import { PoseFrame, Landmark, LANDMARK, LANDMARK_COUNT } from '../types';
 
 const rear = makeSyntheticRearWalk({ durationSec: 8, fps: 30, cadence: 160 });
+
+/**
+ * A diagonally-oriented subject: hips read narrow while the stride's fore-aft
+ * motion projects into x, so the apparent foot separation dwarfs the hip width.
+ */
+function makeOffAxisFrames(): PoseFrame[] {
+  const frames: PoseFrame[] = [];
+  for (let i = 0; i < 60; i++) {
+    const lm: Landmark[] = Array.from({ length: LANDMARK_COUNT }, () => ({ x: 0.5, y: 0.5, visibility: 0.95 }));
+    lm[LANDMARK.LEFT_HIP] = { x: 0.485, y: 0.52, visibility: 0.95 };
+    lm[LANDMARK.RIGHT_HIP] = { x: 0.515, y: 0.52, visibility: 0.95 };
+    const s = Math.sin((2 * Math.PI * i) / 20);
+    lm[LANDMARK.LEFT_ANKLE] = { x: 0.46 - 0.04 * s, y: 0.9, visibility: 0.95 };
+    lm[LANDMARK.RIGHT_ANKLE] = { x: 0.54 + 0.04 * s, y: 0.9, visibility: 0.95 };
+    frames.push({ t: i * 33, landmarks: lm });
+  }
+  return frames;
+}
 
 describe('analyzeFrontal', () => {
   it('returns finite frontal-plane metrics in sensible ranges for a rear-view walk', () => {
@@ -43,6 +62,11 @@ describe('analyzeFrontal', () => {
   it('returns empty metrics for too few frames', () => {
     expect(analyzeFrontal(rear.slice(0, 2)).stepWidthPct).toBe(0);
   });
+
+  it('clamps step width to a sane display range for a diagonally-oriented subject', () => {
+    const m = analyzeFrontal(makeOffAxisFrames());
+    expect(m.stepWidthPct).toBeLessThanOrEqual(200);
+  });
 });
 
 describe('assessFrontalQuality', () => {
@@ -61,6 +85,23 @@ describe('assessFrontalQuality', () => {
   it('flags an empty capture', () => {
     const q = assessFrontalQuality([]);
     expect(q.ok).toBe(false);
+  });
+
+  it('fails quality when the hips and ankles specifically are hidden, even if the 6-landmark average passes', () => {
+    const frames = makeSyntheticRearWalk({ durationSec: 8, fps: 30, cadence: 160 });
+    for (const f of frames) {
+      f.landmarks[LANDMARK.LEFT_ANKLE].visibility = 0.2;
+      f.landmarks[LANDMARK.RIGHT_ANKLE].visibility = 0.2;
+    }
+    const q = assessFrontalQuality(frames);
+    expect(q.ok).toBe(false);
+    expect(q.issues.join(' ').toLowerCase()).toMatch(/ankle|lower body/);
+  });
+
+  it('flags a diagonally-oriented subject instead of reporting a confident wide base', () => {
+    const q = assessFrontalQuality(makeOffAxisFrames());
+    expect(q.ok).toBe(false);
+    expect(q.issues.join(' ').toLowerCase()).toMatch(/angle|square|facing/);
   });
 });
 

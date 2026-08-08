@@ -18,6 +18,9 @@ const BONES = [
 ];
 const SPEEDS = [0.25, 0.5, 1];
 
+// Dropped landmarks are stored as {x:0,y:0,visibility:0} — never draw those.
+const valid = (p: any) => p && (p.visibility ?? 1) > 0.2 && !(p.x === 0 && p.y === 0);
+
 /**
  * Slow-mo replay of the captured skeleton, reconstructed from saved landmarks.
  * `alignment` overlays a straight hip→ankle line down each leg (left teal, right
@@ -72,7 +75,7 @@ export function SkeletonPlayer({
     );
   }
 
-  const f = frames[idx];
+  const f = frames[Math.min(idx, n - 1)];
   const progress = n > 1 ? idx / (n - 1) : 0;
 
   return (
@@ -82,7 +85,7 @@ export function SkeletonPlayer({
           {BONES.map(([a, b], k) => {
             const pa = f.landmarks[a];
             const pb = f.landmarks[b];
-            if (!pa || !pb) return null;
+            if (!valid(pa) || !valid(pb)) return null;
             return (
               <SvgLine
                 key={`b${k}`}
@@ -97,7 +100,7 @@ export function SkeletonPlayer({
             );
           })}
           {f.landmarks.map((p, k) =>
-            p ? <Circle key={`p${k}`} cx={p.x} cy={p.y} r={0.013} fill="#FF3B30" /> : null,
+            valid(p) ? <Circle key={`p${k}`} cx={p.x} cy={p.y} r={0.013} fill="#FF3B30" /> : null,
           )}
           {alignment
             ? ([
@@ -106,7 +109,7 @@ export function SkeletonPlayer({
               ] as const).map(([hip, ankle, tone], i) => {
                 const h = f.landmarks[hip];
                 const a = f.landmarks[ankle];
-                if (!h || !a) return null;
+                if (!valid(h) || !valid(a)) return null;
                 return (
                   <SvgLine
                     key={`al${i}`}

@@ -34,13 +34,15 @@ describe('buildTrends', () => {
     expect(t.stance.map((p) => p.value)).toEqual([61, 58, 60]);
   });
 
-  it('skips low-confidence and failed-capture scans from the cadence trend', () => {
+  it('skips low-confidence and failed-capture scans from every trend series', () => {
     const t = buildTrends([
       ...three,
-      report('2026-06-30T10:00:00Z', 40, { confidence: 'low' }),
-      report('2026-06-29T10:00:00Z', 155, { ok: false }),
+      report('2026-06-30T10:00:00Z', 40, { confidence: 'low', symmetry: 70, stance: 50 }),
+      report('2026-06-29T10:00:00Z', 155, { ok: false, symmetry: 71, stance: 51 }),
     ]);
     expect(t.cadence.map((p) => p.value)).toEqual([150, 160, 168]);
+    expect(t.symmetry.map((p) => p.value)).toEqual([90, 88, 92]);
+    expect(t.stance.map((p) => p.value)).toEqual([61, 58, 60]);
   });
 
   it('returns empty trends for zero scans', () => {

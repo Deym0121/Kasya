@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { RootScreenProps } from '../navigation';
 import { colors, spacing, fonts, radius, type as T } from '../theme';
@@ -27,6 +28,10 @@ const LANGS: { key: CoachLang; label: string }[] = [
 ];
 
 type Props = RootScreenProps<'Coach'>;
+
+/** Chat message plus a flag for bubbles we injected locally (quota notes,
+ * offline fallbacks) — those must never replay to the model as real turns. */
+type CoachMessage = ChatMessage & { local?: boolean };
 
 const QUICK = [
   'What should I focus on?',
@@ -57,7 +62,7 @@ export default function CoachScreen({ navigation, route }: Props) {
     return `${plan.headline}\n\n${bullets}\n\nAsk me anything about this scan.`;
   }, [plan]);
 
-  const [messages, setMessages] = useState<ChatMessage[]>([{ role: 'assistant', content: opener }]);
+  const [messages, setMessages] = useState<CoachMessage[]>([{ role: 'assistant', content: opener }]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [premium, setPremium] = useState<boolean | null>(null);
@@ -66,15 +71,19 @@ export default function CoachScreen({ navigation, route }: Props) {
   const scrollRef = useRef<ScrollView>(null);
   const ctrl = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    getPlan().then((p) => active && setPremium(p === 'premium'));
-    getAiUsage().then((u) => active && setRemaining(aiRemaining(u)));
-    getCoachLang().then((l) => active && setLang(l));
-    return () => {
-      active = false;
-    };
-  }, []);
+  // Re-read plan + quota on every focus — upgrading via this screen's own CTA
+  // and coming back must unlock the coach without a remount.
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      getPlan().then((p) => active && setPremium(p === 'premium'));
+      getAiUsage().then((u) => active && setRemaining(aiRemaining(u)));
+      getCoachLang().then((l) => active && setLang(l));
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
 
   const pickLang = (l: CoachLang) => {
     setLang(l);
@@ -88,24 +97,30 @@ export default function CoachScreen({ navigation, route }: Props) {
 
   useEffect(() => () => ctrl.current?.abort(), []);
 
-  const send = (text: string) => {
+  const send = async (text: string) => {
     const q = text.trim();
     if (!q || busy || !premium) return;
-    if (remaining <= 0) {
+    // Recheck the allowance from storage at send time — the on-screen number
+    // can be stale (day rolled over, or chats spent elsewhere).
+    const left = aiRemaining(await getAiUsage());
+    setRemaining(left);
+    if (left <= 0) {
       setMessages((m) => [
         ...m,
-        { role: 'assistant', content: `You've used today's ${DAILY_AI_LIMIT} coach chats — they reset tomorrow. Your plan above still stands.` },
+        { role: 'assistant', local: true, content: `You've used today's ${DAILY_AI_LIMIT} coach chats — they reset tomorrow. Your plan above still stands.` },
       ]);
       return;
     }
-    const next: ChatMessage[] = [...messages, { role: 'user', content: q }];
+    const next: CoachMessage[] = [...messages, { role: 'user', content: q }];
     setMessages(next);
     setInput('');
     setBusy(true);
     ctrl.current?.abort();
     const c = new AbortController();
     ctrl.current = c;
-    coachChat(report, next, lang, c.signal)
+    // Locally-injected bubbles are UI-only — strip them from the model history.
+    const history: ChatMessage[] = next.filter((m) => !m.local).map(({ role, content }) => ({ role, content }));
+    coachChat(report, history, lang, c.signal)
       .then((reply) => {
         setMessages((m) => [...m, { role: 'assistant', content: reply }]);
         bumpAiUsage().then((u) => setRemaining(aiRemaining(u))); // count real replies against the daily 50
@@ -115,8 +130,8 @@ export default function CoachScreen({ navigation, route }: Props) {
         const msg =
           e instanceof CoachRateLimited
             ? "I'm getting a lot of questions right now — give me a minute and ask again."
-            : "I can't reach the AI just now. Once your OpenRouter key is set and the server is running (npm run server), I'll reply here live.";
-        setMessages((m) => [...m, { role: 'assistant', content: msg }]);
+            : "I can't reach the AI coach right now. Your plan above still applies — try again in a bit.";
+        setMessages((m) => [...m, { role: 'assistant', local: true, content: msg }]);
       })
       .finally(() => {
         if (!c.signal.aborted) setBusy(false);
@@ -148,6 +163,13 @@ export default function CoachScreen({ navigation, route }: Props) {
         ))}
       </View>
 
+      {premium === null ? (
+        // Plan still loading — no chat UI yet, so free users never glimpse a
+        // dead composer and quick chips can't fire early.
+        <View style={styles.loading}>
+          <ActivityIndicator color={colors.muted} />
+        </View>
+      ) : (
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           ref={scrollRef}
@@ -214,6 +236,7 @@ export default function CoachScreen({ navigation, route }: Props) {
           </>
         )}
       </KeyboardAvoidingView>
+      )}
     </SafeAreaView>
   );
 }
@@ -242,6 +265,7 @@ const styles = StyleSheet.create({
   langOn: { backgroundColor: colors.ink },
   langText: { fontFamily: fonts.semibold, fontSize: 12.5, color: colors.muted },
   langTextOn: { color: colors.bg },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   thread: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, gap: spacing.sm },
   bubble: { maxWidth: '86%', borderRadius: radius.lg, paddingVertical: spacing.md, paddingHorizontal: spacing.lg },
   assistant: { alignSelf: 'flex-start', backgroundColor: colors.surfaceAlt, borderTopLeftRadius: radius.sm },

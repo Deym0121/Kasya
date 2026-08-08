@@ -33,6 +33,8 @@ export interface GaitReportRecord {
   frontal?: FrontalAnalysis;
   /** downsampled rear-view landmark motion for its replay (NOT video) */
   frontalFrames?: PoseFrame[];
+  /** true when the scan came from the simulated (no-camera) path */
+  simulated?: boolean;
 }
 
 /**
@@ -105,15 +107,18 @@ export function buildGaitReport(
   createdAt: string,
   frames?: PoseFrame[],
   frontalFrames?: PoseFrame[],
+  simulated?: boolean,
 ): GaitReportRecord {
   const record: GaitReportRecord = {
     id,
     createdAt,
     scanType,
     result,
-    cadenceTip: cadenceTip(result.cadence),
+    // The scan goal doubles as the cadence-coaching context (walking vs running bands).
+    cadenceTip: cadenceTip(result.cadence, scanType),
   };
-  if (frames && frames.length) Object.assign(record, buildDetail(result, frames));
+  if (simulated) record.simulated = true;
+  if (frames && frames.length) Object.assign(record, buildDetail(result, frames, scanType));
   if (frontalFrames && frontalFrames.length) Object.assign(record, buildFrontalDetail(frontalFrames));
   return record;
 }

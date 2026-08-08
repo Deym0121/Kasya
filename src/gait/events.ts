@@ -1,5 +1,6 @@
 import { PoseFrame, LANDMARK } from './types';
 import { findPeaks } from './signal';
+import { MIN_SWING_AMPLITUDE } from './ruleEngine';
 
 /** Each ankle's anterior–posterior position relative to the hip centre. */
 function apSeries(frames: PoseFrame[], ankleIdx: number): number[] {
@@ -70,7 +71,10 @@ export function detectFootEvents(frames: PoseFrame[]): FootEvents {
     const s = smooth(apSeries(frames, ankleIdx), 5);
     const { min, max } = range(s);
     const r = max - min;
-    if (r < 1e-4) return { contacts: [] as number[], toeOffs: [] as number[] };
+    // Same absolute stillness floor as computeCadence: the peak thresholds
+    // below are self-scaling, so without it landmark jitter on a standing
+    // subject would fabricate foot contacts.
+    if (r < MIN_SWING_AMPLITUDE) return { contacts: [] as number[], toeOffs: [] as number[] };
     const contacts = findPeaks(s, { minHeight: min + 0.55 * r, minDistance });
     const toeOffs = findPeaks(s.map((v) => -v), { minHeight: -max + 0.55 * r, minDistance });
     return { contacts, toeOffs };

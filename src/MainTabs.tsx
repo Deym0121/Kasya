@@ -26,6 +26,8 @@ export default function MainTabs() {
           tabBarActiveTintColor: colors.accent,
           tabBarInactiveTintColor: colors.muted,
           tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.line, height: TAB_BAR_HEIGHT + insets.bottom },
+          // Labels stay on for every tab: the scan entry point is the floating
+          // button below, so no slot needs a label-less custom tabBarButton.
           tabBarLabelStyle: { fontFamily: fonts.medium, fontSize: 11 },
           sceneStyle: { backgroundColor: colors.bg },
         }}
@@ -53,7 +55,12 @@ export default function MainTabs() {
         />
       </Tab.Navigator>
 
-      {/* Floating scan button — anchored to the bottom-right corner, above the bar. */}
+      {/* Floating scan button — anchored to the bottom-right corner, above the bar.
+          The lift comes from LAYOUT (absolute right/bottom offsets), never a
+          translateY transform: RN drops touches that land outside a parent's
+          layout bounds, so a transform-raised circle would leave its top edge
+          dead to taps. The pressed scale is purely visual and shrinks inward,
+          so it never pushes the hit area outside those bounds. */}
       <Pressable
         onPress={() => navigation.navigate('ScanSetup')}
         accessibilityRole="button"

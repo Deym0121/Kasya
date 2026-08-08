@@ -44,7 +44,8 @@ const secureStorage = {
 };
 
 export default function App() {
-  const [fontsLoaded] = useFonts(fontMap);
+  const [fontsLoaded, fontError] = useFonts(fontMap);
+  const [fontTimedOut, setFontTimedOut] = useState(false);
   const [ready, setReady] = useState(false);
   const [initial, setInitial] = useState<'Onboarding' | 'Tabs'>('Onboarding');
 
@@ -70,23 +71,38 @@ export default function App() {
         window.location.replace(window.location.pathname); // drop the param and reboot seeded
         return;
       }
-      const [ob, cloudEmail] = await Promise.all([getOnboarded(), currentUserEmail()]);
-      // A live cloud session (e.g. returning from the Google/Apple redirect on a
-      // fresh browser) walks straight in — claim it locally first.
-      if (cloudEmail && !ob) {
-        const existing = await getUser();
-        await setUser({
-          email: cloudEmail,
-          name: cloudEmail.split('@')[0] || 'Runner',
-          plan: existing?.plan ?? 'free',
-        });
-        await setOnboarded(true);
+      try {
+        const [ob, cloudEmail] = await Promise.all([getOnboarded(), currentUserEmail()]);
+        // A live cloud session (e.g. returning from the Google/Apple redirect on a
+        // fresh browser) walks straight in — claim it locally first.
+        if (cloudEmail && !ob) {
+          const existing = await getUser();
+          await setUser({
+            email: cloudEmail,
+            name: cloudEmail.split('@')[0] || 'Runner',
+            plan: existing?.plan ?? 'free',
+          });
+          await setOnboarded(true);
+        }
+        if (cloudEmail) syncReports().catch(() => {});
+        setInitial(ob || cloudEmail ? 'Tabs' : 'Onboarding');
+      } catch {
+        setInitial('Onboarding'); // unreadable session → start fresh
+      } finally {
+        setReady(true); // the splash must never wait on a failed read
       }
-      if (cloudEmail) syncReports().catch(() => {});
-      setInitial(ob || cloudEmail ? 'Tabs' : 'Onboarding');
-      setReady(true);
     })();
   }, []);
+
+  // Never hang the splash on fonts: proceed with system fonts after 5s.
+  useEffect(() => {
+    const t = setTimeout(() => setFontTimedOut(true), 5000);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Loaded, failed, or timed out all count as settled — a broken font file
+  // should degrade to system fonts, not block the whole app.
+  const fontsSettled = fontsLoaded || !!fontError || fontTimedOut;
 
   // With cloud configured the whole app lives inside ConvexAuthProvider so the
   // session restores/attaches to the shared client; without it, plain local app.
@@ -112,7 +128,7 @@ export default function App() {
     );
   };
 
-  if (!fontsLoaded || !ready) {
+  if (!fontsSettled || !ready) {
     return withProviders(
       <SafeAreaProvider>
         <View style={styles.splash}>

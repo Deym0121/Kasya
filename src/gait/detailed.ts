@@ -28,23 +28,24 @@ function normalizedSignal(frames: PoseFrame[]): GaitGraphData {
 }
 
 // The smart metrics prefer the per-step analysis (foot-strike based) over the
-// coarser whole-signal estimates for overstride, rhythm, and symmetry.
+// coarser whole-signal estimates for overstride, rhythm, and symmetry. Rounded
+// to integers here too (matching form.ts) so the UI never shows raw floats.
 function smartMetrics(frames: PoseFrame[], steps: StepAnalysis): FormMetrics {
   const base = computeFormMetrics(frames);
   return {
     ...base,
-    overstrideScore: steps.overstrideScore,
-    rhythmRegularityPct: steps.rhythmRegularityPct,
-    symmetryPct: steps.symmetryPct,
+    overstrideScore: Math.round(steps.overstrideScore),
+    rhythmRegularityPct: Math.round(steps.rhythmRegularityPct),
+    symmetryPct: Math.round(steps.symmetryPct),
   };
 }
 
-export function analyzeGaitDetailed(frames: PoseFrame[]): DetailedGait {
+export function analyzeGaitDetailed(frames: PoseFrame[], goal?: string): DetailedGait {
   const base = analyzeGait(frames);
   const steps = analyzeSteps(frames);
   const metrics = smartMetrics(frames, steps);
-  const feedback = buildFeedback(base.cadence.value, base.cadence.confidence, metrics, base.captureQuality.ok);
-  const { walkthrough } = describeGait(steps, metrics.verticalOscillationPct);
+  const feedback = buildFeedback(base.cadence.value, base.cadence.confidence, metrics, base.captureQuality.ok, goal);
+  const { walkthrough } = describeGait(steps, metrics.verticalOscillationPct, base.cadence.value);
   return { ...base, metrics, feedback, graph: normalizedSignal(frames), steps, walkthrough };
 }
 
@@ -88,6 +89,7 @@ export function buildFrontalDetail(frontalFrames: PoseFrame[]): {
 export function buildDetail(
   result: GaitResult,
   frames: PoseFrame[],
+  goal?: string,
 ): {
   metrics: FormMetrics;
   feedback: GaitFeedback;
@@ -98,8 +100,14 @@ export function buildDetail(
 } {
   const steps = analyzeSteps(frames);
   const metrics = smartMetrics(frames, steps);
-  const feedback = buildFeedback(result.cadence.value, result.cadence.confidence, metrics, result.captureQuality.ok);
-  const { walkthrough } = describeGait(steps, metrics.verticalOscillationPct);
+  const feedback = buildFeedback(
+    result.cadence.value,
+    result.cadence.confidence,
+    metrics,
+    result.captureQuality.ok,
+    goal,
+  );
+  const { walkthrough } = describeGait(steps, metrics.verticalOscillationPct, result.cadence.value);
   return {
     metrics,
     feedback,

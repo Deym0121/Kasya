@@ -12,12 +12,17 @@ const KEY = 'kasya:settings:v1';
 
 const DEFAULTS: ReminderSettings = { cadence: 'off', notificationId: null };
 
+const VALID_CADENCES: ReminderCadence[] = ['off', 'weekly', 'biweekly', 'monthly'];
+
 export async function getReminderSettings(): Promise<ReminderSettings> {
   const raw = await AsyncStorage.getItem(KEY);
   if (!raw) return { ...DEFAULTS };
   try {
     const parsed = JSON.parse(raw);
-    return { ...DEFAULTS, ...(parsed && typeof parsed === 'object' ? parsed : {}) };
+    const merged = { ...DEFAULTS, ...(parsed && typeof parsed === 'object' ? parsed : {}) };
+    // Schema drift guard: an unknown cadence value falls back to 'off'.
+    if (!VALID_CADENCES.includes(merged.cadence)) merged.cadence = 'off';
+    return merged;
   } catch {
     return { ...DEFAULTS };
   }

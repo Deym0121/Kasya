@@ -62,7 +62,11 @@ export default function HistoryScreen({ navigation }: Props) {
     await deleteReport(id);
     deleteRemoteReport(id).catch(() => {}); // drop the cloud copy too (fire-and-forget)
     setConfirmId(null);
-    setReports(await listReports());
+    const all = await listReports();
+    setReports(all);
+    // The newest scan may have changed — recompute the due banner too.
+    const settings = await getReminderSettings();
+    setDue(isRescanDue(all[0]?.createdAt ?? null, settings.cadence, new Date()));
   };
 
   if (reports.length === 0) {
@@ -153,6 +157,7 @@ export default function HistoryScreen({ navigation }: Props) {
                     tint={colors.surfaceAlt}
                     color={colors.muted}
                   />
+                  {r.simulated && <Badge label="Demo" tint={colors.surfaceAlt} color={colors.muted} />}
                 </View>
                 <View style={styles.statRow}>
                   <Text style={styles.big}>{Math.round(r.result.cadence.value)}</Text>

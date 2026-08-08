@@ -47,13 +47,22 @@ export function rcApiKey(platform: string, env: Record<string, string | undefine
   return key && key.trim() ? key.trim() : null;
 }
 
+// Literal process.env.EXPO_PUBLIC_* reads — Expo inlines exactly this dot form
+// at bundle time; indirect reads (globalThis.process.env etc.) are undefined in
+// production builds, which silently drops the key and strands users in demo mode.
+const RC_ENV: Record<string, string | undefined> = {
+  EXPO_PUBLIC_REVENUECAT_IOS_KEY: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY,
+  EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY,
+  EXPO_PUBLIC_REVENUECAT_KEY: process.env.EXPO_PUBLIC_REVENUECAT_KEY,
+};
+
 function runtimeKey(): string | null {
   // Expo Go can't load the native purchases module — demo mode there.
   try {
     const Constants = require('expo-constants').default;
     if (Constants?.appOwnership === 'expo') return null;
   } catch {}
-  return rcApiKey(Platform.OS, ((globalThis as any)?.process?.env as Record<string, string | undefined>) ?? {});
+  return rcApiKey(Platform.OS, RC_ENV);
 }
 
 let configured = false;

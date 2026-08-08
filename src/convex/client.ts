@@ -7,7 +7,9 @@ import { ConvexReactClient } from 'convex/react';
  * imperative query/mutation calls (e.g. report sync) are authenticated too.
  */
 
-const url = (globalThis as any)?.process?.env?.EXPO_PUBLIC_CONVEX_URL as string | undefined;
+// Literal process.env.EXPO_PUBLIC_* read — Expo inlines exactly this dot form
+// at bundle time; indirect reads are undefined in production builds.
+const url = process.env.EXPO_PUBLIC_CONVEX_URL;
 
 let client: ConvexReactClient | null = null;
 

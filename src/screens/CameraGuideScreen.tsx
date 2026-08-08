@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, ScanView } from '../navigation';
@@ -15,6 +15,9 @@ const GUIDE: Record<ScanView, { icon: FeatherName; text: string }[]> = {
     { icon: 'sun', text: 'Use good, even lighting — avoid backlight.' },
     { icon: 'activity', text: 'Walk or run naturally for several strides.' },
   ],
+  // Web-internal: no route ever opens this screen with view:'rear' — the web
+  // scan runs its rear pass in-screen and renders these steps inline via the
+  // REAR_GUIDE_STEPS export below. Native has no rear pass at all.
   rear: [
     { icon: 'smartphone', text: 'Place your phone at waist height, 2–3 m behind you.' },
     { icon: 'user', text: 'Face away from the camera, whole body in frame.' },
@@ -23,13 +26,27 @@ const GUIDE: Record<ScanView, { icon: FeatherName; text: string }[]> = {
   ],
 };
 
+/** Rear-view positioning steps, shared with PoseScanScreen.web's in-screen rear pass. */
+export const REAR_GUIDE_STEPS: string[] = GUIDE.rear.map((g) => g.text);
+
+// Only the web scan offers the second (rear) angle, so only web copy may
+// promise it — native gets side-view-only framing.
+const isWeb = Platform.OS === 'web';
+
 const COPY: Record<ScanView, { step: string; title: string; sub: string; button: string }> = {
-  side: {
-    step: 'View 1 of 2 · Side',
-    title: 'Set up your side view',
-    sub: 'A clean side-on view gives cadence and your main form read.',
-    button: 'Start side recording',
-  },
+  side: isWeb
+    ? {
+        step: 'View 1 of 2 · Side',
+        title: 'Set up your side view',
+        sub: 'A clean side-on view gives cadence and your main form read.',
+        button: 'Start side recording',
+      }
+    : {
+        step: 'Side view',
+        title: 'Set up your side view',
+        sub: 'A clean side-on view gives cadence and your main form read.',
+        button: 'Start recording',
+      },
   rear: {
     step: 'View 2 of 2 · Rear',
     title: 'Now the rear view',
@@ -72,12 +89,16 @@ export default function CameraGuideScreen({ navigation, route }: Props) {
       <Card style={styles.demo}>
         <View style={styles.demoHead}>
           <Feather name="info" size={16} color={colors.muted} />
-          <Text style={styles.demoTitle}>{view === 'side' ? 'Two quick angles' : 'Optional — for a fuller read'}</Text>
+          <Text style={styles.demoTitle}>
+            {view === 'rear' ? 'Optional — for a fuller read' : isWeb ? 'Two quick angles' : 'Before you record'}
+          </Text>
         </View>
         <Text style={styles.demoText}>
-          {view === 'side'
-            ? 'First a side view for cadence and form, then an optional rear view. Both fold into one result. By default no video is saved — you can opt to keep a clip for your review only, then it’s deleted; nothing is uploaded.'
-            : 'This second angle is optional. Skip it any time and we’ll analyze your side view on its own.'}
+          {view === 'rear'
+            ? 'This second angle is optional. Skip it any time and we’ll analyze your side view on its own.'
+            : isWeb
+              ? 'First a side view for cadence and form, then an optional rear view. Both fold into one result. By default no video is saved — you can opt to keep a clip for your review only, then it’s deleted; nothing is uploaded.'
+              : 'By default no video is saved — you can opt to keep a clip for your review only, then it’s deleted; nothing is uploaded.'}
         </Text>
       </Card>
     </ScreenContainer>

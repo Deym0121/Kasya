@@ -25,7 +25,9 @@ export function dayKey(now: Date): string {
 
 /** Pure: today's usage from what's stored — resets to 0 on a new day. */
 export function usageForToday(stored: AiUsage | null, todayKey: string): AiUsage {
-  if (!stored || stored.date !== todayKey) return { date: todayKey, count: 0 };
+  // Only roll over when the day genuinely advanced — a clock set back must not
+  // grant a fresh allowance. ISO yyyy-mm-dd compares safely as strings.
+  if (!stored || todayKey > stored.date) return { date: todayKey, count: 0 };
   return { date: stored.date, count: stored.count };
 }
 
@@ -49,4 +51,9 @@ export async function bumpAiUsage(now = new Date()): Promise<AiUsage> {
   const next: AiUsage = { date: cur.date, count: cur.count + 1 };
   await AsyncStorage.setItem(KEY, JSON.stringify(next));
   return next;
+}
+
+/** Wipe the stored record — used when a different account signs in. */
+export async function resetAiUsage(): Promise<void> {
+  await AsyncStorage.removeItem(KEY);
 }

@@ -19,11 +19,19 @@ import { toPoseFrame, analyzeGait } from '../gait';
 import { BODY_GUIDE, BODY_GUIDE_VIEWBOX } from '../viz/bodyGuide';
 import { setPendingVideo, clearPendingVideo } from '../viz/videoHolder';
 
-async function deleteFile(path) {
+// VisionCamera hands back a bare filesystem path; expo-file-system (and the
+// review player) want a file:// URI.
+const toFileUri = (p) => (p && p.startsWith('file://') ? p : `file://${p}`);
+
+async function deleteFile(uri) {
   try {
+    // SDK 56: deleteAsync on the main entry is legacy-removed and throws —
+    // the File class is the supported API now.
     const FS = await import('expo-file-system');
-    await FS.deleteAsync(path, { idempotent: true });
-  } catch {}
+    new FS.File(toFileUri(uri)).delete();
+  } catch (e) {
+    console.warn('Kasya: could not delete the temp review clip', e);
+  }
 }
 
 const HIP_L = 23, HIP_R = 24, KNEE_L = 25, KNEE_R = 26, ANK_L = 27, ANK_R = 28;
@@ -57,30 +65,48 @@ export default function PoseScanCamera({ navigation, route }) {
   const frames = useRef([]);
   const timer = useRef(null);
   const recordingVideoRef = useRef(false);
-  const mounted = useRef(true);
+  // Set on Close / unmount: late recorder callbacks (camera teardown fires
+  // onRecordingFinished AFTER we leave) must never advance a cancelled scan.
+  const cancelledRef = useRef(false);
+  const lastPoseAt = useRef(0);
 
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-      if (timer.current) clearTimeout(timer.current); // clears both setTimeout + setInterval in RN
-      // If we're torn down mid-capture, stop the camera so the clip finalizes and
-      // finish() (now guarded below) deletes it. We do NOT clearPendingVideo here —
-      // a successful capture has already handed its clip to the review holder.
+  useEffect(
+    () => () => {
+      // Unmount = cancelled: stop any in-flight clip so it finalizes and the
+      // guarded finish() below only deletes it; never leave a countdown running.
+      // We do NOT clearPendingVideo here — a successful capture has already
+      // handed its clip to the review holder.
+      cancelledRef.current = true;
+      if (timer.current) clearInterval(timer.current); // clears both setTimeout + setInterval in RN
       if (recordingVideoRef.current && cameraRef.current) {
         try {
           cameraRef.current.stopRecording();
         } catch {}
       }
-    };
-  }, []);
+    },
+    [],
+  );
+
+  // Close mid-scan: mark cancelled first so the recorder callbacks become
+  // no-ops (they still delete the temp clip), then leave.
+  const closeScan = useCallback(() => {
+    cancelledRef.current = true;
+    capturing.current = false;
+    if (timer.current) clearInterval(timer.current);
+    if (recordingVideoRef.current && cameraRef.current) {
+      try {
+        cameraRef.current.stopRecording(); // its onRecordingFinished only deletes the file now
+      } catch {}
+    }
+    navigation.goBack();
+  }, [navigation]);
 
   // Evaluate the capture (+ keep or discard the opt-in clip), then advance.
   const finish = useCallback(
     (videoPath) => {
-      // Screen closed before the clip finalized: delete the temp file, touch no
-      // state/navigation (avoids the leaked clip + navigate-on-unmounted bug).
-      if (!mounted.current) {
+      // Screen closed (or unmounted) before the clip finalized: delete the temp
+      // file, touch no state/navigation — a cancelled scan never advances.
+      if (cancelledRef.current) {
         if (videoPath) deleteFile(videoPath);
         return;
       }
@@ -109,7 +135,13 @@ export default function PoseScanCamera({ navigation, route }) {
     {
       onResults: (result) => {
         const lm = result?.landmarks?.[0];
-        if (!lm) return;
+        if (!lm) {
+          // Body left the frame — drop the skeleton instead of freezing the last pose.
+          lastPoseAt.current = 0;
+          setLandmarks(null);
+          return;
+        }
+        lastPoseAt.current = Date.now();
         setLandmarks(lm);
         if (capturing.current) frames.current.push(toPoseFrame(lm, Date.now() - startedAt.current));
       },
@@ -119,6 +151,18 @@ export default function PoseScanCamera({ navigation, route }) {
     'pose_landmarker_lite.task',
     { numPoses: 1, minPoseDetectionConfidence: 0.5, delegate: Delegate.GPU },
   );
+
+  // Staleness sweep: if detection just goes quiet (no onResults at all), the
+  // skeleton must not stay frozen on screen.
+  useEffect(() => {
+    const sweep = setInterval(() => {
+      if (lastPoseAt.current && Date.now() - lastPoseAt.current > 800) {
+        lastPoseAt.current = 0;
+        setLandmarks(null);
+      }
+    }, 400);
+    return () => clearInterval(sweep);
+  }, []);
 
   const beginCapture = useCallback(() => {
     setCounting(false);
@@ -136,7 +180,7 @@ export default function PoseScanCamera({ navigation, route }) {
         cameraRef.current.startRecording({
           video: true,
           audio: false,
-          onRecordingFinished: (v) => finish(v.path),
+          onRecordingFinished: (v) => finish(toFileUri(v.path)), // VisionCamera returns a bare path
           onRecordingError: () => finish(null),
         });
       } catch {
@@ -279,7 +323,7 @@ export default function PoseScanCamera({ navigation, route }) {
       ) : null}
 
       <View style={styles.top} pointerEvents="box-none">
-        <Pressable onPress={() => navigation.goBack()} hitSlop={12} style={styles.back}>
+        <Pressable onPress={closeScan} hitSlop={12} style={styles.back}>
           <Text style={styles.backText}>Close</Text>
         </Pressable>
         <Text style={styles.hint}>
@@ -314,12 +358,21 @@ export default function PoseScanCamera({ navigation, route }) {
             <Text style={styles.vidText}>Record my video (just this once) — shown only in review, then deleted</Text>
           </Pressable>
         ) : null}
+        {/* Like the web screen, Record is gated on a body being detected right now. */}
         <Button
-          label={counting ? `Starting in ${count}…` : recording ? 'Recording…' : 'Record 10 seconds'}
+          label={
+            counting
+              ? `Starting in ${count}…`
+              : recording
+                ? 'Recording…'
+                : landmarks
+                  ? 'Record 10 seconds'
+                  : 'Step fully into frame'
+          }
           icon="camera"
           variant="accent"
           onPress={startCapture}
-          disabled={recording || counting}
+          disabled={recording || counting || !landmarks}
         />
       </View>
     </View>

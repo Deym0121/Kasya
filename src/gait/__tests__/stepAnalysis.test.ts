@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { detectFootEvents } from '../events';
-import { analyzeSteps, describeGait } from '../stepAnalysis';
+import { analyzeSteps, describeGait, StepAnalysis } from '../stepAnalysis';
 import { makeSyntheticWalk } from '../synthetic';
 
 const walk = makeSyntheticWalk({ durationSec: 8, fps: 30, cadence: 160 });
@@ -35,6 +35,13 @@ describe('analyzeSteps', () => {
   it('returns an empty analysis for too few frames', () => {
     expect(analyzeSteps(walk.slice(0, 3)).stepCount).toBe(0);
   });
+
+  it('stores display scores rounded to integers', () => {
+    const a = analyzeSteps(walk);
+    expect(Number.isInteger(a.overstrideScore)).toBe(true);
+    expect(Number.isInteger(a.rhythmRegularityPct)).toBe(true);
+    expect(Number.isInteger(a.symmetryPct)).toBe(true);
+  });
 });
 
 describe('describeGait', () => {
@@ -44,5 +51,47 @@ describe('describeGait', () => {
     const all = d.walkthrough.join(' ').toLowerCase();
     expect(all).toMatch(/swing|foot|land|stance|push/);
     expect(all).not.toMatch(/injur|diagnos|pronation|abnormal|medical/);
+  });
+
+  it('omits the stance and knee clauses when sparse events (exactly 2 contacts) left them unestimated', () => {
+    // What analyzeSteps returns for exactly 2 contacts: stance needs a second
+    // same-foot contact and the knee angles can degenerate to 0.
+    const sparse: StepAnalysis = {
+      stepCount: 2,
+      cadenceSpm: 30,
+      meanStepTimeSec: 0.52,
+      rhythmRegularityPct: 0,
+      stanceRatioPct: 0,
+      overstrideScore: 20,
+      kneeContactDeg: 0,
+      kneePeakDeg: 0,
+      symmetryPct: 0,
+      leadFoot: 'left',
+    };
+    const d = describeGait(sparse, 5);
+    const all = d.walkthrough.join(' ');
+    expect(all).not.toMatch(/0% of each step/);
+    expect(all).not.toMatch(/around 0°|toward about 0°|about 0° of/);
+  });
+
+  it('describes the knee at contact as flexion from straight, matching the swing convention', () => {
+    const a = analyzeSteps(walk);
+    const d = describeGait(a, 8);
+    const strike = d.walkthrough[1];
+    // No raw included angles like "around 179°" — bend from straight instead.
+    expect(strike).not.toMatch(/1[0-8]\d°/);
+    const bend = strike.match(/about (\d+)°/);
+    expect(bend).toBeTruthy();
+    expect(Number(bend![1])).toBe(Math.max(0, 180 - a.kneeContactDeg));
+  });
+
+  it('quotes the report cadence, not a re-derived one, in the closing line', () => {
+    const d = describeGait(analyzeSteps(walk), 8, 147.6);
+    expect(d.walkthrough[d.walkthrough.length - 1]).toContain('~148 per minute');
+  });
+
+  it('drops the per-minute parenthetical when no report cadence is given', () => {
+    const d = describeGait(analyzeSteps(walk), 8);
+    expect(d.summary).not.toMatch(/per minute/);
   });
 });

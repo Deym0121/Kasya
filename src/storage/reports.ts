@@ -7,12 +7,30 @@ import { GaitReportRecord } from './reportRecord';
  */
 const KEY = 'kasya:reports:v1';
 
+/**
+ * A stored record is only usable if it has the fields every screen dereferences
+ * (id, createdAt, result.cadence.value, result.captureQuality). Anything else —
+ * a partial write, schema drift, a stray null — is silently dropped rather than
+ * crashing Home/History at render.
+ */
+function isUsableRecord(r: unknown): r is GaitReportRecord {
+  if (!r || typeof r !== 'object') return false;
+  const rec = r as Partial<GaitReportRecord>;
+  return (
+    typeof rec.id === 'string' &&
+    typeof rec.createdAt === 'string' &&
+    typeof rec.result?.cadence?.value === 'number' &&
+    !!rec.result?.captureQuality &&
+    typeof rec.result.captureQuality === 'object'
+  );
+}
+
 export async function listReports(): Promise<GaitReportRecord[]> {
   const raw = await AsyncStorage.getItem(KEY);
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as GaitReportRecord[]) : [];
+    return Array.isArray(parsed) ? parsed.filter(isUsableRecord) : [];
   } catch {
     return [];
   }

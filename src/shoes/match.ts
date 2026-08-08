@@ -58,8 +58,16 @@ function cushionComfort(cushion: Shoe['cushion'], bouncePct?: number): { delta: 
       note: 'you bounce a fair bit, so more cushioning may feel smoother',
     };
   }
+  // Controlled bounce: never pitch a lighter pair against a high-cushion shoe —
+  // there the cushioning is simply a comfort call.
+  if (cushion === 'high') {
+    return {
+      delta: 2,
+      note: 'your bounce looks controlled, so this much cushioning is a comfort choice — see how it feels',
+    };
+  }
   return {
-    delta: cushion === 'medium' ? 5 : cushion === 'low' ? 3 : 2,
+    delta: cushion === 'medium' ? 5 : 3,
     note: 'your bounce looks controlled, so a lighter, responsive pair suits you',
   };
 }
@@ -71,6 +79,33 @@ function budgetFit(shoe: Shoe, budgetMaxPhp?: number): { delta: number; note: st
   if (shoe.priceMin > budgetMaxPhp) return { delta: -18, note: `Usually sells above your ${b} budget.` };
   if (shoe.priceMax <= budgetMaxPhp) return { delta: 6, note: `Usually fits your ${b} budget.` };
   return { delta: 2, note: `Right around your ${b} budget cap.` };
+}
+
+/**
+ * How the shoe lines up with your stride rhythm. Comfort-led and deliberately
+ * smaller than the bounce nudge, so it only reorders near-ties: a very quick
+ * cadence tends to pair well with a lighter, lower-stack shoe, while a notably
+ * relaxed cadence often feels smoother with more cushioning underfoot. The note
+ * is only attached where it supports the shoe — never argued against it.
+ */
+function cadenceComfort(cushion: Shoe['cushion'], cadenceSpm?: number): { delta: number; note: string } {
+  // A cadence of 0 means the scan couldn't measure one — never base advice on it.
+  if (cadenceSpm == null || cadenceSpm <= 0) return { delta: 0, note: '' };
+  if (cadenceSpm >= 170) {
+    if (cushion === 'high') return { delta: 0, note: '' };
+    return {
+      delta: cushion === 'low' ? 2 : 1,
+      note: 'Your cadence looks quick, so a lighter, lower-stack shoe may feel natural',
+    };
+  }
+  if (cadenceSpm <= 140) {
+    if (cushion === 'low') return { delta: 0, note: '' };
+    return {
+      delta: cushion === 'high' ? 2 : 1,
+      note: 'Your cadence is on the relaxed side, so extra cushioning may feel smoother',
+    };
+  }
+  return { delta: 0, note: '' };
 }
 
 /**
@@ -89,18 +124,19 @@ export function matchShoes(shoes: Shoe[], opts: MatchOptions): ShoeMatch[] {
     .map((shoe) => {
       const fits = shoe.useCase.includes(goal);
       const cushion = cushionComfort(shoe.cushion, bounce);
+      const cadence = cadenceComfort(shoe.cushion, opts.gait?.cadenceSpm);
       const budget = budgetFit(shoe, opts.budgetMaxPhp);
       let score = 55;
       if (fits) score += 25;
       if (suited.includes(shoe.category)) score += 5;
-      score += cushion.delta;
-      score += budget.delta;
+      score += cushion.delta + cadence.delta + budget.delta;
       score = Math.max(0, Math.min(100, score));
 
       let reason: string;
       if (fits) {
         reason = `Good for ${humanize(goal)} with ${shoe.cushion} cushioning`;
         reason += cushion.note ? ` — ${cushion.note}.` : '.';
+        if (cadence.note) reason += ` ${cadence.note}.`;
         if (budget.note) reason += ` ${budget.note}`;
         reason += ' Try a pair on and see how they feel.';
       } else {

@@ -41,7 +41,8 @@ describe('pickCoachTip', () => {
     const all = GENERIC_TIPS.join(' ').toLowerCase();
     expect(all).not.toMatch(/injur|diagnos|pronation|abnormal|medical|disease/);
     expect(all).not.toMatch(/\bshould\b|\bmust\b|\brisk\b|\bproblem\b|\bfault\b|imbalance|\bcorrect\b/);
-    for (const tip of GENERIC_TIPS) expect(tip.toLowerCase()).toMatch(/often|usually|can|makes|best|easier/);
+    // Word boundaries so e.g. "can" can't vacuously match inside "scan".
+    for (const tip of GENERIC_TIPS) expect(tip.toLowerCase()).toMatch(/\b(often|usually|can|makes?|best|easier)\b/);
   });
 });
 

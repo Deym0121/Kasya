@@ -2,7 +2,9 @@
 
 > **Renamed:** this app is now **Kasya** (2026-07-16). Older references to "StrideFit" in dated docs are historical.
 
-_Last updated: 2026-07-01. This is the single source of truth for picking the project back up._
+_Last updated: 2026-08-07 (full-app bug-fix sweep: ~35 audit findings fixed across capture, gait core,
+entitlement, storage, AI proxy and viz — see git log; 129 tests + typecheck green). This is the single
+source of truth for picking the project back up._
 
 ## What it is
 
@@ -27,7 +29,7 @@ Full product plan: `~/.claude/plans/please-re-plan-this-wiggly-pony.md`
 | **Scan history + progress** | ✅ History tab: trend chart (cadence/symmetry/stance, svg), "up about N spm" delta, scan list → Result, per-scan delete + Clear all (tested progress.ts) |
 | **Reminders & coaching** | ✅ Re-scan reminder (Off/Weekly/2wk/Monthly in Profile): in-app due banner everywhere + optional native local notification (expo-notifications; web = banner only). Daily rotating "Today's focus" coach card (tested coach.ts) |
 | **Metric explainers** | ✅ Tap any metric tile → plain-English + typical-range panel (tested metricInfo.ts; bands mirror form/frontal thresholds); outlier tiles warn-tinted |
-| **Demo paywall entitlement** | ✅ "Start free trial"/"Lifetime" set plan=premium locally (honest "no payment was made" note); ShoeMatches really gates (free = top 3 + locked rest); re-login preserves plan |
+| **Demo paywall entitlement** | ✅ "Start free trial"/"Lifetime" set plan=premium locally (honest "no payment was made" note); premium gates ONLY the AI coach chat (shoe matches + history are free for everyone — the paywall copy says so honestly); plan survives sign-out/re-login via a per-email entitlement map |
 | **Post-scan celebration** | ✅ Honest Processing (no fake ticker; min 1.2s hold) → svg success ring + haptic (expo-haptics, native) → Result count-up hero + staggered card reveals (RN Animated — NOT reanimated) |
 | **Real gait analysis on web** | ✅ MediaPipe BlazePose on the webcam, live skeleton, real cadence + form metrics from real movement |
 | **Two-angle capture** | ✅ Side view (required) → optional rear view chained in-screen (reuses the loaded model) → both fold into one report; rear view adds hip drop, base width, sway, symmetry |

@@ -54,6 +54,11 @@ export default function ReviewScreen({ navigation, route }: Props) {
   const s = report.steps;
   const frontal = report.frontal;
 
+  // Opt-in clip for THIS report (in memory only) — deleted when we leave Review.
+  // Hooks live above the early return so they run on every render (rules of hooks).
+  const [videoUri] = useState(() => peekPendingVideo(report.id));
+  useEffect(() => () => clearPendingVideo(report.id), [report.id]);
+
   if (!frames || !frames.length || !m || !fb || !g) {
     return (
       <ScreenContainer title="Review" onBack={() => navigation.goBack()}>
@@ -66,10 +71,6 @@ export default function ReviewScreen({ navigation, route }: Props) {
       </ScreenContainer>
     );
   }
-
-  // Opt-in clip for THIS report (in memory only) — deleted when we leave Review.
-  const [videoUri] = useState(() => peekPendingVideo(report.id));
-  useEffect(() => () => clearPendingVideo(), []);
 
   // Joints to glow in the X-ray replay — whatever the analysis flagged this scan.
   const flaggedJoints: number[] = [];

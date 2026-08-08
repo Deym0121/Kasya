@@ -4,12 +4,12 @@ import { Shoe } from '../data/shoes';
 import { ShoeMatch, MatchGait, MatchOptions } from '../shoes/match';
 import { FitProfile } from '../storage/fitProfile';
 import { sanitizeShoePicks } from './shoeRank';
+import { AI_REQUEST_TIMEOUT_MS, proxyHeaders, resolveProxyUrls, withRequestTimeout } from './explain';
 
 // The shoes endpoint sits next to explain/coach behind the same proxy.
-const EXPLAIN_URL =
-  ((globalThis as any)?.process?.env?.EXPO_PUBLIC_AI_PROXY_URL as string | undefined) ||
-  'http://localhost:8787/api/explain';
-const SHOES_URL = EXPLAIN_URL.replace(/\/api\/[^/]+$/, '/api/shoes');
+// NOTE: the literal `process.env.EXPO_PUBLIC_...` dot expression is required
+// here too — Expo inlines it at build time and skips any dynamic lookup.
+const SHOES_URL = resolveProxyUrls(process.env.EXPO_PUBLIC_AI_PROXY_URL).shoesUrl;
 
 /** Facts + id only — the exact candidate list the model may choose from. */
 function candidate(s: Shoe) {
@@ -50,9 +50,9 @@ export async function recommendShoes(
     const features = buildCoachFeatures(report);
     const res = await fetch(SHOES_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: proxyHeaders(),
       body: JSON.stringify({ features, goal: report.scanType, profile: llmProfile, shoes: catalog.map(candidate) }),
-      signal,
+      signal: withRequestTimeout(signal, AI_REQUEST_TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`AI shoes responded ${res.status}`);
     const data = await res.json();

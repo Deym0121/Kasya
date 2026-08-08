@@ -41,6 +41,27 @@ describe('buildFeedback', () => {
     );
   });
 
+  it('does not tell a walker at 110 spm to raise cadence when the goal is walking-shaped', () => {
+    for (const goal of ['walking', 'daily_comfort', 'recovery']) {
+      const f = buildFeedback(110, 'high', good, true, goal);
+      const all = (f.observations.join(' ') + ' ' + f.recommendations.join(' ')).toLowerCase();
+      expect(all).not.toMatch(/nudging your cadence up|quicker, shorter steps/);
+      expect(all).toMatch(/110/);
+    }
+  });
+
+  it('still nudges a walker well below the typical walking band', () => {
+    const f = buildFeedback(88, 'high', good, true, 'walking');
+    expect(f.recommendations.join(' ').toLowerCase()).toMatch(/quicker|cadence up/);
+  });
+
+  it('keeps the runner nudge for running / gym goals and by default', () => {
+    for (const goal of ['running', 'gym', undefined]) {
+      const f = buildFeedback(150, 'high', good, true, goal);
+      expect(f.recommendations.join(' ').toLowerCase()).toMatch(/quicker|cadence up/);
+    }
+  });
+
   it('never uses medical or injury language', () => {
     const f = buildFeedback(150, 'high', { ...good, verticalOscillationPct: 15, overstrideScore: 88 }, true);
     const all = (f.summary + ' ' + f.observations.join(' ') + ' ' + f.recommendations.join(' ')).toLowerCase();

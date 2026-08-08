@@ -115,7 +115,9 @@ export function analyzeFrontal(frames: PoseFrame[]): FrontalMetrics {
   const legLen = mean(legLens) || 1;
 
   const hipDropPct = clampPct((p90(obliquity) / hipW) * 100);
-  const stepWidthPct = Math.round((median(ankleSep) / hipW) * 100);
+  // Capped at 200% of hip width: beyond that the subject is almost certainly
+  // angled to the camera (quality flags it) rather than genuinely that wide.
+  const stepWidthPct = Math.min(200, Math.round((median(ankleSep) / hipW) * 100));
   const lateralSwayPct = clampPct((span(pelvisX) / legLen) * 100);
 
   // Symmetry: how alike the two feet's vertical swing (lift) ranges are.
@@ -180,7 +182,17 @@ export function assessFrontalQuality(frames: PoseFrame[]): FrontalQuality {
     return { visibilityScore: 0, ok: false, issues: ['No frames captured.'] };
   }
 
+  // The frontal metrics all derive from the hips and ankles, so those must be
+  // visible specifically — the six-landmark average can pass without them.
+  const CORE_LANDMARKS: number[] = [
+    LANDMARK.LEFT_HIP,
+    LANDMARK.RIGHT_HIP,
+    LANDMARK.LEFT_ANKLE,
+    LANDMARK.RIGHT_ANKLE,
+  ];
+
   let totalFraction = 0;
+  let coreFraction = 0;
   let hipWidthSeen = 0;
   let hipWidthCount = 0;
   for (const f of frames) {
@@ -190,6 +202,12 @@ export function assessFrontalQuality(frames: PoseFrame[]): FrontalQuality {
       if (lm && (lm.visibility ?? 0) >= 0.5) visible++;
     }
     totalFraction += visible / KEY_LANDMARKS.length;
+    let coreVisible = 0;
+    for (const idx of CORE_LANDMARKS) {
+      const lm = f.landmarks[idx];
+      if (lm && (lm.visibility ?? 0) >= 0.5) coreVisible++;
+    }
+    coreFraction += coreVisible / CORE_LANDMARKS.length;
     const lh = f.landmarks[LANDMARK.LEFT_HIP];
     const rh = f.landmarks[LANDMARK.RIGHT_HIP];
     if (lh && rh) {
@@ -198,17 +216,23 @@ export function assessFrontalQuality(frames: PoseFrame[]): FrontalQuality {
     }
   }
   const visibilityScore = totalFraction / frames.length;
+  const coreVisibility = coreFraction / frames.length;
   const meanHipWidth = hipWidthCount ? hipWidthSeen / hipWidthCount : 0;
 
   const issues: string[] = [];
   if (visibilityScore < 0.6) {
     issues.push('Body not clearly visible — improve lighting and keep your whole body in frame.');
   }
+  if (visibilityScore >= 0.6 && coreVisibility < 0.6) {
+    issues.push('We couldn’t see your hips and ankles clearly — keep your whole lower body in frame.');
+  }
   if (frames.length < 15) {
     issues.push('Not enough captured — walk away from the camera for the full recording.');
   }
   if (meanHipWidth < 0.02) {
     issues.push('Stand facing away from the camera so your hips and shoulders are square to it.');
+  } else if (meanHipWidth < 0.035) {
+    issues.push('You look angled to the camera — face straight away from it so your hips stay square to the lens.');
   }
 
   return { visibilityScore, ok: issues.length === 0, issues };

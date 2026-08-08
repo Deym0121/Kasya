@@ -14,9 +14,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { RootScreenProps } from '../navigation';
-import { colors, spacing, radius, type as T, fonts } from '../theme';
+import { colors, spacing, radius, fonts } from '../theme';
 import { Button, TextField } from '../components';
-import { getUser, setOnboarded, setUser } from '../storage/session';
+import { getLastEmail, getPlanFor, setOnboarded, setUser } from '../storage/session';
 import {
   isCloudEnabled,
   signUpWithEmail,
@@ -26,6 +26,10 @@ import {
   OAuthProvider,
 } from '../convex/auth';
 import { syncReports } from '../sync/reportSync';
+import { clearReports } from '../storage/reports';
+import { resetAiUsage } from '../storage/aiQuota';
+import { getReminderSettings, setReminderSettings } from '../storage/settings';
+import { cancelRescanReminder } from '../notifications/reminders';
 
 type Props = RootScreenProps<'SignIn'>;
 type Mode = 'signup' | 'login';
@@ -33,8 +37,10 @@ type Mode = 'signup' | 'login';
 // Social sign-in is STAGED on Convex Auth — flip these once the Google/Apple
 // providers are configured in convex/auth.ts. Apple must be '1' on iOS builds
 // that ship social login (App Review guideline 4.8).
-const GOOGLE_SIGNIN_ENABLED = ((globalThis as any)?.process?.env?.EXPO_PUBLIC_GOOGLE_SIGNIN as string) === '1';
-const APPLE_SIGNIN_ENABLED = ((globalThis as any)?.process?.env?.EXPO_PUBLIC_APPLE_SIGNIN as string) === '1';
+// Literal process.env.EXPO_PUBLIC_* reads — Expo inlines exactly this dot form
+// at bundle time; indirect reads are undefined in production builds.
+const GOOGLE_SIGNIN_ENABLED = process.env.EXPO_PUBLIC_GOOGLE_SIGNIN === '1';
+const APPLE_SIGNIN_ENABLED = process.env.EXPO_PUBLIC_APPLE_SIGNIN === '1';
 
 export default function SignInScreen({ navigation }: Props) {
   // On narrow phones the walker art and the 34px title can't share the hero
@@ -52,9 +58,23 @@ export default function SignInScreen({ navigation }: Props) {
   async function enterApp(emailAddr: string) {
     const trimmed = emailAddr.trim() || 'demo@kasya.app';
     const name = trimmed.split('@')[0] || 'Runner';
-    // Preserve an existing plan — re-login must never silently downgrade premium.
-    const existing = await getUser();
-    await setUser({ email: trimmed, name, plan: existing?.plan ?? 'free' });
+    // A different account shouldn't inherit the last user's scans, AI
+    // allowance or reminder schedule — clear them. The same person returning
+    // (any capitalization) keeps everything.
+    const last = await getLastEmail();
+    if (last && last.toLowerCase() !== trimmed.toLowerCase()) {
+      const reminders = await getReminderSettings();
+      await cancelRescanReminder(reminders.notificationId);
+      await Promise.all([
+        clearReports(),
+        resetAiUsage(),
+        setReminderSettings({ cadence: 'off', notificationId: null }),
+      ]);
+    }
+    // Restore this email's plan from the entitlement map (it survives
+    // sign-out) — re-login must never silently downgrade premium.
+    const plan = await getPlanFor(trimmed);
+    await setUser({ email: trimmed, name, plan });
     await setOnboarded(true);
     navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
   }

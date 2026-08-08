@@ -25,17 +25,22 @@ async function dispose(p: Pending): Promise<void> {
     return;
   }
   try {
-    const FS: any = await import('expo-file-system');
-    await FS.deleteAsync(p.uri, { idempotent: true });
-  } catch {
-    // best-effort delete
+    // SDK 56: deleteAsync is legacy-only; the File class is the current API.
+    const { File } = await import('expo-file-system');
+    new File(p.uri).delete();
+  } catch (e) {
+    console.warn('[videoHolder] could not delete temp clip', e);
   }
 }
 
 /** Stash the just-recorded clip. Disposes any previous clip first. */
 export function setPendingVideo(uri: string): void {
   if (pending) dispose(pending);
-  pending = { uri, native: Platform.OS !== 'web' };
+  // VisionCamera hands over a bare path (/private/var/…) — expo-video and
+  // expo-file-system both want a proper file:// URI, so normalize here.
+  const native = Platform.OS !== 'web';
+  const normalized = native && !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(uri) ? `file://${uri}` : uri;
+  pending = { uri: normalized, native };
 }
 
 /** Stamp the pending clip with the report it belongs to (called once the id exists). */
@@ -48,10 +53,15 @@ export function peekPendingVideo(reportId: string): string | null {
   return pending && pending.reportId === reportId ? pending.uri : null;
 }
 
-/** Delete the clip (revoke URL / remove temp file) and forget it. */
-export function clearPendingVideo(): void {
-  if (pending) {
-    dispose(pending);
-    pending = null;
-  }
+/**
+ * Delete the clip (revoke URL / remove temp file) and forget it. With no
+ * argument, clears unconditionally (capture screens purge stale clips this
+ * way). With `ownerId`, only clears when the clip is tagged to that report —
+ * an untagged clip or someone else's clip is left alone.
+ */
+export function clearPendingVideo(ownerId?: string): void {
+  if (!pending) return;
+  if (ownerId !== undefined && pending.reportId !== ownerId) return;
+  dispose(pending);
+  pending = null;
 }

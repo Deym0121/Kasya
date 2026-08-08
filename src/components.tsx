@@ -357,11 +357,14 @@ export function MetricGrid({ items, columns = 3 }: { items: MetricGridItem[]; co
         {items.map((it) => {
           const info = METRIC_INFO[it.key];
           const raw = it.raw ?? (typeof it.value === 'number' ? it.value : 0);
+          // Legacy reports store unrounded floats — show at most 1 decimal on the
+          // tile (and in its accessibility label); `raw` stays raw for band tinting.
+          const shown = typeof it.value === 'number' ? Math.round(it.value * 10) / 10 : it.value;
           return (
             <View key={it.key} style={{ width: `${100 / columns}%` as const }}>
               <Metric
                 label={info.label}
-                value={it.value}
+                value={shown}
                 unit={it.unit ?? info.unit}
                 band={typicalBand(it.key, raw)}
                 onPress={() => setOpenKey(openKey === it.key ? null : it.key)}

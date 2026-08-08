@@ -15,12 +15,16 @@ const LINES = [
   [23, 25], [25, 27], [27, 29], [29, 31], [27, 31],
   [24, 26], [26, 28], [28, 30], [30, 32], [28, 32],
 ];
+const SPEEDS = [0.25, 0.5, 1];
 
 export function VideoReplay({ videoUri, frames, height = 340 }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const rafRef = useRef(0);
-  const [playing, setPlaying] = useState(true);
+  // Autoplay is the browser's call, not ours — start pessimistic and let the
+  // play() attempt below set the real state.
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(1);
 
   const t0 = frames && frames.length ? frames[0].t : 0;
 
@@ -71,30 +75,64 @@ export function VideoReplay({ videoUri, frames, height = 340 }) {
     return () => cancelAnimationFrame(rafRef.current);
   }, [draw]);
 
+  // Kick off playback ourselves and mirror what actually happened — if the
+  // browser blocks it, the control honestly shows "play" over the first frame.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const p = v.play();
+    if (p && typeof p.then === 'function') {
+      p.then(() => setPlaying(true)).catch(() => setPlaying(false));
+    } else {
+      setPlaying(!v.paused);
+    }
+  }, []);
+
+  // Slow-mo: drive the element's playbackRate from the selected speed chip.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (v) v.playbackRate = speed;
+  }, [speed]);
+
   const toggle = () => {
     const v = videoRef.current;
     if (!v) return;
-    if (v.paused) {
-      v.play();
-      setPlaying(true);
-    } else {
+    if (playing) {
       v.pause();
       setPlaying(false);
+    } else {
+      const p = v.play();
+      if (p && typeof p.catch === 'function') p.catch(() => setPlaying(false));
+      setPlaying(true);
     }
   };
 
   return (
     <View>
       <div style={{ ...stageStyle, height }}>
-        <video ref={videoRef} src={videoUri} autoPlay playsInline muted loop style={mediaStyle} />
+        <video ref={videoRef} src={videoUri} playsInline muted loop style={mediaStyle} />
         <canvas ref={canvasRef} style={mediaStyle} />
       </div>
       <View style={styles.controls}>
         <Pressable onPress={toggle} accessibilityRole="button" accessibilityLabel={playing ? 'Pause' : 'Play'} style={styles.play}>
           <Feather name={playing ? 'pause' : 'play'} size={20} color="#fff" />
         </Pressable>
-        <Text style={styles.note}>Your clip · deleted when you leave this screen</Text>
+        <View style={styles.speeds}>
+          {SPEEDS.map((s) => (
+            <Pressable
+              key={s}
+              onPress={() => setSpeed(s)}
+              accessibilityRole="button"
+              accessibilityLabel={`Playback speed ${s}x`}
+              accessibilityState={{ selected: speed === s }}
+              style={[styles.speed, speed === s && styles.speedOn]}
+            >
+              <Text style={[styles.speedText, speed === s && styles.speedTextOn]}>{s}×</Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
+      <Text style={styles.note}>Your clip · deleted when you leave this screen</Text>
     </View>
   );
 }
@@ -113,5 +151,19 @@ const mediaStyle = { position: 'absolute', inset: 0, width: '100%', height: '100
 const styles = StyleSheet.create({
   controls: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.md, gap: spacing.md },
   play: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
-  note: { fontFamily: fonts.regular, fontSize: 12, color: colors.muted, flex: 1 },
+  speeds: { flexDirection: 'row', gap: spacing.sm },
+  speed: {
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.surface,
+  },
+  speedOn: { backgroundColor: colors.ink, borderColor: colors.ink },
+  speedText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.inkSoft },
+  speedTextOn: { color: '#fff' },
+  note: { fontFamily: fonts.regular, fontSize: 12, color: colors.muted, marginTop: spacing.sm },
 });
