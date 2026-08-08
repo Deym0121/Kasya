@@ -141,20 +141,27 @@ export function analyzeSteps(frames: PoseFrame[]): StepAnalysis {
     stepCount: contacts.length,
     cadenceSpm,
     meanStepTimeSec,
-    rhythmRegularityPct,
+    // Display scores stored rounded (matching form.ts) so records stay clean.
+    rhythmRegularityPct: Math.round(rhythmRegularityPct),
     stanceRatioPct,
-    overstrideScore,
+    overstrideScore: Math.round(overstrideScore),
     kneeContactDeg,
     kneePeakDeg,
-    symmetryPct,
+    symmetryPct: Math.round(symmetryPct),
     leadFoot: contacts[0].foot,
   };
 }
 
-/** Plain-English, wellness-only walkthrough of what happens during a step. */
+/**
+ * Plain-English, wellness-only walkthrough of what happens during a step.
+ * `reportCadenceSpm` is the cadence the report displays — quoting it (rather
+ * than re-deriving one from step times) keeps the closing line consistent with
+ * the headline. Omitted = no per-minute parenthetical.
+ */
 export function describeGait(
   a: StepAnalysis,
   verticalOscillationPct: number,
+  reportCadenceSpm?: number,
 ): { summary: string; walkthrough: string[] } {
   if (a.stepCount < 2) {
     return { summary: 'Not enough clear steps to break down — try a longer, side-on capture.', walkthrough: [] };
@@ -175,12 +182,29 @@ export function describeGait(
         ? ''
         : ', though your rhythm was a bit uneven';
 
+  // Knee angles read as flexion-from-straight throughout, and only when the
+  // sparse capture actually let us estimate them (0 = couldn't estimate).
+  const swingKnee = a.kneePeakDeg > 0 ? `, the knee bending toward about ${a.kneePeakDeg}°` : '';
+  const contactBendDeg = Math.round(Math.max(0, 180 - a.kneeContactDeg));
+  const contactKnee =
+    a.kneeContactDeg <= 0
+      ? ''
+      : contactBendDeg <= 5
+        ? `, with the knee nearly straight (about ${contactBendDeg}° of bend) at contact`
+        : `, with about ${contactBendDeg}° of knee bend at contact`;
+  const stance =
+    a.stanceRatioPct > 0
+      ? `your weight rolls over the planted foot; you spend roughly ${a.stanceRatioPct}% of each step on the ground, ${bounce}.`
+      : `your weight rolls over the planted foot, ${bounce}.`;
+  const perMinute =
+    reportCadenceSpm != null && reportCadenceSpm > 0 ? ` (~${Math.round(reportCadenceSpm)} per minute)` : '';
+
   const walkthrough = [
-    `1. Swing — your ${lead} foot lifts off and swings forward, the knee bending toward about ${a.kneePeakDeg}°.`,
-    `2. Foot strike — it lands ${reach}, with the knee around ${a.kneeContactDeg}° at contact.`,
-    `3. Stance — your weight rolls over the planted foot; you spend roughly ${a.stanceRatioPct}% of each step on the ground, ${bounce}.`,
+    `1. Swing — your ${lead} foot lifts off and swings forward${swingKnee}.`,
+    `2. Foot strike — it lands ${reach}${contactKnee}.`,
+    `3. Stance — ${stance}`,
     `4. Push-off — that foot drives off behind you as the other foot begins its own swing, and the cycle repeats.`,
-    `Overall a step lands about every ${a.meanStepTimeSec.toFixed(2)}s (~${Math.round(a.cadenceSpm)} per minute)${rhythm}.`,
+    `Overall a step lands about every ${a.meanStepTimeSec.toFixed(2)}s${perMinute}${rhythm}.`,
   ];
   return { summary: walkthrough[walkthrough.length - 1], walkthrough };
 }

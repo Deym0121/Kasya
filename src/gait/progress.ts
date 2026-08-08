@@ -45,7 +45,10 @@ export function buildTrends(reports: TrendReportLike[]): Trends {
   const symmetry: TrendPoint[] = [];
   const stance: TrendPoint[] = [];
   for (const r of sorted) {
-    if (usable(r)) cadence.push({ t: r.createdAt, value: Math.round(r.result.cadence.value) });
+    // Every series gets the trust gate — a failed capture's symmetry/stance
+    // numbers are no more chartable than its cadence.
+    if (!usable(r)) continue;
+    cadence.push({ t: r.createdAt, value: Math.round(r.result.cadence.value) });
     const sym = r.steps?.symmetryPct ?? r.metrics?.symmetryPct ?? 0;
     if (sym > 0) symmetry.push({ t: r.createdAt, value: Math.round(sym) });
     const st = r.steps?.stanceRatioPct ?? 0;

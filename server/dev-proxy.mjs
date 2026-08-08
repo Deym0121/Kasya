@@ -14,6 +14,22 @@ const KEY = process.env.OPENROUTER_API_KEY;
 const MODEL = process.env.OPENROUTER_MODEL || 'openai/gpt-5-mini';
 const PORT = Number(process.env.AI_PROXY_PORT || 8787);
 
+// Optional hardening (all default open/permissive for local dev):
+// - PROXY_AUTH_TOKEN: when set, every request must send it as x-proxy-token.
+// - ALLOWED_ORIGIN: locks CORS to one origin instead of *.
+// - TRUST_PROXY=1: only honor X-Forwarded-For for rate limiting when set
+//   (behind a real proxy); otherwise the client could pick its own IP.
+const AUTH_TOKEN = process.env.PROXY_AUTH_TOKEN || '';
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '*';
+const TRUST_PROXY = process.env.TRUST_PROXY === '1';
+
+// Payload caps — gait features + a short chat history are tiny, so anything
+// big is a mistake or abuse. Upstream timeout keeps a hung OpenRouter call
+// from pinning the client's spinner forever.
+const MAX_BODY_BYTES = 64 * 1024;
+const MAX_FEATURES_BYTES = 16 * 1024;
+const UPSTREAM_TIMEOUT_MS = 30000;
+
 // Rate limit — protect the key/cost. Fixed 60s window, per-IP + a global cap.
 const RL = {
   windowMs: Number(process.env.AI_RL_WINDOW_MS || 60000),
@@ -35,6 +51,15 @@ function rateLimited(ip) {
   globalHits.push(now);
   return false;
 }
+// Sweep stale rate-limit entries each window so ipHits can't grow forever.
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, arr] of ipHits) {
+    const live = arr.filter((t) => now - t < RL.windowMs);
+    if (live.length) ipHits.set(ip, live);
+    else ipHits.delete(ip);
+  }
+}, RL.windowMs).unref();
 
 const EXPLAIN_SYSTEM = `You are StrideFit, a friendly running and walking form coach.
 You receive de-identified gait metrics from a phone/webcam scan and write a short, warm, plain-English summary.
@@ -55,34 +80,43 @@ const COACH_SYSTEM = `You are StrideFit's running/walking form COACH, chatting w
 - Do NOT invent metrics that aren't in the data. If a number they ask about isn't present, say it wasn't captured this scan.`;
 
 function send(res, status, obj) {
+  if (res.writableEnded) return;
   res.writeHead(status, {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
+    'Access-Control-Allow-Headers': 'Content-Type, x-proxy-token',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   });
   res.end(JSON.stringify(obj));
 }
 
 async function callOpenRouter(messages, maxTokens) {
-  const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${KEY}`,
-      'HTTP-Referer': 'http://localhost',
-      'X-Title': 'StrideFit',
-    },
-    // reasoning:low keeps gpt-5-class models from spending the whole budget on
-    // hidden reasoning and returning empty content; max_tokens covers both.
-    body: JSON.stringify({
-      model: MODEL,
-      temperature: 0.6,
-      max_tokens: maxTokens,
-      reasoning: { effort: 'low' },
-      messages,
-    }),
-  });
+  let r;
+  try {
+    r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${KEY}`,
+        'HTTP-Referer': 'http://localhost',
+        'X-Title': 'StrideFit',
+      },
+      // Abort a hung upstream so clients get an error and can fall back.
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+      // reasoning:low keeps gpt-5-class models from spending the whole budget on
+      // hidden reasoning and returning empty content; max_tokens covers both.
+      body: JSON.stringify({
+        model: MODEL,
+        temperature: 0.6,
+        max_tokens: maxTokens,
+        reasoning: { effort: 'low' },
+        messages,
+      }),
+    });
+  } catch (e) {
+    // Timed out or unreachable — report as a gateway timeout.
+    return { ok: false, status: 504, detail: String(e?.name || e) };
+  }
   if (!r.ok) {
     const detail = (await r.text()).slice(0, 400);
     return { ok: false, status: r.status, detail };
@@ -102,21 +136,47 @@ function sanitizeHistory(messages) {
 }
 
 const server = createServer((req, res) => {
+  // The app deliberately aborts in-flight requests — a client going away
+  // mid-upload must never surface as an unhandled ECONNRESET.
+  req.on('error', () => {});
+  res.on('error', () => {});
+
   if (req.method === 'OPTIONS') return send(res, 204, {});
 
   const route =
     req.url?.startsWith('/api/coach') ? 'coach' : req.url?.startsWith('/api/explain') ? 'explain' : null;
   if (req.method !== 'POST' || !route) return send(res, 404, { error: 'Not found' });
+  if (AUTH_TOKEN && req.headers['x-proxy-token'] !== AUTH_TOKEN) {
+    return send(res, 401, { error: 'Missing or invalid x-proxy-token.' });
+  }
   if (!KEY) return send(res, 500, { error: 'OPENROUTER_API_KEY is not set. Add it to .env and restart.' });
 
-  const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'local').toString().split(',')[0].trim();
+  // Rate-limit key: the socket address, unless we're told a proxy in front of
+  // us sets X-Forwarded-For — clients must not get to pick their own IP.
+  const ip = (
+    (TRUST_PROXY && req.headers['x-forwarded-for']) || req.socket.remoteAddress || 'local'
+  ).toString().split(',')[0].trim();
   if (rateLimited(ip)) {
     return send(res, 429, { error: 'Rate limit reached — try again in a minute.' });
   }
 
   let body = '';
-  req.on('data', (c) => (body += c));
+  let received = 0;
+  let tooLarge = false;
+  req.on('data', (c) => {
+    received += c.length;
+    if (received > MAX_BODY_BYTES) {
+      if (!tooLarge) {
+        tooLarge = true;
+        send(res, 413, { error: 'Request body too large.' });
+        req.destroy();
+      }
+      return;
+    }
+    body += c;
+  });
   req.on('end', async () => {
+    if (tooLarge) return;
     try {
       const payload = JSON.parse(body || '{}');
       let messages;
@@ -124,6 +184,11 @@ const server = createServer((req, res) => {
       if (route === 'coach') {
         // Chat mode: system + scan context + the conversation so far.
         const features = payload.features || {};
+        // History is truncated below; features are forwarded verbatim, so cap
+        // them too — real gait features are a small numeric object.
+        if (JSON.stringify(features).length > MAX_FEATURES_BYTES) {
+          return send(res, 400, { error: 'Features payload too large.' });
+        }
         const history = sanitizeHistory(payload.messages);
         messages = [
           { role: 'system', content: COACH_SYSTEM },
@@ -137,7 +202,11 @@ const server = createServer((req, res) => {
         ];
         maxTokens = 700;
       } else {
-        // Explain: one-shot summary of the features.
+        // Explain: one-shot summary of the features. Same cap as the coach
+        // route — the whole payload is forwarded into the prompt.
+        if (JSON.stringify(payload).length > MAX_FEATURES_BYTES) {
+          return send(res, 400, { error: 'Features payload too large.' });
+        }
         messages = [
           { role: 'system', content: EXPLAIN_SYSTEM },
           { role: 'user', content: 'Gait scan metrics (JSON):\n' + JSON.stringify(payload) },
@@ -145,7 +214,12 @@ const server = createServer((req, res) => {
         maxTokens = 500;
       }
       const out = await callOpenRouter(messages, maxTokens);
-      if (!out.ok) return send(res, 502, { error: `OpenRouter ${out.status}`, detail: out.detail });
+      if (!out.ok) {
+        if (out.status === 504) {
+          return send(res, 504, { error: 'AI upstream timed out — try again.', detail: out.detail });
+        }
+        return send(res, 502, { error: `OpenRouter ${out.status}`, detail: out.detail });
+      }
       return send(res, 200, { text: out.text, model: MODEL });
     } catch (e) {
       return send(res, 500, { error: String(e?.message || e) });

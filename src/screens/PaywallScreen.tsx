@@ -5,12 +5,14 @@ import { RootScreenProps } from '../navigation';
 import { colors, spacing, radius, type as T, fonts } from '../theme';
 import { ScreenContainer, Button, IconBubble } from '../components';
 import { getUser, setUser } from '../storage/session';
+import { DAILY_AI_LIMIT } from '../storage/aiQuota';
 
+// Honest list: only what Premium actually gates today, plus clearly-labeled
+// forward-looking access. Scans and history stay free for everyone.
 const FEATURES = [
-  'Unlimited gait scans',
-  'PDF report export',
-  'Scan history & progress',
-  'AI-written coaching',
+  `AI coach chat — up to ${DAILY_AI_LIMIT} chats a day`,
+  'Coaching that answers questions about your own scan',
+  'Early access to new features as they land',
 ];
 
 type Props = RootScreenProps<'Paywall'>;
@@ -44,7 +46,8 @@ export default function PaywallScreen({ navigation }: Props) {
           <IconBubble icon="check-circle" tint={colors.successSoft} color={colors.success} size={72} />
           <Text style={[T.h1, { marginTop: spacing.xl, textAlign: 'center' }]}>Premium unlocked</Text>
           <Text style={[T.bodyMuted, { marginTop: spacing.sm, textAlign: 'center' }]}>
-            Demo entitlement — no payment was made. Full shoe matches, history and progress are now open.
+            Demo entitlement — no payment was made. The live AI coach chat is now open — up to {DAILY_AI_LIMIT}{' '}
+            chats a day.
           </Text>
           <View style={{ height: spacing.xl, alignSelf: 'stretch' }} />
           <View style={{ alignSelf: 'stretch' }}>
@@ -92,7 +95,7 @@ export default function PaywallScreen({ navigation }: Props) {
 
       <Text style={styles.note}>
         Demo: no real billing yet. In-app purchases (App Store / Google Play via RevenueCat) come in a
-        later milestone. Fair-use limits apply to “unlimited” scans.
+        later milestone.
       </Text>
     </ScreenContainer>
   );

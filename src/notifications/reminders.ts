@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { ReminderCadence, CADENCE_DAYS } from '../storage/reminderDue';
+import { getReminderSettings, setReminderSettings } from '../storage/settings';
 
 /**
  * Optional native local notifications for re-scan reminders. This is the ONLY
@@ -62,6 +63,27 @@ export async function scheduleRescanReminder(
   } catch {
     return null;
   }
+}
+
+/**
+ * Re-anchor the repeating reminder after a saved scan, so the next nudge counts
+ * from the scan rather than from whenever the toggle was tapped. No-op on web,
+ * when the cadence is off, or when permission is missing.
+ */
+export async function rescheduleAfterScan(): Promise<void> {
+  const Notifications = await loadNotifications();
+  if (!Notifications) return;
+  const settings = await getReminderSettings();
+  if (settings.cadence === 'off') return;
+  try {
+    const current = await Notifications.getPermissionsAsync();
+    if (!current.granted) return;
+  } catch {
+    return;
+  }
+  // scheduleRescanReminder cancels the previous id, then anchors a fresh one to now.
+  const notificationId = await scheduleRescanReminder(settings.cadence, settings.notificationId);
+  await setReminderSettings({ ...settings, notificationId });
 }
 
 /** Cancel the scheduled reminder, if any. */

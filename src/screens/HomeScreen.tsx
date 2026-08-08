@@ -23,6 +23,7 @@ import { matchShoes, scoreTone } from '../shoes/match';
 import { SHOES } from '../data/shoes';
 import { ShoeThumb } from '../viz/ShoeThumb';
 import { pickCoachTip } from '../gait/coach';
+import { dayKey } from '../storage/aiQuota';
 import { getReminderSettings } from '../storage/settings';
 import { isRescanDue, dueBannerCopy } from '../storage/reminderDue';
 
@@ -60,7 +61,8 @@ export default function HomeScreen({ navigation }: Props) {
   }).slice(0, 3);
   const initials = (user?.name ?? 'R').slice(0, 1).toUpperCase();
   const firstRun = loaded && !latest;
-  const coach = latest ? pickCoachTip(latest, new Date().toISOString().slice(0, 10)) : null;
+  // Local day key (not UTC) so the tip rotates at local midnight, like the AI quota.
+  const coach = latest ? pickCoachTip(latest, dayKey(new Date())) : null;
   const openMatches = () =>
     latest ? navigation.navigate('ShoeMatches', { report: latest }) : navigation.navigate('ScanSetup');
 
@@ -119,7 +121,10 @@ export default function HomeScreen({ navigation }: Props) {
         <Card style={{ marginTop: spacing.lg }}>
           <View style={styles.rowBetween}>
             <Label>Latest result</Label>
-            <Text style={styles.date}>{new Date(latest.createdAt).toLocaleDateString()}</Text>
+            <View style={styles.dateRow}>
+              {latest.simulated && <Badge label="Demo" tint={colors.surfaceAlt} color={colors.muted} />}
+              <Text style={styles.date}>{new Date(latest.createdAt).toLocaleDateString()}</Text>
+            </View>
           </View>
           <View style={[styles.rowBetween, { alignItems: 'flex-end', marginTop: spacing.sm }]}>
             <View>
@@ -184,7 +189,7 @@ export default function HomeScreen({ navigation }: Props) {
         <View style={styles.upsell}>
           <IconBubble icon="zap" tint="rgba(255,255,255,0.18)" color="#fff" size={44} />
           <Text style={styles.upTitle}>Go Premium</Text>
-          <Text style={styles.upBody}>Unlimited scans, full shoe matches, history and progress.</Text>
+          <Text style={styles.upBody}>Chat with the AI coach about your scans — questions, drills and next steps.</Text>
           <View style={{ height: spacing.lg }} />
           <Button label="See plans" variant="primary" onPress={() => navigation.navigate('Paywall')} />
         </View>
@@ -213,6 +218,7 @@ const styles = StyleSheet.create({
   heroTitle: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 28, color: '#fff', marginTop: spacing.sm },
   heroPrivacy: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, color: colors.onDarkMuted, marginTop: spacing.sm },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   date: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted },
   statRow: { flexDirection: 'row', alignItems: 'baseline' },
   bigNum: { fontFamily: fonts.extra, fontSize: 44, color: colors.ink, letterSpacing: -1 },

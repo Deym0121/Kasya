@@ -29,18 +29,27 @@ const navTheme = {
 };
 
 export default function App() {
-  const [fontsLoaded] = useFonts(fontMap);
+  const [fontsLoaded, fontError] = useFonts(fontMap);
+  const [fontTimedOut, setFontTimedOut] = useState(false);
   const [ready, setReady] = useState(false);
   const [initial, setInitial] = useState<'Onboarding' | 'Tabs'>('Onboarding');
 
   useEffect(() => {
-    getOnboarded().then((ob) => {
-      setInitial(ob ? 'Tabs' : 'Onboarding');
-      setReady(true);
-    });
+    getOnboarded()
+      .then((ob) => setInitial(ob ? 'Tabs' : 'Onboarding'))
+      .catch(() => setInitial('Onboarding')) // unreadable session → start fresh
+      .finally(() => setReady(true));
   }, []);
 
-  if (!fontsLoaded || !ready) {
+  // Never hang the splash on fonts: proceed with system fonts after 5s.
+  useEffect(() => {
+    const t = setTimeout(() => setFontTimedOut(true), 5000);
+    return () => clearTimeout(t);
+  }, []);
+
+  const fontsSettled = fontsLoaded || !!fontError || fontTimedOut;
+
+  if (!fontsSettled || !ready) {
     return (
       <SafeAreaProvider>
         <View style={styles.splash}>

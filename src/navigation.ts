@@ -4,7 +4,11 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { GaitReportRecord } from './storage/reportRecord';
 import { PoseFrame } from './gait/types';
 
-/** Which camera angle a capture screen is set up for. */
+/**
+ * Which camera angle a capture screen is set up for. 'rear' is web-internal:
+ * the web scan runs its rear pass in-screen — no route ever navigates
+ * CameraGuide/PoseScan with view:'rear', and native has no rear pass.
+ */
 export type ScanView = 'side' | 'rear';
 
 /** The bottom tab bar (the authed hub). ScanTab is intercepted — never renders. */
@@ -26,6 +30,11 @@ export type RootStackParamList = {
   ScanSetup: undefined;
   CameraGuide: { goal: string; view?: ScanView; sideFrames?: PoseFrame[] };
   PoseScan: { goal: string; view?: ScanView; sideFrames?: PoseFrame[] };
+  /**
+   * frontalFrames only ever arrives WITH frames (the web rear pass). A
+   * rear-only payload is treated as a failed capture by Processing — never
+   * paired with a synthesized side walk.
+   */
   Processing: { goal: string; frames?: PoseFrame[]; frontalFrames?: PoseFrame[] };
   Result: { report: GaitReportRecord };
   Review: { report: GaitReportRecord };

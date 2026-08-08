@@ -13,6 +13,7 @@ import { Button } from '../components';
 import { toPoseFrame, analyzeGait, assessFrontalQuality } from '../gait';
 import { BODY_GUIDE, BODY_GUIDE_VIEWBOX } from '../viz/bodyGuide';
 import { setPendingVideo, clearPendingVideo } from '../viz/videoHolder';
+import { REAR_GUIDE_STEPS } from './CameraGuideScreen';
 
 const WASM = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm';
 const MODEL =
@@ -41,7 +42,16 @@ function loadVision() {
     const s = document.createElement('script');
     s.type = 'module';
     s.textContent = `import * as mp from '${VISION_ESM}'; window['${cb}'](mp);`;
-    s.onerror = () => reject(new Error('Could not load the pose model code'));
+    s.onerror = () => {
+      // A failed load must not poison the cache: drop the promise AND the dead
+      // script element so "Try again" performs a genuinely fresh load.
+      visionPromise = null;
+      try {
+        s.remove();
+        delete window[cb];
+      } catch {}
+      reject(new Error('Could not load the pose model code'));
+    };
     document.head.appendChild(s);
   });
   return visionPromise;
@@ -87,6 +97,9 @@ export default function PoseScanScreen({ navigation, route }) {
   const recorderRef = useRef(null);
   const chunksRef = useRef([]);
   const recordVideoRef = useRef(false);
+  // Resolves once the last stopVideo() has fully settled (clip stashed or
+  // dropped) — awaited before navigating so Processing's tag can't win a race.
+  const stopPromiseRef = useRef(Promise.resolve());
   useEffect(() => {
     recordVideoRef.current = recordVideo;
   }, [recordVideo]);
@@ -99,30 +112,42 @@ export default function PoseScanScreen({ navigation, route }) {
   // passes the gate; the Review screen deletes it right after.
   const startVideo = useCallback(() => {
     const s = streamRef.current;
-    if (!s || !recordVideoRef.current || typeof MediaRecorder === 'undefined') return;
+    if (!s || !recordVideoRef.current) return;
     try {
+      if (typeof MediaRecorder === 'undefined') throw new Error('MediaRecorder unavailable');
       chunksRef.current = [];
       const mime = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm';
       const rec = new MediaRecorder(s, { mimeType: mime });
       rec.ondataavailable = (e) => e.data && e.data.size && chunksRef.current.push(e.data);
       rec.start();
       recorderRef.current = rec;
-    } catch {}
+    } catch {
+      // No new clip started → a stale one must never get tagged to this report.
+      clearPendingVideo();
+    }
   }, []);
+  // Resolves after onstop has run (clip stashed / chunks cleared) — or right
+  // away after cleanup if stop() throws, so callers can safely await it.
   const stopVideo = useCallback((keep) => {
     const rec = recorderRef.current;
     recorderRef.current = null;
-    if (!rec) return;
-    rec.onstop = () => {
-      if (keep && chunksRef.current.length) {
-        const blob = new Blob(chunksRef.current, { type: rec.mimeType });
-        setPendingVideo(URL.createObjectURL(blob));
+    if (!rec) return Promise.resolve();
+    return new Promise((resolve) => {
+      rec.onstop = () => {
+        if (keep && chunksRef.current.length) {
+          const blob = new Blob(chunksRef.current, { type: rec.mimeType });
+          setPendingVideo(URL.createObjectURL(blob));
+        }
+        chunksRef.current = [];
+        resolve();
+      };
+      try {
+        rec.stop();
+      } catch {
+        chunksRef.current = []; // onstop never fires — don't strand the raw bytes
+        resolve();
       }
-      chunksRef.current = [];
-    };
-    try {
-      rec.stop();
-    } catch {}
+    });
   }, []);
 
   const render = useCallback(() => {
@@ -260,7 +285,7 @@ export default function PoseScanScreen({ navigation, route }) {
             ? assessFrontalQuality(frames)
             : analyzeGait(frames).captureQuality;
         if (!gate.ok) {
-          if (view === 'side') stopVideo(false); // discard the clip on a failed capture
+          if (view === 'side') stopPromiseRef.current = stopVideo(false); // discard the clip on a failed capture
           setStatus('ready');
           setRetryMsg(
             gate.issues[0] ||
@@ -271,11 +296,15 @@ export default function PoseScanScreen({ navigation, route }) {
           return;
         }
         if (view === 'rear') {
-          // Second pass done → one merged report from both angles.
-          navigation.replace('Processing', { goal, frames: sideFramesRef.current || undefined, frontalFrames: frames });
+          // Second pass done → one merged report from both angles. (Let any
+          // side-pass clip settle first so Processing's tag can't beat it.)
+          const side = sideFramesRef.current || undefined;
+          stopPromiseRef.current.then(() =>
+            navigation.replace('Processing', { goal, frames: side, frontalFrames: frames }),
+          );
         } else {
           // Side pass done → keep the clip (if any), and offer the optional rear view.
-          stopVideo(true);
+          stopPromiseRef.current = stopVideo(true);
           sideFramesRef.current = frames;
           setStatus('ready');
           setChoice(true);
@@ -315,8 +344,9 @@ export default function PoseScanScreen({ navigation, route }) {
     setStatus('ready');
   }, []);
 
-  const analyzeNow = useCallback(() => {
+  const analyzeNow = useCallback(async () => {
     setChoice(false);
+    await stopPromiseRef.current; // the clip (if any) settles before Processing tags it
     navigation.replace('Processing', { goal, frames: sideFramesRef.current || undefined });
   }, [goal, navigation]);
 
@@ -396,12 +426,13 @@ export default function PoseScanScreen({ navigation, route }) {
             ))}
           </svg>
         ) : null}
+        {/* While the choice overlay is up, Close = analyze now — a passed capture is never discarded. */}
         <div
-          onClick={() => navigation.goBack()}
-          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && navigation.goBack()}
+          onClick={() => (choice ? analyzeNow() : navigation.goBack())}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (choice ? analyzeNow() : navigation.goBack())}
           role="button"
           tabIndex={0}
-          aria-label="Close the scan"
+          aria-label={choice ? 'Dismiss and analyze the side view only' : 'Close the scan'}
           style={closeStyle}
         >
           ✕ Close
@@ -411,6 +442,10 @@ export default function PoseScanScreen({ navigation, route }) {
           <div style={{ ...hintStyle, background: retryMsg ? 'rgba(179,41,15,0.85)' : 'rgba(0,0,0,0.5)' }}>
             {topText}
           </div>
+        ) : null}
+        {/* Rear pass just started → brief positioning guidance (shared with CameraGuide's rear copy). */}
+        {rear && status === 'ready' && !choice && !retryMsg ? (
+          <div style={rearHintStyle}>{REAR_GUIDE_STEPS.slice(0, 2).join(' ')}</div>
         ) : null}
         {status === 'loading' || status === 'error' ? <div style={msgStyle}>{msg}</div> : null}
         {status === 'counting' ? <div style={countdownStyle}>{count}</div> : null}
@@ -483,6 +518,18 @@ export default function PoseScanScreen({ navigation, route }) {
             </View>
           </Pressable>
         ) : null}
+        {/* The rear pass is optional — always leave a clearly-labeled way out
+            that analyzes the side view already in hand. */}
+        {rear && !choice && status !== 'recording' && status !== 'counting' && sideFramesRef.current ? (
+          <Pressable
+            style={styles.skipRear}
+            onPress={analyzeNow}
+            accessibilityRole="button"
+            accessibilityLabel="Skip the rear view and analyze the side view"
+          >
+            <Text style={styles.skipRearText}>Skip rear — analyze side view</Text>
+          </Pressable>
+        ) : null}
         <Button
           label={buttonLabel}
           icon={buttonIcon}
@@ -528,6 +575,19 @@ const hintStyle = {
   font: `600 14px ${fonts.semibold}, sans-serif`,
   padding: `${spacing.sm}px ${spacing.md}px`,
   borderRadius: radius.pill,
+  zIndex: 2,
+};
+const rearHintStyle = {
+  position: 'absolute',
+  top: 96,
+  left: spacing.lg,
+  right: spacing.lg,
+  textAlign: 'center',
+  color: 'rgba(255,255,255,0.85)',
+  font: `500 13px ${fonts.medium}, sans-serif`,
+  background: 'rgba(0,0,0,0.45)',
+  padding: `${spacing.sm}px ${spacing.md}px`,
+  borderRadius: radius.md,
   zIndex: 2,
 };
 const msgStyle = {
@@ -653,4 +713,15 @@ const styles = StyleSheet.create({
   checkOn: { backgroundColor: colors.accent, borderColor: colors.accent },
   vidTitle: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink },
   vidSub: { fontFamily: fonts.regular, fontSize: 12, color: colors.muted, marginTop: 1 },
+  skipRear: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.surface,
+    marginBottom: spacing.md,
+  },
+  skipRearText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.inkSoft },
 });

@@ -1,11 +1,11 @@
 import { GaitReportRecord } from '../storage/reportRecord';
 import { buildCoachFeatures } from './features';
+import { AI_REQUEST_TIMEOUT_MS, proxyHeaders, resolveProxyUrls, withRequestTimeout } from './explain';
 
 // Coach endpoint sits next to the explain endpoint behind the same proxy.
-const EXPLAIN_URL =
-  ((globalThis as any)?.process?.env?.EXPO_PUBLIC_AI_PROXY_URL as string | undefined) ||
-  'http://localhost:8787/api/explain';
-const COACH_URL = EXPLAIN_URL.replace(/\/api\/[^/]+$/, '/api/coach');
+// NOTE: the literal `process.env.EXPO_PUBLIC_...` dot expression is required
+// here too — Expo inlines it at build time and skips any dynamic lookup.
+const COACH_URL = resolveProxyUrls(process.env.EXPO_PUBLIC_AI_PROXY_URL).coachUrl;
 
 export type ChatRole = 'user' | 'assistant';
 export interface ChatMessage {
@@ -34,9 +34,9 @@ export async function coachChat(
   const features = buildCoachFeatures(report);
   const res = await fetch(COACH_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: proxyHeaders(),
     body: JSON.stringify({ features, messages: history }),
-    signal,
+    signal: withRequestTimeout(signal, AI_REQUEST_TIMEOUT_MS),
   });
   if (res.status === 429) throw new CoachRateLimited();
   if (!res.ok) throw new Error(`AI coach responded ${res.status}`);

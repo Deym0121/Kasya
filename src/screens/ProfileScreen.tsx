@@ -44,6 +44,9 @@ type Props = TabScreenProps<'Profile'>;
 export default function ProfileScreen({ navigation }: Props) {
   const [user, setUser] = useState<MockUser | null>(null);
   const [settings, setSettings] = useState<ReminderSettings>({ cadence: 'off' });
+  // Guards the cadence chips: acting on the unloaded defaults could duplicate
+  // or orphan a scheduled notification.
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [reminderNote, setReminderNote] = useState('');
   const [confirmClear, setConfirmClear] = useState(false);
   const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -52,7 +55,11 @@ export default function ProfileScreen({ navigation }: Props) {
     useCallback(() => {
       let active = true;
       getUser().then((u) => active && setUser(u));
-      getReminderSettings().then((s) => active && setSettings(s));
+      getReminderSettings().then((s) => {
+        if (!active) return;
+        setSettings(s);
+        setSettingsLoaded(true);
+      });
       return () => {
         active = false;
         if (confirmTimer.current) clearTimeout(confirmTimer.current);
@@ -71,7 +78,7 @@ export default function ProfileScreen({ navigation }: Props) {
   }
 
   /** Two-tap inline confirm — Alert.alert is a no-op on react-native-web. */
-  function handleClearHistory() {
+  async function handleClearHistory() {
     if (!confirmClear) {
       setConfirmClear(true);
       if (confirmTimer.current) clearTimeout(confirmTimer.current);
@@ -80,10 +87,11 @@ export default function ProfileScreen({ navigation }: Props) {
     }
     if (confirmTimer.current) clearTimeout(confirmTimer.current);
     setConfirmClear(false);
-    clearReports();
+    await clearReports();
   }
 
   async function pickCadence(cadence: ReminderCadence) {
+    if (!settingsLoaded) return; // don't act on the unloaded defaults
     if (cadence === settings.cadence) return;
     if (cadence === 'off') {
       await cancelRescanReminder(settings.notificationId);
@@ -103,6 +111,9 @@ export default function ProfileScreen({ navigation }: Props) {
         notificationId = await scheduleRescanReminder(cadence, settings.notificationId);
         note = "You'll get a notification, and we'll remind you in the app too.";
       } else {
+        // Permission gone — cancel any previously scheduled reminder so it
+        // can't resume as an orphan we no longer track.
+        await cancelRescanReminder(settings.notificationId);
         note = "We'll remind you inside the app. Turn on notifications in system settings to also get a notification.";
       }
     }
@@ -141,7 +152,7 @@ export default function ProfileScreen({ navigation }: Props) {
         <Text style={[T.small, { marginTop: spacing.xs, marginBottom: spacing.md }]}>
           A gentle nudge to re-scan so your trend stays fresh.
         </Text>
-        <View style={styles.chips}>
+        <View style={[styles.chips, !settingsLoaded && { opacity: 0.5 }]}>
           {CADENCES.map((c) => (
             <Chip key={c.key} label={c.label} selected={settings.cadence === c.key} onPress={() => pickCadence(c.key)} />
           ))}
@@ -151,7 +162,15 @@ export default function ProfileScreen({ navigation }: Props) {
 
       <View style={{ height: spacing.xl }} />
       <Card style={styles.menu}>
-        <Row icon="star" label="Upgrade to Premium" onPress={() => navigation.navigate('Paywall')} />
+        {user?.plan === 'premium' ? (
+          // Already premium — a static row, no paywall to visit.
+          <View style={styles.row}>
+            <Feather name="star" size={20} color={colors.success} />
+            <Text style={styles.rowLabel}>Premium active</Text>
+          </View>
+        ) : (
+          <Row icon="star" label="Upgrade to Premium" onPress={() => navigation.navigate('Paywall')} />
+        )}
         <View style={styles.div} />
         <Row icon="refresh-ccw" label="Replay intro" onPress={replayIntro} />
         <View style={styles.div} />

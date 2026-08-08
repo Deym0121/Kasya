@@ -1,5 +1,6 @@
 import { PoseFrame, LANDMARK } from './types';
 import { gaitSignal } from './ruleEngine';
+import { isWalkingGoal } from './insights';
 
 /** Hedged, 2D-defensible form estimates derived from the landmark time-series. */
 export interface FormMetrics {
@@ -123,12 +124,17 @@ export function computeFormMetrics(frames: PoseFrame[]): FormMetrics {
   };
 }
 
-/** Rule-based, wellness-only coaching. No medical / injury / diagnostic language. */
+/**
+ * Rule-based, wellness-only coaching. No medical / injury / diagnostic language.
+ * `goal` (a scan goal from src/goals.ts) switches the cadence bands: walkers are
+ * read against typical walking cadences, not running ones. Omitted = running.
+ */
 export function buildFeedback(
   cadenceSpm: number,
   confidence: string,
   m: FormMetrics,
   captureOk: boolean,
+  goal?: string,
 ): GaitFeedback {
   if (!captureOk || confidence === 'low') {
     return {
@@ -145,7 +151,16 @@ export function buildFeedback(
   const spm = Math.round(cadenceSpm);
 
   if (spm > 0) obs.push(`Your cadence is about ${spm} steps per minute.`);
-  if (spm > 0 && spm < 160) {
+  if (isWalkingGoal(goal)) {
+    // Walkers typically land around 90–130 spm — only nudge well below that.
+    if (spm > 0 && spm < 95) {
+      rec.push('Many walkers feel smoother with slightly quicker, shorter steps — try nudging your cadence up a little.');
+    } else if (spm >= 95 && spm <= 130) {
+      obs.push('That’s right in the typical walking range — a comfortable step rate.');
+    } else if (spm > 130) {
+      obs.push('That’s a brisk pace for walking — nice.');
+    }
+  } else if (spm > 0 && spm < 160) {
     rec.push('Many people feel smoother with slightly quicker, shorter steps — try nudging your cadence up a little.');
   } else if (spm >= 170) {
     obs.push('That’s a brisk, efficient-feeling step rate — nice.');

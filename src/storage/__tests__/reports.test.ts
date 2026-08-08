@@ -76,4 +76,22 @@ describe('reports storage', () => {
     store.set('stridefit:reports:v1', '{not json');
     expect(await listReports()).toEqual([]);
   });
+
+  it('drops malformed records but keeps the valid ones', async () => {
+    const good = makeReport('good');
+    store.set(
+      'stridefit:reports:v1',
+      JSON.stringify([
+        null, // partial write
+        good,
+        { id: 42, createdAt: good.createdAt, result }, // non-string id
+        { id: 'no-date', result }, // missing createdAt
+        { id: 'no-result', createdAt: good.createdAt }, // missing result entirely
+        { id: 'no-cadence', createdAt: good.createdAt, result: { captureQuality: {} } }, // no cadence value
+        { id: 'no-quality', createdAt: good.createdAt, result: { cadence: { value: 160 } } }, // no captureQuality
+      ]),
+    );
+    const all = await listReports();
+    expect(all.map((r) => r.id)).toEqual(['good']);
+  });
 });

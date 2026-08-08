@@ -3,7 +3,11 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { RootScreenProps } from '../navigation';
 import { colors, spacing, type as T, fonts } from '../theme';
 import { ScreenContainer, Button, TextField, Disclaimer } from '../components';
-import { getUser, setOnboarded, setUser } from '../storage/session';
+import { getLastEmail, getPlanFor, setOnboarded, setUser } from '../storage/session';
+import { clearReports } from '../storage/reports';
+import { resetAiUsage } from '../storage/aiQuota';
+import { getReminderSettings, setReminderSettings } from '../storage/settings';
+import { cancelRescanReminder } from '../notifications/reminders';
 
 type Props = RootScreenProps<'SignIn'>;
 
@@ -15,9 +19,23 @@ export default function SignInScreen({ navigation }: Props) {
   async function proceed() {
     const trimmed = email.trim() || 'demo@stridefit.app';
     const name = trimmed.split('@')[0] || 'Runner';
-    // Preserve an existing plan — re-login must never silently downgrade premium.
-    const existing = await getUser();
-    await setUser({ email: trimmed, name, plan: existing?.plan ?? 'free' });
+    // A different account shouldn't inherit the last user's scans, AI
+    // allowance or reminder schedule — clear them. The same person returning
+    // (any capitalization) keeps everything.
+    const last = await getLastEmail();
+    if (last && last.toLowerCase() !== trimmed.toLowerCase()) {
+      const reminders = await getReminderSettings();
+      await cancelRescanReminder(reminders.notificationId);
+      await Promise.all([
+        clearReports(),
+        resetAiUsage(),
+        setReminderSettings({ cadence: 'off', notificationId: null }),
+      ]);
+    }
+    // Restore this email's plan from the entitlement map (it survives
+    // sign-out) — re-login must never silently downgrade premium.
+    const plan = await getPlanFor(trimmed);
+    await setUser({ email: trimmed, name, plan });
     await setOnboarded(true);
     navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
   }

@@ -9,6 +9,7 @@ import { analyzeGait, makeSyntheticWalk, makeSyntheticRearWalk } from '../gait';
 import { buildGaitReport, GaitReportRecord } from '../storage/reportRecord';
 import { saveReport } from '../storage/reports';
 import { tagPendingVideo, clearPendingVideo } from '../viz/videoHolder';
+import { rescheduleAfterScan } from '../notifications/reminders';
 import { successHaptic } from '../haptics';
 import { Button } from '../components';
 
@@ -31,24 +32,38 @@ export default function ProcessingScreen({ navigation, route }: Props) {
     let navTimer: ReturnType<typeof setTimeout> | undefined;
 
     // The real work — analysis is fast; a small minimum hold keeps the moment
-    // legible without faking progress steps.
+    // legible without faking progress steps. Nothing persists until the hold
+    // has elapsed, so it doubles as the back-out window.
+    const hold = sleep(1200);
     const work = (async (): Promise<GaitReportRecord> => {
-      const simulated = !frames || frames.length === 0;
+      const hasSide = !!frames && frames.length > 0;
+      const hasRear = !!frontalFrames && frontalFrames.length > 0;
+      // A rear pass with no side capture shouldn't be reachable — if it is,
+      // fail honestly rather than pairing the real rear view with an invented
+      // side walk presented as real.
+      if (!hasSide && hasRear) throw new Error('rear view without a side capture');
+      const simulated = !hasSide;
       const captured = simulated
         ? makeSyntheticWalk({ durationSec: 8, fps: 30, cadence: 150 + Math.round(Math.random() * 40) })
         : frames!;
       // Rear view: real second pass if captured; on the simulated path, synthesize
       // one too so the demo shows the full two-angle analysis.
-      const rear =
-        frontalFrames && frontalFrames.length > 0
-          ? frontalFrames
-          : simulated
-            ? makeSyntheticRearWalk({ durationSec: 8, fps: 30, cadence: 160 })
-            : undefined;
+      const rear = hasRear
+        ? frontalFrames
+        : simulated
+          ? makeSyntheticRearWalk({ durationSec: 8, fps: 30, cadence: 160 })
+          : undefined;
       const result = analyzeGait(captured);
       const id = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
-      const record = buildGaitReport(result, goal, id, new Date().toISOString(), captured, rear);
+      const record = buildGaitReport(result, goal, id, new Date().toISOString(), captured, rear, simulated);
+      await hold;
+      if (!mounted) {
+        // Backed out during the hold — a cancelled Processing saves nothing.
+        clearPendingVideo();
+        throw new Error('cancelled');
+      }
       await saveReport(record);
+      rescheduleAfterScan().catch(() => {}); // fire-and-forget — a reminder hiccup must not fail the scan
       // Bind any opt-in clip to THIS report so its Review can show it (never saved
       // with the report); a simulated scan never has one.
       if (simulated) clearPendingVideo();
@@ -58,7 +73,7 @@ export default function ProcessingScreen({ navigation, route }: Props) {
 
     (async () => {
       try {
-        const [record] = await Promise.all([work, sleep(1200)]);
+        const record = await work; // the minimum hold is folded into work
         if (!mounted) return;
         setPhase('done');
         successHaptic();
@@ -79,6 +94,9 @@ export default function ProcessingScreen({ navigation, route }: Props) {
           }
         }, 1150);
       } catch {
+        // A failed (or cancelled) run must not leave a clip waiting to attach
+        // to some later report.
+        clearPendingVideo();
         if (mounted) setPhase('failed');
       }
     })();

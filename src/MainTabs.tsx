@@ -15,7 +15,12 @@ function NullScreen() {
   return null;
 }
 
-/** The raised accent camera button in the middle of the tab bar. */
+/**
+ * The raised accent camera button in the middle of the tab bar. The lift comes
+ * from LAYOUT (the slot extends 14px up via negative margin), not a transform:
+ * RN never delivers touches outside a parent's layout bounds, so a translated
+ * circle would leave its top ~14px dead to taps.
+ */
 function ScanTabButton({ onPress }: BottomTabBarButtonProps) {
   return (
     <View style={styles.scanSlot}>
@@ -23,7 +28,7 @@ function ScanTabButton({ onPress }: BottomTabBarButtonProps) {
         onPress={onPress ?? undefined}
         accessibilityRole="button"
         accessibilityLabel="Start a scan"
-        style={({ pressed }) => [styles.scanBtn, pressed && { transform: [{ translateY: -14 }, { scale: 0.96 }] }]}
+        style={({ pressed }) => [styles.scanBtn, pressed && { transform: [{ scale: 0.96 }] }]}
       >
         <Feather name="camera" size={24} color={colors.onDark} />
       </Pressable>
@@ -54,7 +59,8 @@ export default function MainTabs() {
         name="ScanTab"
         component={NullScreen}
         options={{
-          tabBarLabel: 'Scan',
+          // No tabBarLabel: the custom tabBarButton replaces the whole slot,
+          // so a navigator-level label would never render.
           tabBarButton: (props) => <ScanTabButton {...props} />,
         }}
         listeners={({ navigation }) => ({
@@ -83,7 +89,9 @@ export default function MainTabs() {
 }
 
 const styles = StyleSheet.create({
-  scanSlot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  // marginTop extends the slot's own bounds upward so the whole circle sits
+  // INSIDE them — keeping the raised look while every pixel stays tappable.
+  scanSlot: { flex: 1, alignItems: 'center', justifyContent: 'flex-start', marginTop: -14 },
   scanBtn: {
     width: 56,
     height: 56,
@@ -91,7 +99,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    transform: [{ translateY: -14 }],
     ...shadow.lift,
   },
 });

@@ -18,8 +18,13 @@ export interface CadenceResult {
 
 /** Minimum frames before we attempt any measurement. */
 const MIN_FRAMES = 10;
-/** Below this signal range (normalized units) the subject is treated as still. */
-const STILLNESS_EPSILON = 1e-4;
+/**
+ * Below this rectified ankle-swing amplitude (normalized units) the subject is
+ * treated as still. Landmark jitter on a standing subject reaches roughly 0.03
+ * on this signal; a real side-on walk clears 0.1 comfortably (synthetic walks
+ * swing 0.12–0.2), so 0.05 leaves margin both ways.
+ */
+export const MIN_SWING_AMPLITUDE = 0.05;
 
 const ZERO_CADENCE: MetricEstimate = { value: 0, unit: 'spm', confidence: 'low' };
 
@@ -64,8 +69,10 @@ export function computeCadence(frames: PoseFrame[]): CadenceResult {
   const { min, max } = minMax(rectified);
   const range = max - min;
 
-  // No meaningful side-to-side ankle motion → not walking → no steps.
-  if (range < STILLNESS_EPSILON) {
+  // No meaningful ankle swing → not walking → no steps. The absolute floor
+  // matters: the peak threshold below is self-scaling, so without it pure
+  // landmark jitter on a standing subject would still "count" steps.
+  if (range < MIN_SWING_AMPLITUDE) {
     return { cadence: ZERO_CADENCE, stepCount: 0, durationSec };
   }
 
@@ -82,6 +89,17 @@ export function computeCadence(frames: PoseFrame[]): CadenceResult {
   return { cadence: { value, unit: 'spm', confidence }, stepCount, durationSec };
 }
 
+/** Peak-to-trough amplitude of the rectified ankle-separation signal. */
+function swingAmplitude(frames: PoseFrame[]): number {
+  const diff = frames.map(ankleApDifference);
+  const baseline = median(diff);
+  const rectified = diff.map((v) => Math.abs(v - baseline));
+  const { min, max } = minMax(rectified);
+  return max - min;
+}
+
+const ANKLE_LANDMARKS: number[] = [LANDMARK.LEFT_ANKLE, LANDMARK.RIGHT_ANKLE];
+
 /**
  * Assess whether a capture is good enough to surface metrics. Flags poor
  * landmark visibility and too-few gait cycles rather than emitting a
@@ -93,6 +111,7 @@ export function assessCaptureQuality(frames: PoseFrame[], stepCount: number): Ca
   }
 
   let totalFraction = 0;
+  let ankleFraction = 0;
   for (const frame of frames) {
     let visible = 0;
     for (const idx of KEY_LANDMARKS) {
@@ -100,13 +119,28 @@ export function assessCaptureQuality(frames: PoseFrame[], stepCount: number): Ca
       if (lm && (lm.visibility ?? 0) >= 0.5) visible++;
     }
     totalFraction += visible / KEY_LANDMARKS.length;
+    let anklesVisible = 0;
+    for (const idx of ANKLE_LANDMARKS) {
+      const lm = frame.landmarks[idx];
+      if (lm && (lm.visibility ?? 0) >= 0.5) anklesVisible++;
+    }
+    ankleFraction += anklesVisible / ANKLE_LANDMARKS.length;
   }
   const visibilityScore = totalFraction / frames.length;
+  const ankleVisibility = ankleFraction / frames.length;
   const gaitCyclesDetected = Math.floor(stepCount / 2);
 
   const issues: string[] = [];
   if (visibilityScore < 0.6) {
     issues.push('Body not clearly visible — improve lighting and keep your full body in frame.');
+  }
+  // Cadence comes from the ankles alone, so they must be visible specifically —
+  // the six-landmark average can pass while both ankles are hidden.
+  if (visibilityScore >= 0.6 && ankleVisibility < 0.6) {
+    issues.push('We couldn’t see your ankles clearly — keep your lower legs in frame with good lighting.');
+  }
+  if (swingAmplitude(frames) < MIN_SWING_AMPLITUDE) {
+    issues.push('We couldn’t see enough leg movement — try a side-on view with your whole body in frame.');
   }
   if (gaitCyclesDetected < 2) {
     issues.push('Not enough walking captured — record several strides.');
@@ -141,7 +175,7 @@ export function gaitSignal(frames: PoseFrame[]): {
   const signal = diff.map((v) => Math.abs(v - baseline));
   const { min, max } = minMax(signal);
   const range = max - min;
-  if (durationSec <= 0 || range < STILLNESS_EPSILON) return { signal, stepIndices: [], times };
+  if (durationSec <= 0 || range < MIN_SWING_AMPLITUDE) return { signal, stepIndices: [], times };
   const fps = (frames.length - 1) / durationSec;
   const minHeight = min + 0.5 * range;
   const minDistance = Math.max(1, Math.round(0.2 * fps));
