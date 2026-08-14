@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { Component, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Platform, Pressable } from 'react-native';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -43,7 +43,53 @@ const secureStorage = {
   removeItem: SecureStore.deleteItemAsync,
 };
 
-export default function App() {
+/**
+ * Last-resort boundary around the whole app: any render-time throw shows a
+ * branded retry screen instead of a black void (App Review 2.1(a) — build #8
+ * black-screened when the Convex client threw during the first render).
+ * Deliberately styled with plain values only — theme/font loading may be the
+ * very thing that failed.
+ */
+class RootErrorBoundary extends Component<{ children: ReactNode }, { error: unknown }> {
+  state = { error: null as unknown };
+
+  static getDerivedStateFromError(error: unknown) {
+    return { error };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.warn('[Kasya] root render error', error);
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <View style={styles.crash}>
+          <Text style={styles.crashBrand}>Kasya</Text>
+          <Text style={styles.crashText}>Something went wrong while starting up.</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => this.setState({ error: null })}
+            style={styles.crashBtn}
+          >
+            <Text style={styles.crashBtnText}>Try again</Text>
+          </Pressable>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export default function Root() {
+  return (
+    <RootErrorBoundary>
+      <App />
+    </RootErrorBoundary>
+  );
+}
+
+function App() {
   const [fontsLoaded, fontError] = useFonts(fontMap);
   const [fontTimedOut, setFontTimedOut] = useState(false);
   const [ready, setReady] = useState(false);
@@ -72,7 +118,14 @@ export default function App() {
         return;
       }
       try {
-        const [ob, cloudEmail] = await Promise.all([getOnboarded(), currentUserEmail()]);
+        // The cloud session read must never hold the splash hostage: if Convex
+        // is slow/unreachable, proceed as a local session after 4s — the claim
+        // logic re-runs on the next boot.
+        const cloudEmailWithTimeout = Promise.race<string | null>([
+          currentUserEmail(),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
+        ]);
+        const [ob, cloudEmail] = await Promise.all([getOnboarded(), cloudEmailWithTimeout]);
         // A live cloud session (e.g. returning from the Google/Apple redirect on a
         // fresh browser) walks straight in — claim it locally first.
         if (cloudEmail && !ob) {
@@ -181,4 +234,10 @@ const styles = StyleSheet.create({
   brand: { fontSize: 26, fontWeight: '800', color: colors.ink, letterSpacing: -0.5 },
   webFrame: { flex: 1, backgroundColor: colors.bg, alignItems: 'center' },
   webColumn: { flex: 1, width: '100%', maxWidth: 480 },
+  // Crash screen: plain literals only — never depend on theme/font loading here.
+  crash: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0B0C0E', padding: 32, gap: 12 },
+  crashBrand: { fontSize: 26, fontWeight: '800', color: '#F3F4F6', letterSpacing: -0.5 },
+  crashText: { fontSize: 15, color: '#9CA3AF', textAlign: 'center' },
+  crashBtn: { marginTop: 8, paddingVertical: 12, paddingHorizontal: 28, borderRadius: 999, backgroundColor: '#FF4D0D' },
+  crashBtnText: { fontSize: 15, fontWeight: '700', color: '#0B0C0E' },
 });

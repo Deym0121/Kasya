@@ -12,13 +12,24 @@ import { ConvexReactClient } from 'convex/react';
 const url = process.env.EXPO_PUBLIC_CONVEX_URL;
 
 let client: ConvexReactClient | null = null;
+let initFailed = false;
 
 export function isCloudEnabled(): boolean {
-  return !!url;
+  return !!url && !initFailed;
 }
 
 export function getConvex(): ConvexReactClient | null {
-  if (!url) return null;
-  if (!client) client = new ConvexReactClient(url, { unsavedChangesWarning: false });
+  if (!url || initFailed) return null;
+  if (!client) {
+    try {
+      client = new ConvexReactClient(url, { unsavedChangesWarning: false });
+    } catch (e) {
+      // A broken runtime (e.g. a missing URL polyfill) must degrade to the
+      // fully-local app, never take down the first render (black screen).
+      initFailed = true;
+      console.warn('[convex] client init failed — running local-only', e);
+      return null;
+    }
+  }
   return client;
 }
