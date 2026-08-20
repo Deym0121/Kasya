@@ -1,4 +1,4 @@
-import type { RaceEvent } from './types';
+import type { CountryFilter, RaceEvent } from './types';
 
 /**
  * Date/status helpers. NO Intl / toLocale* — Hermes ships without full Intl
@@ -35,4 +35,40 @@ export function monthKey(e: RaceEvent): string {
 export function monthLabel(key: string): string {
   const [y, m] = key.split('-').map(Number);
   return `${MONTHS[(m || 1) - 1]} ${y}`;
+}
+
+const RESULTS_WINDOW_DAYS = 90;
+
+export function applyFilter(events: RaceEvent[], filter: CountryFilter): RaceEvent[] {
+  if (filter === 'all') return events;
+  if (filter === 'majors') return events.filter((e) => e.major);
+  return events.filter((e) => e.country === filter);
+}
+
+/** Upcoming soonest-first; results = done within 90 days, newest first. */
+export function splitViews(
+  events: RaceEvent[],
+  today: Date,
+): { upcoming: RaceEvent[]; results: RaceEvent[] } {
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const cutoff = new Date(startOfToday);
+  cutoff.setDate(cutoff.getDate() - RESULTS_WINDOW_DAYS);
+  const upcoming = events
+    .filter((e) => statusOf(e, today) !== 'done')
+    .sort((a, b) => a.dateStart.localeCompare(b.dateStart));
+  const results = events
+    .filter((e) => statusOf(e, today) === 'done' && parseRaceDate(e.dateStart) >= cutoff)
+    .sort((a, b) => b.dateStart.localeCompare(a.dateStart));
+  return { upcoming, results };
+}
+
+export function groupByMonth(events: RaceEvent[]): { key: string; events: RaceEvent[] }[] {
+  const out: { key: string; events: RaceEvent[] }[] = [];
+  for (const e of events) {
+    const key = monthKey(e);
+    const last = out[out.length - 1];
+    if (last && last.key === key) last.events.push(e);
+    else out.push({ key, events: [e] });
+  }
+  return out;
 }
