@@ -1,0 +1,51 @@
+{
+  "events": [
+    {
+      "id": "tokyo-marathon-2026",
+      "name": "Tokyo Marathon 2026",
+      "country": "JP",
+      "city": "Tokyo",
+      "dateStart": "2026-03-01",
+      "distances": ["42K"],
+      "major": true,
+      "officialUrl": "https://www.marathon.tokyo/en/",
+      "resultsUrl": "https://www.marathon.tokyo/en/",
+      "sourceUrl": "https://www.marathon.tokyo/en/"
+    },
+    {
+      "id": "boston-marathon-2026",
+      "name": "Boston Marathon 2026",
+      "country": "US",
+      "city": "Boston",
+      "dateStart": "2026-04-20",
+      "distances": ["42K"],
+      "major": true,
+      "officialUrl": "https://www.baa.org/",
+      "resultsUrl": "https://www.baa.org/",
+      "sourceUrl": "https://www.baa.org/"
+    },
+    {
+      "id": "london-marathon-2026",
+      "name": "TCS London Marathon 2026",
+      "country": "GB",
+      "city": "London",
+      "dateStart": "2026-04-26",
+      "distances": ["42K"],
+      "major": true,
+      "officialUrl": "https://www.tcslondonmarathon.com/",
+      "resultsUrl": "https://www.tcslondonmarathon.com/",
+      "sourceUrl": "https://www.tcslondonmarathon.com/"
+    },
+    {
+      "id": "national-milo-marathon-manila-2026",
+      "name": "2026 National MILO Marathon — Manila Leg",
+      "country": "PH",
+      "city": "Pasay",
+      "dateStart": "2026-03-01",
+      "distances": ["42K"],
+      "major": false,
+      "officialUrl": "https://www.milo.com.ph/national-milo-marathon",
+      "sourceUrl": "https://www.philstar.com/sports/2026/02/20/2509148/15-races-calendared-2026-milo-marathon-series"
+    }
+  ]
+}
