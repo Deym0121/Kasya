@@ -14,7 +14,8 @@
         "EXPO_PUBLIC_REVENUECAT_KEY": "test_ccNMWeYzOHdaMotKBviFYFdGpir",
         "EXPO_PUBLIC_CONVEX_URL": "https://youthful-civet-99.convex.cloud",
         "EXPO_PUBLIC_AI_PROXY_URL": "https://youthful-civet-99.convex.site/api/explain"
-      }
+      },
+      "channel": "development"
     },
     "preview": {
       "distribution": "internal",
@@ -25,7 +26,8 @@
         "EXPO_PUBLIC_REVENUECAT_KEY": "test_ccNMWeYzOHdaMotKBviFYFdGpir",
         "EXPO_PUBLIC_CONVEX_URL": "https://youthful-civet-99.convex.cloud",
         "EXPO_PUBLIC_AI_PROXY_URL": "https://youthful-civet-99.convex.site/api/explain"
-      }
+      },
+      "channel": "preview"
     },
     "production": {
       "autoIncrement": true,
@@ -37,7 +39,8 @@
       },
       "ios": {
         "credentialsSource": "local"
-      }
+      },
+      "channel": "production"
     }
   },
   "submit": {

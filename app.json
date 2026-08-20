@@ -27,6 +27,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
+        "android.permission.CAMERA",
         "android.permission.CAMERA"
       ]
     },
@@ -66,6 +67,12 @@
         "projectId": "d18fac79-a1c1-465f-a0bd-cad5799b4753"
       }
     },
-    "owner": "deym0121"
+    "owner": "deym0121",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/d18fac79-a1c1-465f-a0bd-cad5799b4753"
+    }
   }
 }
