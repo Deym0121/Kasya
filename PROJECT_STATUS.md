@@ -1,221 +1,133 @@
-# Kasya — Project Status & Handoff
+# Kasya — Project Status / Session Handoff
 
-> **Renamed:** this app is now **Kasya** (2026-07-16). Older references to "StrideFit" in dated docs are historical.
+> Rewritten 2026-08-21 (v1.1 shipping day). This file is the single resume point
+> for any new Claude session. Read top to bottom before doing anything.
 
-_Last updated: 2026-08-07 (full-app bug-fix sweep: ~35 audit findings fixed across capture, gait core,
-entitlement, storage, AI proxy and viz — see git log; 129 tests + typecheck green). This is the single
-source of truth for picking the project back up._
+## ⭐ RESUME HERE — exact next actions
 
-## What it is
+1. **WAITING ON: Lloyd pastes the build command** (below). That produces iOS
+   **build #15**, version **1.1.0**, from branch `feature/shoppable-shoe-finder`
+   @ `03a53db`, with `--auto-submit` (uploads to App Store Connect by itself).
 
-A **wellness-grade running/walking form coach + comfort-led shoe finder** (React Native + Expo, TypeScript).
-Record a short walk with your phone/webcam → on-device/in-browser pose analysis → a real cadence + form
-read → slow-mo review + graph + feedback → shoe matches. Capture is **two-angle**: a required **side view**
-(cadence + form) plus an **optional rear view** (hip level, base of support, sway, left/right symmetry),
-merged into **one** result. **Privacy-first: nothing is saved to your history but derived motion data and
-metrics** — an optional review clip stays on-device and is deleted right after the review, never uploaded.
-Wellness-only framing (estimates, never medical/diagnostic claims).
+   ```
+   cd "C:\Users\USER\OneDrive\Desktop\Gait Analyzer" && npx eas-cli build --platform ios --profile production --non-interactive --auto-submit --no-wait
+   ```
 
-Full product plan: `~/.claude/plans/please-re-plan-this-wiggly-pony.md`
+2. **When build #15 FINISHES** (poll `npx eas-cli build:list --platform ios --limit 1 --non-interactive --json`;
+   a Monitor with a 60s poll loop works well, 60-min timeout):
+   - ASC **version 1.1 already exists** (id `12fb4005-3900-46af-b412-4d585b0c59b5`,
+     state PREPARE_FOR_SUBMISSION, **release notes already written** via API).
+   - Attach build #15 to that version (PATCH the appStoreVersion `build`
+     relationship), then create + submit a `reviewSubmission` (POST
+     /v1/reviewSubmissions with app 6792974071, platform IOS → POST
+     reviewSubmissionItems with the appStoreVersion → PATCH submitted:true).
+   - ASC API auth: JWT ES256, key `AuthKey_7AHM7AUHJ7.p8` (repo root), kid
+     7AHM7AUHJ7, iss `edb70a08-d422-4c9f-86e4-a44f810109ed`, exp ≤20 min.
+     Working JWT pattern: see any recent `node -e` ASC call in this repo's
+     session history (crypto.sign sha256, dsaEncoding ieee-p1363, base64url).
+   - Expect review to clear in 24–48h (update to an approved app).
 
----
+3. **If build #15 ERRORS**: logs via `build:view <id> --json` →
+   `artifacts.xcodeBuildLogsUrl` → **brotli-compressed** (`zlib.brotliDecompressSync`),
+   grep `fatal error|error:`. Builds #13/#14 both failed on skia's
+   `'third_party/base64.h' file not found` — root cause and fix below; that
+   specific failure should be impossible now (the post-install hook rewrites the
+   include itself).
 
-## Current status (what works today)
+4. **After v1.1 is live**: OTA-first policy applies (next section). Also offer
+   Lloyd the two deferred setups: the weekly race auto-updater routine, and the
+   camera on-device verification pass.
 
-| Area | Status |
+## 🚦 RELEASE POLICY — OTA-first (Lloyd's standing instruction, 2026-08-21)
+
+**Any change that is JS/TS/assets-only ships via EAS Update, NOT a new build:**
+
+```
+cd "C:\Users\USER\OneDrive\Desktop\Gait Analyzer" && npx eas-cli update --channel production --message "<what changed>"
+```
+
+- Works only for users on build ≥15 (first binary with expo-updates) and same
+  runtimeVersion (policy `appVersion` → currently 1.1.0).
+- A new native BUILD is needed only when native bits change: new/removed native
+  packages or config plugins, app.json native config, `assets/models/*`,
+  expo-updates config itself, or an expo SDK upgrade. (babel.config.js changes
+  ride OTA as a new bundle, but device-test worklets changes via build first.)
+- When a build IS needed, bump `expo.version` (new runtimeVersion) and expect
+  App Review again.
+
+## Where everything is
+
+- **Repo**: `C:\Users\USER\OneDrive\Desktop\Gait Analyzer` (OneDrive — mind disk
+  space, C: has been critically full; regenerable caches were purged 2026-08-21;
+  Recycle Bin emptying + E:\ migration still pending, Lloyd's call).
+- **Release branch**: `feature/shoppable-shoe-finder` (v1.1.0 RC @ `03a53db`).
+  `main` is stale (pre-v1.0); merge down after v1.1 ships.
+- **Worktrees**: `.claude/worktrees/races-tab` (merged, keep until v1.1 ships),
+  `full-app-testing-bugs-112841` (audit fixes, merged), `kasya-logo-dark-mode-ad574c` (stale).
+- **Backend**: Convex `youthful-civet-99`; deploy key in `.env.local`
+  (`CONVEX_DEPLOY_KEY`). Tables: users/reports/entitlements/**raceEvents** (27
+  source-verified events live; `npx convex run races:list '{}'` to verify).
+- **App Store**: app id 6792974071, v1.0 live (build 11), **price $0.00** (set
+  via API 2026-08-21), v1.1 staged. RevenueCat entitlement wiring done pre-v1.0.
+- **EAS**: project d18fac79-a1c1-465f-a0bd-cad5799b4753 (owner deym0121).
+  Channels: development/preview/production (eas.json).
+
+## v1.1.0 content (all committed, 211/211 tests, typecheck clean)
+
+| Commit | What |
 |---|---|
-| Full app flow | ✅ Onboarding → sign-in (mock) → **bottom tabs (Home · Scan · History · Profile)** → scan setup → camera guide → scan → processing → result → **review/slow-mo** → shoe matches → paywall |
-| **Bottom tab navigation** | ✅ Root stack + nested tabs; raised center Scan button; scan flow full-screen over tabs |
-| **Scan history + progress** | ✅ History tab: trend chart (cadence/symmetry/stance, svg), "up about N spm" delta, scan list → Result, per-scan delete + Clear all (tested progress.ts) |
-| **Reminders & coaching** | ✅ Re-scan reminder (Off/Weekly/2wk/Monthly in Profile): in-app due banner everywhere + optional native local notification (expo-notifications; web = banner only). Daily rotating "Today's focus" coach card (tested coach.ts) |
-| **Metric explainers** | ✅ Tap any metric tile → plain-English + typical-range panel (tested metricInfo.ts; bands mirror form/frontal thresholds); outlier tiles warn-tinted |
-| **Demo paywall entitlement** | ✅ "Start free trial"/"Lifetime" set plan=premium locally (honest "no payment was made" note); premium gates ONLY the AI coach chat (shoe matches + history are free for everyone — the paywall copy says so honestly); plan survives sign-out/re-login via a per-email entitlement map |
-| **Post-scan celebration** | ✅ Honest Processing (no fake ticker; min 1.2s hold) → svg success ring + haptic (expo-haptics, native) → Result count-up hero + staggered card reveals (RN Animated — NOT reanimated) |
-| **Real gait analysis on web** | ✅ MediaPipe BlazePose on the webcam, live skeleton, real cadence + form metrics from real movement |
-| **Two-angle capture** | ✅ Side view (required) → optional rear view chained in-screen (reuses the loaded model) → both fold into one report; rear view adds hip drop, base width, sway, symmetry |
-| **Get-ready countdown** | ✅ Selectable 3/5/10s lead-in before recording (big on-screen count), so users get into position |
-| **Positioning guide** | ✅ Dashed body-outline overlay before recording (turns green when detected) — web + native; `src/viz/bodyGuide.ts` |
-| **3D skeleton (Review)** | ✅ Drag-to-rotate skeleton from captured depth (z), with callout pins on flagged joints (bounce/overstride/knee); `src/viz/Skeleton3D.tsx` |
-| **Rear left/right view** | ✅ Per-leg alignment lines (teal L / coral R) + Left vs Right foot-lift/base panel. **Comfort-led, NO pronation / shoe-type prescription** (deliberately) |
-| **Gait-cycle diagram** | ✅ Educational stance/swing phase graphic (heel strike → swing) in Review; `src/viz/GaitCycleDiagram.tsx` |
-| Capture gating | ✅ Won't advance unless it recorded a usable walk (side gated on cadence/quality, rear on frontal quality; detects you in frame; validates after recording) |
-| Slow-mo review + graph | ✅ Skeleton replay (0.25/0.5/1×) + step-rhythm graph + metrics + feedback, all from saved data |
-| **Opt-in video review** | ✅ Off by default; "Record my video (just this once)" → in-memory (web) / temp file (native) clip shown in Review with skeleton overlay, then **hard-deleted on exit**; never saved to the report, never uploaded. `videoHolder.ts` + `VideoReplay.{web,native}.tsx` |
-| Smart analysis | ✅ Per-foot step events, step timing, stance %, overstride at contact, knee angle at contact/peak, symmetry, lead foot, plain-English "how your step works" walkthrough |
-| AI explanation (OpenRouter) | ✅ Optional — local secure proxy; app falls back to built-in tip if off |
-| **AI coach (chatbot)** | ✅ Multi-turn **chat** on **gpt-5-mini** (env-swappable), scoped ONLY to the scan's numbers — refuses off-topic (verified). **Premium-only, 50 chats/day** (client quota `aiQuota.ts`); free users see the rule-based plan + upgrade CTA. `reasoning:{effort:'low'}` + higher max_tokens so the reasoning model returns visible content. Proxy also rate-limits per-IP/min as a cost backstop. Needs `npm run server` + `OPENROUTER_API_KEY` in `.env` (desktop/localhost, or a reachable proxy URL for phone) |
-| **Movement replay (X-ray)** | ✅ Replaced the drag-3D — **shaded volumetric X-ray body** (tapered limb/torso/head volumes, blue gradient + glow) + bone skeleton that re-enacts the captured motion, glowing the joints the analysis flagged (wellness-framed, not injury); `src/viz/XraySkeleton.tsx` |
-| **Shoe images** | ✅ `Shoe.image` field + `ShoeThumb` (real photo when set, tinted sneaker glyph otherwise) on Home + ShoeMatches |
-| Shoe matching | ✅ **Gait-informed + comfort-led** — ranks the WHOLE 14-shoe catalog by goal + scan signals (bounce nudges cushioning), scan-specific reasons; NOT pronation/foot-type. FTC "our product" labels; own product never ranked above an equal rival. Full list shown to everyone (no paywall gate) |
-| **Races tab (v1.1)** | ✅ Curated multi-country race calendar (14 PH + 7 SEA + 6 Majors, all source-verified) on Convex raceEvents; Upcoming/Results views, link-out registration/results; offline cache + bundled seed; live-verified in browser |
-| Design system | ✅ Sora typeface, ink/coral palette, Feather icons, custom components |
-| Backend (Supabase) | ⬜ Not built — everything is local (AsyncStorage / localStorage) |
-| **Real pose on the PHONE** | ⬜ Scaffolded but needs a dev build — see `BUILD_NATIVE.md` (not verified on-device) |
+| `42569f9` | expo-updates (OTA client), runtimeVersion=appVersion, channels |
+| `89e4328` | **Races tab** merge: multi-country calendar (14 PH + 7 SEA + 6 Majors, every event date-verified against its sourceUrl), Upcoming/Results, month strip, RaceDetail, live Convex + AsyncStorage cache + bundled seed fallback. Browser-verified end to end. |
+| `8fb121a` | version 1.1.0 |
+| `d4d39db` + `ca6526b` | skia HEADER_SEARCH_PATHS config plugin (kept; belt) |
+| `33ef80a` | **build fix that matters**: `eas-build-post-install` hook patches skia 2.6.2's self-broken include of `third_party/base64.h` → `base64.h` (builds #13/#14 failure) |
+| `03a53db` | **real camera enablement**: bundles `assets/models/pose_landmarker_lite.task` (5.78MB, official Google) + registers `react-native-mediapipe-posedetection` plugin (assetsPaths) + adds `babel.config.js` (worklets-core plugin — was missing, frame processors were never worklets) + visible fallback reason on SimulatedScanScreen + walkthrough grammar fix |
 
-**Tests:** 87 passing (vitest — gait core + rear-view pass incl. per-side + metricInfo/progress/coach/reminderDue/reports storage, all with no-medical-language + hedging guards). **Typecheck:** clean. **Web bundle:** builds (~715 modules).
+## Camera reality (from the 3-agent audit, 2026-08-21)
 
----
+- Before `03a53db` real capture was **impossible** on every build: model never
+  bundled (MODEL_NOT_FOUND forever) and babel worklets plugin missing
+  (setFrameProcessor throw). Both fixed. **Not yet device-verified.**
+- Remaining on-device risks: skeleton overlay coordinate mapping (rotation/
+  mirror/cover-crop via the package's ViewCoordinator — may need an OTA tuning
+  round) and the `__has_include(<VisionCamera/FrameProcessorPlugin.h>)` plugin
+  registration under static frameworks (visible in device logs:
+  "Registering frame processor plugin: poseDetection" vs "class not found").
+- **The test**: scan on a real iPhone. Real ≈ 10s capture with skeleton;
+  fallback = instant results + Demo badge + a visible "Camera engine note" line.
 
-## How to run
+## Known follow-ups (all OTA-able after v1.1)
 
-Everything runs locally. **Node 24, npm 11** already set up.
+From the accuracy audit (headline metrics are trustworthy — cadence ±2.1% over
+54 configs, symmetry tracks truth, gates work): heavy-jitter standing subject
+can fabricate ~72spm at HIGH confidence (add a jitter gate); extreme step-length
+asymmetry halves cadence with contradictory walkthrough; stance% reads ~50 vs
+physiological ~60 (extrema-method bias — relabel or recalibrate); two cadence
+pipelines disagree up to 5%; simulated-scan demo knee numbers implausible.
+From the shoes audit (recommendations correct + honest across 100 combos):
+bounce=0 shown as "controlled" instead of unmeasured; tight-budget top-5 can be
+all over budget; Home top-3 ignores saved budget; catalog premium-first tie
+ordering. Races: PixHero was unreachable (TLS) — retry for PH photosUrl later;
+MILO Aug legs (Davao/GenSan/Dipolog/CDO) can be added from the same verified
+Pinoy Fitness source if more volume wanted.
 
-```bash
-npm install          # first time
-npm test             # 33 unit tests (gait math, feedback, mapping)
-npm run typecheck    # tsc --noEmit
-npm run web          # web app -> http://localhost:8085  (press w if using `npm start`)
-```
+## Deferred (Lloyd said yes, do after ship)
 
-### See the real analyzer (web) — the main path today
-1. `npm run web` → open **http://localhost:8085**
-2. Start scan → pick a goal → Continue → Start recording → **allow the camera**
-3. **Step back so your whole body (legs + feet) is in frame** (the Record button enables when you're detected)
-4. Record + **walk side-on for 10s** → then either **"+ Add rear view"** (turn away, walk straight away for 10s)
-   or **"Analyze side view only"** → Result → **Review & slow-mo → "How your step works"**
+1. **Weekly race auto-updater**: scheduled routine — research newly announced
+   races (same verify-against-official-source rules as `scripts/check-races-seed.mjs`),
+   add via `scripts/seed-races.mjs` + `npx convex import --table raceEvents
+   --replace --format jsonLines scripts/raceEvents.jsonl -y`, report to Lloyd.
+2. Camera device-verification round (overlay alignment → OTA tune).
+3. E:\ migration of the repo (disk).
 
-### Optional: AI-written explanation (OpenRouter)
-```bash
-copy .env.example .env      # then paste OPENROUTER_API_KEY=sk-or-...
-npm run server              # secure proxy on localhost:8787 (key never ships in the app)
-```
-The Result screen's coaching tip upgrades to AI text (with an "AI" badge) when the proxy is reachable.
+## Hard-won gotchas (do not relearn these)
 
-### Phone via Expo Go (mock/simulated flow only)
-`npx expo start --tunnel` → scan the QR Expo prints. The scan runs a **simulated** analysis in Expo Go
-(real camera needs the dev build below). Everything else is the real app.
-
-### Phone with REAL camera pose (the dev build) — not yet verified
-See **`BUILD_NATIVE.md`**. Requires `expo prebuild` + an EAS/dev build (not Expo Go). Known open items:
-worklets version reconciliation (vision-camera v4 uses `worklets-core`, reanimated 4 uses
-`react-native-worklets`) and on-device coordinate tuning.
-
----
-
-## Architecture & key files
-
-```
-App.tsx                     Root native-stack (Onboarding/SignIn/Tabs + full-screen flows)
-src/MainTabs.tsx            Bottom tabs: Home · Scan (center action → ScanSetup) · History · Profile
-index.ts                    Expo entry
-
-src/gait/                   PURE-TS analysis core (unit-tested, no RN imports)
-  types.ts                  Landmark / PoseFrame / GaitResult; MediaPipe 33-landmark indices
-  signal.ts                 median, findPeaks (plateau-aware)
-  ruleEngine.ts             computeCadence, assessCaptureQuality, analyzeGait, gaitSignal
-  poseMapper.ts             toPoseFrame — MediaPipe landmarks -> PoseFrame (by index, visibility)
-  events.ts                 detectFootEvents — per-foot contacts + toe-offs
-  stepAnalysis.ts           analyzeSteps + describeGait (step timing, stance, walkthrough)
-  form.ts                   computeFormMetrics + buildFeedback (wellness-only)
-  frontal.ts                REAR-view pass: analyzeFrontal (hip drop, base width, sway, symmetry) + quality + feedback
-  detailed.ts               analyzeGaitDetailed / buildDetail / buildFrontalDetail / downsampleFrames
-  insights.ts               cadenceTip (rule-based fallback)
-  metricInfo.ts             tap-to-explain copy + typical bands (mirror form/frontal thresholds)
-  progress.ts               buildTrends / cadenceDelta / deltaCopy (History charts)
-  coach.ts                  GENERIC_TIPS + pickCoachTip (deterministic daily rotation)
-  synthetic.ts              makeSyntheticWalk (simulated scans + tests)
-  GaitEngine.ts / MockGaitEngine.ts / LivePoseGaitEngine.ts   engine interface + adapters
-
-src/screens/                Onboarding, SignIn, Home, ScanSetup, CameraGuide,
-  PoseScanScreen.web.tsx      real webcam pose (MediaPipe from CDN)
-  PoseScanScreen.native.tsx   dispatcher: Expo Go -> Simulated, dev build -> PoseScanCamera
-  PoseScanCamera.native.tsx   real device camera (vision-camera + skia), @ts-nocheck
-  SimulatedScanScreen.tsx     simulated fallback
-  Processing, Result, Review, ShoeMatches, Paywall, Profile
-
-src/viz/                    SkeletonPlayer.tsx (2D replay + optional L/R leg lines), GaitGraph.tsx, TrendChart.tsx,
-                            XraySkeleton.tsx (X-ray movement replay + joint glow), GaitCycleDiagram.tsx,
-                            LeftRightCompare.tsx, ShoeThumb.tsx (shoe image/glyph), bodyGuide.ts — react-native-svg
-src/goals.ts                shared GOALS map + goalLabel
-src/haptics.ts              successHaptic (expo-haptics; web no-op)
-src/notifications/          reminders.ts — the ONLY expo-notifications touchpoint (lazy, native-only)
-src/ai/                     features.ts (buildGaitFeatures + buildCoachFeatures), explain.ts, coach.ts (client calls)
-src/shoes/ + src/data/      matchShoes (comfort-led) + seed shoe catalog
-src/storage/                reportRecord (what's persisted), reports (AsyncStorage, capped 20, delete/clear), session,
-                            settings (reminder prefs), reminderDue (pure due logic + banner copy)
-src/components.tsx          UI kit (Button, Card, Chip, IconBubble, etc.)
-src/theme.ts                design tokens (Sora fonts, ink/coral colors)
-
-server/dev-proxy.mjs        OpenRouter proxy (holds the key; -> Supabase Edge Function later)
-supabase/migrations/0001_init.sql   corrected Postgres schema + RLS (not deployed yet)
-BUILD_NATIVE.md             dev-build steps for real phone pose
-.env.example                OpenRouter config template (.env is gitignored)
-```
-
-### Analysis pipeline
-`frames: PoseFrame[]` (real from webcam, or `makeSyntheticWalk` for the simulated path)
-→ `analyzeGait` (cadence + capture-quality gate)
-→ `analyzeSteps` (per-foot events → step timing, stance, overstride-at-contact, knee angles, symmetry)
-→ `computeFormMetrics` (vertical oscillation, knee flexion range)
-→ `buildFeedback` + `describeGait` (walkthrough)
-→ `buildDetail` persists metrics + feedback + graph + steps + walkthrough + **downsampled skeleton** (never video).
-
-Optional **rear view** runs in parallel to the side pass and is merged into the same report:
-`frontalFrames: PoseFrame[]` → `analyzeFrontalDetailed` (hip drop, base width, sway, symmetry + **per-side lift/base
-via `analyzeFrontalSides`** + quality + wellness feedback) → `buildFrontalDetail` persists `frontal` + a downsampled
-rear skeleton. Cadence stays side-only. Landmark **depth (z) is now kept** (rounded) so the saved skeleton drives
-the 3D view. NOT computed (not defensible from 2D): **pronation, foot-strike type, support/stability prescription**.
-
----
-
-## Data & privacy model
-- **Saved** (AsyncStorage / a Supabase row later): cadence, form metrics, feedback, graph data, step
-  analysis, walkthrough, and a **downsampled skeleton** (for replay). History capped at 20 scans.
-- **Never saved to storage:** the video/frames of you — the persisted report holds only derived landmark data.
-- **Opt-in video (new):** off by default. If the user ticks "Record my video (just this once)", the clip stays
-  **in memory (web object URL) / a temp file (native)** — held in `src/viz/videoHolder.ts`, shown ONLY on that
-  scan's Review with the skeleton overlaid, then **hard-deleted on Review exit** (revoke URL / delete file). It is
-  **never written into the saved report and never uploaded**, and is tied to the report id so old History scans never
-  show a stale clip. Analysis still uses landmarks only — video is never part of the gait pipeline.
-- AI proxy receives **de-identified numbers only** (no name/email/id) — unit-tested.
-
----
-
-## Honesty / compliance guardrails (do not break)
-- Everything is an **estimate** ("about/roughly"), 2D single-camera.
-- **No medical/injury/diagnostic language** — a test fails if feedback contains it.
-- **No pronation prescription** and **no foot-strike-type claims** (not defensible from normal video).
-- Shoe matching is **comfort-led**, not foot-type-prescriptive; own products are labeled (FTC).
-- Persistent wellness disclaimer in the UI.
-
----
-
-## Git history (branch `master`, local only — no remote yet)
-```
-874885d  Smarter, detailed gait analysis + per-step "what's happening" walkthrough
-faece44  Add review, slow-mo replay, form feedback and a saved gait graph
-9337065  Gate the scan: don't advance without a usable recording
-b64e8c7  Add OpenRouter AI explanation (secure proxy + graceful fallback)
-a536e7c  Real webcam gait analysis on the web (MediaPipe BlazePose)
-b380f0d  Add real on-device pose tracking (camera + skeleton) for the dev build
-c1904f2  Initial commit: Kasya - gait analysis + shoe match app
-```
-
----
-
-## Environment gotchas (these bit us — remember them)
-1. **Dev servers die on session restart.** Re-run `npm run web` / `npm run server`. For a persistent
-   setup, run them in your own terminal.
-2. **Stale Metro cache after installing a package** → white screen / "Unable to resolve" even though
-   the production export works. Fix: restart Metro with a clean cache: `npx expo start -c`.
-3. **MediaPipe can't be bundled by Metro** (dynamic import). We load it from CDN at runtime in
-   `PoseScanScreen.web.tsx` — don't `import '@mediapipe/tasks-vision'` directly.
-4. **Camera needs a secure context** — works on `localhost` and HTTPS.
-5. **Expo tunnels (ngrok) rate-limit / change URL** each restart; prefer running Expo in your own terminal.
-
----
-
-## Suggested next steps (roughly in order)
-1. **Supabase backend** — auth + save scans to the cloud (schema already written in `supabase/`),
-   then move the AI proxy into a Supabase Edge Function and point `EXPO_PUBLIC_AI_PROXY_URL` at it.
-   Re-audit the sync path to keep it numeric-only (no video — audited clean locally 2026-07-03).
-2. ~~History / progress view~~ ✅ Done (History tab + TrendChart + delta).
-3. **AI-written walkthrough** — run the "how your step works" text through OpenRouter over the real numbers.
-4. **PDF report export** (from saved data) — the paywall promises it.
-5. **Share-a-result card** (image share sheet).
-6. **Phone dev build (Phase 0 spike)** — finish `BUILD_NATIVE.md`, verify real pose on a mid-range Android;
-   ALSO device-verify: success haptic, local reminder notifications, native capture try/catch.
-7. **RevenueCat + IAP** — replace the demo entitlement (PaywallScreen `activate()`) with real purchases.
-8. **Streaks / badges** — engagement mechanics on top of History data.
-9. **Shoe detail screen + catalog filters**.
-10. **Push to GitHub** (currently local-only) so the work is backed up and shareable.
+- EAS xcode logs are **brotli**; the error summary in `build:list` is reliable.
+- eas-cli must NOT be a devDependency (breaks EAS jobs) — invoke via `npx eas-cli`.
+- `.easignore` REPLACES `.gitignore` for uploads.
+- ASC JWTs: keep exp ≤20min or 401 NOT_AUTHORIZED.
+- `npx convex run` needs CONVEX_DEPLOY_KEY exported in the same shell call.
+- Windows sed on this box mangles `\n` in replacements — use node or the Edit tool.
+- Vitest must exclude `.claude/worktrees/**` (root vitest.config.ts does).
+- reanimated stays REMOVED (worklets dual-runtime conflict); babel has ONLY
+  `react-native-worklets-core/plugin`.
