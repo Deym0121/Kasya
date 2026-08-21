@@ -153,3 +153,38 @@ function relativizeAllForms(dirAbs) {
 relativizeAllForms(path.join(skiaRoot, 'cpp'));
 relativizeAllForms(path.join(skiaRoot, 'apple'));
 console.log('patch-skia: all-forms pass rewrote ' + rewrote2 + ' in ' + filesTouched2 + ' files (' + left2 + ' left)');
+
+// Part 6 (build #21): cross-directory quoted includes ("third_party/base64.h"
+// from cpp/jsi, "jsi2/JSIConverter.h" from rnwgpu, etc.) — the last include
+// family that depends on search paths. General resolver: any quoted subpath
+// include that doesn't resolve against its own directory but resolves against
+// a known package root gets rewritten relative. webgpu/dawn includes resolve
+// against cpp/dawn/include which only exists after EAS's postinstall download
+// and provably works via the original podspec entry — the exists-guard leaves
+// them alone locally and on EAS alike if absent.
+const ROOTS = ['cpp', 'cpp/api', 'cpp/api/third_party', 'cpp/jsi', 'cpp/jsi2', 'cpp/rnskia', 'cpp/utils', 'cpp/rnwgpu', 'cpp/rnwgpu/api', 'cpp/rnwgpu/async', 'cpp/dawn/include']
+  .map((r) => path.join(skiaRoot, r));
+let rewrote3 = 0, files3 = 0;
+function crossDirPass(dirAbs) {
+  for (const name of fs.readdirSync(dirAbs)) {
+    const f = path.join(dirAbs, name);
+    const st = fs.statSync(f);
+    if (st.isDirectory()) { crossDirPass(f); continue; }
+    if (!/\.(h|hpp|cpp|mm)$/.test(name)) continue;
+    const src = fs.readFileSync(f, 'utf8');
+    const out = src.replace(/#(import|include) "([^"]+)"/g, (m, kw, inc) => {
+      if (!inc.includes('/') || inc.startsWith('.')) return m;
+      if (fs.existsSync(path.join(path.dirname(f), inc))) return m;
+      const root = ROOTS.find((r) => fs.existsSync(path.join(r, inc)));
+      if (!root) return m;
+      let rel = path.relative(path.dirname(f), path.join(root, inc)).split(path.sep).join('/');
+      if (!rel.startsWith('.')) rel = './' + rel;
+      rewrote3++;
+      return '#' + kw + ' "' + rel + '"';
+    });
+    if (out !== src) { fs.writeFileSync(f, out); files3++; }
+  }
+}
+crossDirPass(path.join(skiaRoot, 'cpp'));
+crossDirPass(path.join(skiaRoot, 'apple'));
+console.log('patch-skia: cross-dir pass rewrote ' + rewrote3 + ' includes in ' + files3 + ' files');
