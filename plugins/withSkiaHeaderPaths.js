@@ -34,6 +34,11 @@ module.exports = function withSkiaHeaderPaths(config) {
           '    end',
         ].join('\n');
         s = s.replace(/post_install do \|installer\|/, 'post_install do |installer|' + snippet);
+        if (!s.includes(MARK)) {
+          // Fail the prebuild loudly rather than shipping another mystery
+          // compile failure: the Podfile template must have changed.
+          throw new Error('withSkiaHeaderPaths: post_install anchor not found in the generated Podfile');
+        }
         fs.writeFileSync(podfile, s);
       }
       return cfg;
