@@ -5,7 +5,7 @@
 
 ## ⭐ RESUME HERE — exact next actions
 
-1. **WAITING ON: Lloyd pastes the build command** (below). That produces iOS
+1. **BLOCKED ON EAS BUILD QUOTA (2026-08-21): free-plan iOS builds exhausted; resets Sep 1.** Lloyd decides: upgrade EAS plan at expo.dev/accounts/deym0121/settings/billing (build #22 immediately) or wait for reset. The build fix chain is COMPLETE and committed through c4ee81c (cross-dir resolver, 158 includes) — when builds are available again, just run the usual eas-cli build command (Claude can run it directly now; user paste no longer needed). Previously: **WAITING ON: Lloyd pastes the build command** (below). That produces iOS
    **build #18**, version **1.1.0**, from branch `feature/shoppable-shoe-finder`
    @ `(git log HEAD)`, with `--auto-submit` (uploads to App Store Connect by itself).
 
