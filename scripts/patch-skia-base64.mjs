@@ -37,3 +37,28 @@ if (leftovers.length) {
   process.exit(1);
 }
 console.log('patch-skia: done (' + patched + ' patched this run, dir verified clean)');
+
+// Part 2 (build #17): the podspec's recursive glob '"$(PODS_TARGET_SRCROOT)/cpp/"/**'
+// does not expand on EAS (SDK headers like include/core/SkImage.h unresolved),
+// while the podspec's EXPLICIT dirs provably reach the compiler. Replace the
+// broken glob with an explicit list of every needed search root.
+const podspec = path.join(root, 'node_modules', '@shopify', 'react-native-skia', 'react-native-skia.podspec');
+if (!fs.existsSync(podspec)) {
+  console.error('patch-skia: podspec not found — layout changed, investigate');
+  process.exit(1);
+}
+const GLOB = '"$(PODS_TARGET_SRCROOT)/cpp/"/**';
+const EXPLICIT = ['cpp/api', 'cpp/api/third_party', 'cpp/skia', 'cpp/jsi', 'cpp/rnskia', 'cpp/utils']
+  .map((d) => '"$(PODS_TARGET_SRCROOT)/' + d + '"')
+  .join(' ');
+let spec = fs.readFileSync(podspec, 'utf8');
+if (spec.includes(GLOB)) {
+  spec = spec.replace(GLOB, EXPLICIT);
+  fs.writeFileSync(podspec, spec);
+  console.log('patch-skia: podspec glob replaced with explicit search roots');
+} else if (spec.includes('$(PODS_TARGET_SRCROOT)/cpp/skia')) {
+  console.log('patch-skia: podspec already patched');
+} else {
+  console.error('patch-skia: podspec glob not found and not patched — layout changed, investigate');
+  process.exit(1);
+}
