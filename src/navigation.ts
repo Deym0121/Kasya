@@ -3,6 +3,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { GaitReportRecord } from './storage/reportRecord';
 import { PoseFrame } from './gait/types';
+import { RaceEvent } from './races/types';
 
 /**
  * Which camera angle a capture screen is set up for. 'rear' is web-internal:
@@ -14,6 +15,7 @@ export type ScanView = 'side' | 'rear';
 /** The bottom tab bar (the authed hub). Scanning lives on a corner FAB, not a tab. */
 export type MainTabParamList = {
   Home: undefined;
+  Races: undefined;
   History: undefined;
   Profile: undefined;
 };
@@ -41,6 +43,7 @@ export type RootStackParamList = {
   ShoeMatches: { report: GaitReportRecord };
   Share: { report: GaitReportRecord };
   Paywall: undefined;
+  RaceDetail: { event: RaceEvent };
 };
 
 /** Props for root-stack screens (scan flow, Result, Paywall, Onboarding, SignIn). */

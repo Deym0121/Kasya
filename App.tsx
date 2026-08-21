@@ -28,6 +28,7 @@ import CoachScreen from './src/screens/CoachScreen';
 import ShoeMatchesScreen from './src/screens/ShoeMatchesScreen';
 import ShareCardScreen from './src/screens/ShareCardScreen';
 import PaywallScreen from './src/screens/PaywallScreen';
+import RaceDetailScreen from './src/screens/RaceDetailScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -217,6 +218,7 @@ function App() {
           <Stack.Screen name="ShoeMatches" component={ShoeMatchesScreen} />
           <Stack.Screen name="Share" component={ShareCardScreen} options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="Paywall" component={PaywallScreen} options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="RaceDetail" component={RaceDetailScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

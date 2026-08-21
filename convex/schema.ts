@@ -49,6 +49,28 @@ export default defineSchema({
     .index('by_user', ['userId'])
     .index('by_rc', ['rcAppUserId']),
 
+  /**
+   * Curated race calendar (public read). Facts only — no urgency fields;
+   * status is derived on the client from dateStart. Every row carries its
+   * provenance sourceUrl. Seeded via `npx convex import` (see seed script).
+   */
+  raceEvents: defineTable({
+    id: v.string(),
+    name: v.string(),
+    country: v.string(),
+    city: v.string(),
+    dateStart: v.string(),
+    distances: v.array(v.string()),
+    major: v.boolean(),
+    regUrl: v.optional(v.string()),
+    officialUrl: v.optional(v.string()),
+    resultsUrl: v.optional(v.string()),
+    photosUrl: v.optional(v.string()),
+    organizer: v.optional(v.string()),
+    sourceUrl: v.string(),
+    updatedAt: v.float64(),
+  }).index('by_date', ['dateStart']),
+
   /** Server-side AI coach quota: one row per user per UTC day. */
   aiUsage: defineTable({
     userId: v.id('users'),

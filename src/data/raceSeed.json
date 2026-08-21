@@ -1,0 +1,457 @@
+{
+  "events": [
+    {
+      "id": "galaxy-manila-marathon-2026",
+      "name": "Galaxy Manila Marathon 2026",
+      "country": "PH",
+      "city": "Pasay",
+      "dateStart": "2026-06-12",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "42K"
+      ],
+      "major": false,
+      "regUrl": "https://raceroster.com/events/2026/115048/galaxy-manila-marathon-2026",
+      "officialUrl": "https://manilamarathon.ph/",
+      "resultsUrl": "https://manilamarathon.ph/results/",
+      "photosUrl": "https://findmyshots.com/events/galaxy-manila-marathon-2026",
+      "organizer": "RUNRIO Inc.",
+      "sourceUrl": "https://raceroster.com/events/2026/115048/galaxy-manila-marathon-2026"
+    },
+    {
+      "id": "camsur-marathon-2026",
+      "name": "CamSur Marathon 2026",
+      "country": "PH",
+      "city": "Iriga City",
+      "dateStart": "2026-06-14",
+      "distances": [
+        "5K",
+        "10K",
+        "21K"
+      ],
+      "major": false,
+      "regUrl": "https://basekm.com/races/2026/camsur-marathon-2026/register",
+      "sourceUrl": "https://basekm.com/races/2026/camsur-marathon-2026/register"
+    },
+    {
+      "id": "singlife-cebu-international-marathon-2026",
+      "name": "Singlife Cebu International Marathon 2026",
+      "country": "PH",
+      "city": "Cebu City",
+      "dateStart": "2026-07-12",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "42K"
+      ],
+      "major": false,
+      "regUrl": "https://raceroster.com/events/2026/114290/singlife-cebu-international-marathon",
+      "organizer": "RUNRIO Inc.",
+      "sourceUrl": "https://raceroster.com/events/2026/114290/singlife-cebu-international-marathon"
+    },
+    {
+      "id": "vnexpress-marathon-danang-2026",
+      "name": "VnExpress Da Nang International Marathon",
+      "country": "VN",
+      "city": "Da Nang",
+      "dateStart": "2026-07-19",
+      "distances": [
+        "10K",
+        "21K",
+        "42K",
+        "Other"
+      ],
+      "major": false,
+      "officialUrl": "https://vm.vnexpress.net/da-nang-2026",
+      "photosUrl": "https://vm.vnexpress.net/da-nang-2026/thu-vien-anh",
+      "organizer": "VnExpress / FPT Online",
+      "sourceUrl": "https://vm.vnexpress.net/da-nang-2026"
+    },
+    {
+      "id": "singlife-davao-marathon-2026",
+      "name": "Singlife Davao Marathon 2026",
+      "country": "PH",
+      "city": "Davao City",
+      "dateStart": "2026-08-15",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "42K"
+      ],
+      "major": false,
+      "regUrl": "https://raceroster.com/events/2026/114291/singlife-davao-marathon",
+      "organizer": "RUNRIO Inc.",
+      "sourceUrl": "https://raceroster.com/events/2026/114291/singlife-davao-marathon"
+    },
+    {
+      "id": "yakult-10-miler-cebu-2026",
+      "name": "34th Yakult 10-Miler Trilogy - Cebu Leg",
+      "country": "PH",
+      "city": "Mandaue",
+      "dateStart": "2026-08-23",
+      "distances": [
+        "5K",
+        "10K",
+        "Other"
+      ],
+      "major": false,
+      "officialUrl": "https://yakult10miler.com/",
+      "organizer": "Yakult Philippines, Inc.",
+      "sourceUrl": "https://yakult10miler.com/race-details"
+    },
+    {
+      "id": "milo-marathon-cebu-leg-2026",
+      "name": "2026 National MILO Marathon - Cebu Leg",
+      "country": "PH",
+      "city": "Cebu City",
+      "dateStart": "2026-09-06",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "42K"
+      ],
+      "major": false,
+      "regUrl": "https://raceroster.com/events/2026/114225/2026-national-milo-marathon",
+      "officialUrl": "https://www.milo.com.ph/national-milo-marathon",
+      "organizer": "MILO Philippines / RUNRIO Inc.",
+      "sourceUrl": "https://www.pinoyfitness.com/2026/01/milo-marathon-2026-full-race-schedule-and-locations-unveiled/"
+    },
+    {
+      "id": "vnexpress-marathon-quy-nhon-2026",
+      "name": "VnExpress Marathon Quy Nhon",
+      "country": "VN",
+      "city": "Quy Nhon",
+      "dateStart": "2026-09-13",
+      "distances": [
+        "5K",
+        "10K",
+        "21K"
+      ],
+      "major": false,
+      "officialUrl": "https://vm.vnexpress.net/quy-nhon-2026",
+      "organizer": "VnExpress / FPT Online",
+      "sourceUrl": "https://vm.vnexpress.net/quy-nhon-2026"
+    },
+    {
+      "id": "singlife-one-clark-international-marathon-2026",
+      "name": "Singlife One Clark International Marathon 2026",
+      "country": "PH",
+      "city": "Clark, Pampanga",
+      "dateStart": "2026-09-20",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "42K"
+      ],
+      "major": false,
+      "regUrl": "https://raceroster.com/events/2026/129863/singlife-one-clark-international-marathon-2026",
+      "organizer": "RUNRIO Inc.",
+      "sourceUrl": "https://raceroster.com/events/2026/129863/singlife-one-clark-international-marathon-2026"
+    },
+    {
+      "id": "vnexpress-marathon-nghe-an-2026",
+      "name": "VnExpress Marathon Grand Tour Nghe An",
+      "country": "VN",
+      "city": "Nghe An",
+      "dateStart": "2026-09-27",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "42K"
+      ],
+      "major": false,
+      "officialUrl": "https://vm.vnexpress.net/nghe-an-2026",
+      "regUrl": "https://vm.vnexpress.net/nghe-an-2026/dang-ky-ca-nhan",
+      "organizer": "VnExpress / FPT Online",
+      "sourceUrl": "https://vm.vnexpress.net/nghe-an-2026"
+    },
+    {
+      "id": "berlin-marathon-2026",
+      "name": "BMW BERLIN-MARATHON 2026",
+      "country": "DE",
+      "city": "Berlin",
+      "dateStart": "2026-09-27",
+      "distances": [
+        "42K"
+      ],
+      "major": true,
+      "officialUrl": "https://www.bmw-berlin-marathon.com/en/",
+      "regUrl": "https://www.bmw-berlin-marathon.com/en/registration/registration-information",
+      "resultsUrl": "https://www.bmw-berlin-marathon.com/en/your-race/results",
+      "organizer": "SCC EVENTS",
+      "sourceUrl": "https://www.bmw-berlin-marathon.com/en/"
+    },
+    {
+      "id": "kuala-lumpur-standard-chartered-marathon-2026",
+      "name": "Kuala Lumpur Standard Chartered Marathon",
+      "country": "MY",
+      "city": "Kuala Lumpur",
+      "dateStart": "2026-10-03",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "42K",
+        "Other"
+      ],
+      "major": false,
+      "officialUrl": "https://www.kl-marathon.com/",
+      "regUrl": "https://registration.kl-marathon.com/login",
+      "organizer": "Dirigo Events Sdn Bhd",
+      "sourceUrl": "https://www.kl-marathon.com/"
+    },
+    {
+      "id": "puma-philippine-half-marathon-manila-2026",
+      "name": "PUMA Philippine Half Marathon Series 2026 - Manila Leg",
+      "country": "PH",
+      "city": "Pasay",
+      "dateStart": "2026-10-11",
+      "distances": [
+        "5K",
+        "10K",
+        "21K"
+      ],
+      "major": false,
+      "regUrl": "https://raceroster.com/events/2026/127016/puma-philippine-half-marathon-series-2026-manila-leg",
+      "organizer": "RUNRIO Inc.",
+      "sourceUrl": "https://raceroster.com/events/2026/127016/puma-philippine-half-marathon-series-2026-manila-leg"
+    },
+    {
+      "id": "chicago-marathon-2026",
+      "name": "Bank of America Chicago Marathon 2026",
+      "country": "US",
+      "city": "Chicago",
+      "dateStart": "2026-10-11",
+      "distances": [
+        "42K"
+      ],
+      "major": true,
+      "officialUrl": "https://www.chicagomarathon.com/",
+      "resultsUrl": "https://www.chicagomarathon.com/runners/race-results/",
+      "organizer": "Chicago Event Management",
+      "sourceUrl": "https://www.chicagomarathon.com/"
+    },
+    {
+      "id": "yakult-10-miler-manila-2026",
+      "name": "34th Yakult 10-Miler Trilogy - Manila Leg",
+      "country": "PH",
+      "city": "Pasay",
+      "dateStart": "2026-10-18",
+      "distances": [
+        "5K",
+        "10K",
+        "Other"
+      ],
+      "major": false,
+      "officialUrl": "https://yakult10miler.com/",
+      "organizer": "Yakult Philippines, Inc.",
+      "sourceUrl": "https://yakult10miler.com/race-details"
+    },
+    {
+      "id": "garmin-run-marathon-series-manila-2026",
+      "name": "Garmin Run Marathon Series 2026 - Manila",
+      "country": "PH",
+      "city": "Pasay",
+      "dateStart": "2026-10-25",
+      "distances": [
+        "5K",
+        "10K",
+        "21K"
+      ],
+      "major": false,
+      "organizer": "Garmin Philippines",
+      "sourceUrl": "https://gadgetsmagazine.com.ph/lifestyle/active-lifestyle/garmin-run-marathon"
+    },
+    {
+      "id": "nyc-marathon-2026",
+      "name": "TCS New York City Marathon 2026",
+      "country": "US",
+      "city": "New York",
+      "dateStart": "2026-11-01",
+      "distances": [
+        "42K"
+      ],
+      "major": true,
+      "officialUrl": "https://www.nyrr.org/tcsnycmarathon",
+      "resultsUrl": "https://www.nyrr.org/tcsnycmarathon/results/race-results",
+      "organizer": "New York Road Runners",
+      "sourceUrl": "https://www.nyrr.org/tcsnycmarathon"
+    },
+    {
+      "id": "trilogy-run-asia-national-finals-2026",
+      "name": "Sante Barley Trilogy Run Asia 2026 - National Finals",
+      "country": "PH",
+      "city": "Pasay",
+      "dateStart": "2026-11-08",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "42K"
+      ],
+      "major": false,
+      "officialUrl": "https://trilogyrunasia.com/philippines/",
+      "organizer": "Trilogy Run Asia",
+      "sourceUrl": "https://trilogyrunasia.com/philippines/"
+    },
+    {
+      "id": "borobudur-marathon-2026",
+      "name": "Bank Jateng Borobudur Marathon",
+      "country": "ID",
+      "city": "Magelang",
+      "dateStart": "2026-11-15",
+      "distances": [
+        "10K",
+        "21K",
+        "42K"
+      ],
+      "major": false,
+      "officialUrl": "https://borobudurmarathon.com/",
+      "regUrl": "https://my.borobudurmarathon.com/",
+      "organizer": "Yayasan Borobudur Marathon",
+      "sourceUrl": "https://borobudurmarathon.com/bank-jateng-borobudur-marathon-2026/"
+    },
+    {
+      "id": "amazing-thailand-marathon-bangkok-2026",
+      "name": "Amazing Thailand Marathon Bangkok",
+      "country": "TH",
+      "city": "Bangkok",
+      "dateStart": "2026-11-28",
+      "distances": [
+        "10K",
+        "21K",
+        "42K",
+        "Other"
+      ],
+      "major": false,
+      "officialUrl": "https://www.amazingthailandmarathon.com/",
+      "regUrl": "https://thailandtrileagueonline.com/atmb26/registrations/",
+      "resultsUrl": "https://amazingthailandmarathon.com/?page_id=40",
+      "organizer": "Thailand Tri-League",
+      "sourceUrl": "https://www.amazingthailandmarathon.com/"
+    },
+    {
+      "id": "singapore-international-marathon-2026",
+      "name": "BYD Singapore International Marathon (fka Standard Chartered Singapore Marathon)",
+      "country": "SG",
+      "city": "Singapore",
+      "dateStart": "2026-12-04",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "42K",
+        "Other"
+      ],
+      "major": false,
+      "officialUrl": "https://singaporeinternationalmarathon.com/",
+      "regUrl": "https://register.singaporeinternationalmarathon.com/",
+      "organizer": "SG International Marathon Pte Ltd",
+      "sourceUrl": "https://singaporeinternationalmarathon.com/"
+    },
+    {
+      "id": "milo-marathon-national-finals-2026",
+      "name": "2026 National MILO Marathon - National Finals",
+      "country": "PH",
+      "city": "Clark, Pampanga",
+      "dateStart": "2026-12-06",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "42K"
+      ],
+      "major": false,
+      "regUrl": "https://raceroster.com/events/2026/114225/2026-national-milo-marathon",
+      "officialUrl": "https://www.milo.com.ph/national-milo-marathon",
+      "organizer": "MILO Philippines / RUNRIO Inc.",
+      "sourceUrl": "https://www.pinoyfitness.com/2026/01/milo-marathon-2026-full-race-schedule-and-locations-unveiled/"
+    },
+    {
+      "id": "singlife-cagayan-de-oro-marathon-2026",
+      "name": "Singlife Cagayan de Oro Marathon 2026",
+      "country": "PH",
+      "city": "Cagayan de Oro",
+      "dateStart": "2026-12-13",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "42K"
+      ],
+      "major": false,
+      "regUrl": "https://raceroster.com/events/2026/130696/singlife-cagayan-de-oro-marathon-2026",
+      "organizer": "RUNRIO Inc.",
+      "sourceUrl": "https://raceroster.com/events/2026/130696/singlife-cagayan-de-oro-marathon-2026"
+    },
+    {
+      "id": "cebu-marathon-2027",
+      "name": "Cebu Marathon 2027",
+      "country": "PH",
+      "city": "Cebu City",
+      "dateStart": "2027-01-10",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "42K"
+      ],
+      "major": false,
+      "regUrl": "https://cebumarathon.myruntime.com/register",
+      "sourceUrl": "https://www.pinoyfitness.com/event/cebu-marathon-2027/"
+    },
+    {
+      "id": "tokyo-marathon-2027",
+      "name": "Tokyo Marathon 2027",
+      "country": "JP",
+      "city": "Tokyo",
+      "dateStart": "2027-03-07",
+      "distances": [
+        "42K"
+      ],
+      "major": true,
+      "officialUrl": "https://www.marathon.tokyo/en/",
+      "regUrl": "https://entry.onetokyo.org/english/entry/agreement",
+      "organizer": "Tokyo Marathon Foundation",
+      "sourceUrl": "https://www.marathon.tokyo/en/"
+    },
+    {
+      "id": "boston-marathon-2027",
+      "name": "Boston Marathon 2027",
+      "country": "US",
+      "city": "Boston",
+      "dateStart": "2027-04-19",
+      "distances": [
+        "42K"
+      ],
+      "major": true,
+      "officialUrl": "https://www.baa.org/races/boston-marathon",
+      "resultsUrl": "https://www.baa.org/races/boston-marathon/results/",
+      "organizer": "Boston Athletic Association",
+      "sourceUrl": "https://www.baa.org/races/boston-marathon"
+    },
+    {
+      "id": "london-marathon-2027",
+      "name": "TCS London Marathon 2027",
+      "country": "GB",
+      "city": "London",
+      "dateStart": "2027-04-24",
+      "distances": [
+        "42K"
+      ],
+      "major": true,
+      "officialUrl": "https://www.londonmarathonevents.co.uk/london-marathon",
+      "regUrl": "https://www.londonmarathonevents.co.uk/ballot",
+      "resultsUrl": "https://www.londonmarathonevents.co.uk/london-marathon/results",
+      "organizer": "London Marathon Events",
+      "sourceUrl": "https://www.londonmarathonevents.co.uk/london-marathon"
+    }
+  ]
+}
