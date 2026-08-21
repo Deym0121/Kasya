@@ -6,8 +6,8 @@
 ## ⭐ RESUME HERE — exact next actions
 
 1. **WAITING ON: Lloyd pastes the build command** (below). That produces iOS
-   **build #16**, version **1.1.0**, from branch `feature/shoppable-shoe-finder`
-   @ `114a7bc`, with `--auto-submit` (uploads to App Store Connect by itself).
+   **build #17**, version **1.1.0**, from branch `feature/shoppable-shoe-finder`
+   @ `8c43a60`, with `--auto-submit` (uploads to App Store Connect by itself).
 
    ```
    cd "C:\Users\USER\OneDrive\Desktop\Gait Analyzer" && npx eas-cli build --platform ios --profile production --non-interactive --auto-submit --no-wait
@@ -32,7 +32,7 @@
    grep `fatal error|error:`. Builds #13/#14 both failed on skia's
    `'third_party/base64.h' file not found` — root cause and fix below; that
    specific failure should be impossible now (the post-install hook rewrites the
-   include itself). Build #15 then failed in the Bundle JavaScript phase: worklets-core babel plugin needs six @babel/plugin-transform-* deps explicitly (hoisting differs on EAS) — fixed in 114a7bc, PINNED TO ^7 (unpinned resolves to Babel 8 = peer conflict).
+   include itself). Build #15 then failed in the Bundle JavaScript phase: worklets-core babel plugin needs six @babel/plugin-transform-* deps explicitly (hoisting differs on EAS) — fixed in 114a7bc, PINNED TO ^7 (unpinned resolves to Babel 8 = peer conflict). Build #16 died on skia SkottieUtils.cpp — same self-include disease, different file; hook now patches the ENTIRE third_party dir generically (8c43a60). Basename includes are safe (Xcode headermap — proven by #16); only third_party/-prefixed subpath includes die.
 
 4. **After v1.1 is live**: OTA-first policy applies (next section). Also offer
    Lloyd the two deferred setups: the weekly race auto-updater routine, and the
@@ -60,7 +60,7 @@ cd "C:\Users\USER\OneDrive\Desktop\Gait Analyzer" && npx eas-cli update --channe
 - **Repo**: `C:\Users\USER\OneDrive\Desktop\Gait Analyzer` (OneDrive — mind disk
   space, C: has been critically full; regenerable caches were purged 2026-08-21;
   Recycle Bin emptying + E:\ migration still pending, Lloyd's call).
-- **Release branch**: `feature/shoppable-shoe-finder` (v1.1.0 RC @ `114a7bc`).
+- **Release branch**: `feature/shoppable-shoe-finder` (v1.1.0 RC @ `8c43a60`).
   `main` is stale (pre-v1.0); merge down after v1.1 ships.
 - **Worktrees**: `.claude/worktrees/races-tab` (merged, keep until v1.1 ships),
   `full-app-testing-bugs-112841` (audit fixes, merged), `kasya-logo-dark-mode-ad574c` (stale).
