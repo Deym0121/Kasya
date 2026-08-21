@@ -127,3 +127,29 @@ function relativizeTree(dirAbs) {
 relativizeTree(path.join(skiaRoot, 'cpp'));
 relativizeTree(path.join(skiaRoot, 'apple'));
 console.log('patch-skia: relativized ' + rewrote + ' includes across ' + filesTouched + ' files (' + left + ' conditional includes left as-is)');
+
+// Part 5 (build #20): one straggler form — Objective-C '#import <include/...>'
+// (angle brackets) and '#import "include/..."' escaped the part-4 regex, which
+// only matched '#include "..."'. Same treatment, all four spellings.
+let rewrote2 = 0, left2 = 0, filesTouched2 = 0;
+function relativizeAllForms(dirAbs) {
+  for (const name of fs.readdirSync(dirAbs)) {
+    const f = path.join(dirAbs, name);
+    const st = fs.statSync(f);
+    if (st.isDirectory()) { relativizeAllForms(f); continue; }
+    if (!/\.(h|hpp|cpp|mm)$/.test(name)) continue;
+    const src = fs.readFileSync(f, 'utf8');
+    const out = src.replace(/#(import|include) ["<]((?:include|modules|src)\/[^">]+)[">]/g, (m, kw, inc) => {
+      const target = path.join(sdkBase, inc);
+      if (!fs.existsSync(target)) { left2++; return m; }
+      let rel = path.relative(path.dirname(f), target).split(path.sep).join('/');
+      if (!rel.startsWith('.')) rel = './' + rel;
+      rewrote2++;
+      return '#' + kw + ' "' + rel + '"';
+    });
+    if (out !== src) { fs.writeFileSync(f, out); filesTouched2++; }
+  }
+}
+relativizeAllForms(path.join(skiaRoot, 'cpp'));
+relativizeAllForms(path.join(skiaRoot, 'apple'));
+console.log('patch-skia: all-forms pass rewrote ' + rewrote2 + ' in ' + filesTouched2 + ' files (' + left2 + ' left)');
