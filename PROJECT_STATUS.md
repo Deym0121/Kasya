@@ -47,6 +47,7 @@ Full product plan: `~/.claude/plans/please-re-plan-this-wiggly-pony.md`
 | **Movement replay (X-ray)** | ✅ Replaced the drag-3D — **shaded volumetric X-ray body** (tapered limb/torso/head volumes, blue gradient + glow) + bone skeleton that re-enacts the captured motion, glowing the joints the analysis flagged (wellness-framed, not injury); `src/viz/XraySkeleton.tsx` |
 | **Shoe images** | ✅ `Shoe.image` field + `ShoeThumb` (real photo when set, tinted sneaker glyph otherwise) on Home + ShoeMatches |
 | Shoe matching | ✅ **Gait-informed + comfort-led** — ranks the WHOLE 14-shoe catalog by goal + scan signals (bounce nudges cushioning), scan-specific reasons; NOT pronation/foot-type. FTC "our product" labels; own product never ranked above an equal rival. Full list shown to everyone (no paywall gate) |
+| **Races tab (v1.1)** | ✅ Curated multi-country race calendar (14 PH + 7 SEA + 6 Majors, all source-verified) on Convex raceEvents; Upcoming/Results views, link-out registration/results; offline cache + bundled seed; live-verified in browser |
 | Design system | ✅ Sora typeface, ink/coral palette, Feather icons, custom components |
 | Backend (Supabase) | ⬜ Not built — everything is local (AsyncStorage / localStorage) |
 | **Real pose on the PHONE** | ⬜ Scaffolded but needs a dev build — see `BUILD_NATIVE.md` (not verified on-device) |
