@@ -10,6 +10,7 @@
 // stack must degrade to the simulated scan, never take down the app.
 import Constants from 'expo-constants';
 import SimulatedScanScreen from './SimulatedScanScreen';
+import { setRealCameraError } from './cameraAvailability';
 
 const isExpoGo = Constants.appOwnership === 'expo';
 let RealCamera = null;
@@ -17,6 +18,9 @@ if (!isExpoGo) {
   try {
     RealCamera = require('./PoseScanCamera').default;
   } catch (e) {
+    // Surface the reason on the fallback screen — a silent degrade hid the
+    // camera problems of builds 8-14 from every TestFlight test.
+    setRealCameraError(e && e.message ? String(e.message) : String(e));
     console.warn('[Kasya] real camera unavailable — falling back to simulated scan', e);
   }
 }

@@ -61,7 +61,15 @@
       "expo-sharing",
       "expo-secure-store",
       "expo-web-browser",
-      "./plugins/withSkiaHeaderPaths"
+      "./plugins/withSkiaHeaderPaths",
+      [
+        "react-native-mediapipe-posedetection",
+        {
+          "assetsPaths": [
+            "./assets/models/"
+          ]
+        }
+      ]
     ],
     "extra": {
       "eas": {

@@ -169,7 +169,7 @@ export function describeGait(
   const lead = a.leadFoot === 'unknown' ? 'front' : a.leadFoot;
   const reach =
     a.overstrideScore >= 65
-      ? 'landing well ahead of you (that’s overstriding)'
+      ? 'well ahead of you (that’s overstriding)'
       : a.overstrideScore >= 40
         ? 'a little ahead of you'
         : 'nicely under your body';

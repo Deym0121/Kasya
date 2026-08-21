@@ -3,6 +3,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation';
 import { colors, spacing, type as T } from '../theme';
 import { ScreenContainer, Button, IconBubble, Disclaimer } from '../components';
+import { realCameraError } from './cameraAvailability';
 
 /**
  * Simulated-scan fallback, used when real pose can't run here:
@@ -36,6 +37,12 @@ export default function SimulatedScanScreen({ navigation, route }: Props) {
         Kasya on the web) or the Kasya development build — not in Expo Go. Run a simulated
         scan here to see the full flow.
       </Text>
+      {realCameraError ? (
+        <Text style={styles.err}>
+          Camera engine note: {realCameraError.slice(0, 160)} — results below are simulated demo
+          data, marked with a Demo badge.
+        </Text>
+      ) : null}
       <Disclaimer />
     </ScreenContainer>
   );
@@ -45,4 +52,5 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', marginTop: spacing.xxl },
   h: { textAlign: 'center', marginTop: spacing.xl },
   p: { textAlign: 'center', marginTop: spacing.sm },
+  err: { ...T.small, color: colors.warn, textAlign: 'center', marginTop: spacing.md },
 });
