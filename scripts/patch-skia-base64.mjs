@@ -96,3 +96,34 @@ function rewriteSdkIncludes(dirRel, relPrefix) {
 rewriteSdkIncludes('cpp/api/third_party', '../../skia');
 rewriteSdkIncludes('apple', '../cpp/skia');
 console.log('patch-skia: SDK-include pass done');
+
+// Part 4 (build #19): the relativized entry-includes worked — the compiler got
+// INTO cpp/skia SDK headers, which then include each other with the same
+// root-relative style ("include/core/SkTypes.h") that needs cpp/skia on a
+// search path no delivery mechanism reaches. Final move: relativize EVERY
+// SDK-prefix include across the whole package (cpp/ and apple/), computed per
+// file. A rewrite happens only when the target exists under cpp/skia;
+// unresolvable ones (platform-conditional code) are left untouched and counted.
+const sdkBase = path.join(skiaRoot, 'cpp', 'skia');
+let rewrote = 0, left = 0, filesTouched = 0;
+function relativizeTree(dirAbs) {
+  for (const name of fs.readdirSync(dirAbs)) {
+    const f = path.join(dirAbs, name);
+    const st = fs.statSync(f);
+    if (st.isDirectory()) { relativizeTree(f); continue; }
+    if (!/\.(h|hpp|cpp|mm)$/.test(name)) continue;
+    const src = fs.readFileSync(f, 'utf8');
+    const out = src.replace(/#include "((?:include|modules|src)\/[^"]+)"/g, (m, inc) => {
+      const target = path.join(sdkBase, inc);
+      if (!fs.existsSync(target)) { left++; return m; }
+      let rel = path.relative(path.dirname(f), target).split(path.sep).join('/');
+      if (!rel.startsWith('.')) rel = './' + rel;
+      rewrote++;
+      return '#include "' + rel + '"';
+    });
+    if (out !== src) { fs.writeFileSync(f, out); filesTouched++; }
+  }
+}
+relativizeTree(path.join(skiaRoot, 'cpp'));
+relativizeTree(path.join(skiaRoot, 'apple'));
+console.log('patch-skia: relativized ' + rewrote + ' includes across ' + filesTouched + ' files (' + left + ' conditional includes left as-is)');
