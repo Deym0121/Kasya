@@ -62,3 +62,37 @@ if (spec.includes(GLOB)) {
   console.error('patch-skia: podspec glob not found and not patched — layout changed, investigate');
   process.exit(1);
 }
+
+// Part 3 (build #18): the podspec patch does NOT reach the compiler (EAS's
+// precompiled-pods pipeline supplies its own build settings) — but source-file
+// patches always do. So rewrite skia-SDK includes ("include/...", "modules/...",
+// "src/...") in the two locations that die on them (cpp/api/third_party and
+// apple/) to RELATIVE paths against cpp/skia — resolvable with zero search
+// paths. Every rewritten target is verified to exist on disk.
+const skiaRoot = path.join(root, 'node_modules', '@shopify', 'react-native-skia');
+function rewriteSdkIncludes(dirRel, relPrefix) {
+  const dirAbs = path.join(skiaRoot, dirRel);
+  if (!fs.existsSync(dirAbs)) return;
+  for (const name of fs.readdirSync(dirAbs)) {
+    const file = path.join(dirAbs, name);
+    if (!fs.statSync(file).isFile() || !/\.(h|hpp|cpp|mm)$/.test(name)) continue;
+    const src = fs.readFileSync(file, 'utf8');
+    let bad = false;
+    const out = src.replace(/#include "((?:include|modules|src)\/[^"]+)"/g, (m, inc) => {
+      const target = path.join(skiaRoot, 'cpp', 'skia', inc);
+      if (!fs.existsSync(target)) { bad = true; return m; }
+      return '#include "' + relPrefix + '/' + inc + '"';
+    });
+    if (bad) {
+      console.error('patch-skia: an SDK include in ' + dirRel + '/' + name + ' has no target under cpp/skia — investigate');
+      process.exit(1);
+    }
+    if (out !== src) {
+      fs.writeFileSync(file, out);
+      console.log('patch-skia: relativized SDK includes in', dirRel + '/' + name);
+    }
+  }
+}
+rewriteSdkIncludes('cpp/api/third_party', '../../skia');
+rewriteSdkIncludes('apple', '../cpp/skia');
+console.log('patch-skia: SDK-include pass done');
