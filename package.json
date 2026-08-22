@@ -68,7 +68,8 @@
     "typecheck": "tsc --noEmit",
     "check:secrets": "node scripts/check-secrets.mjs",
     "check:races": "node scripts/check-races-seed.mjs",
-    "eas-build-post-install": "node scripts/patch-skia-base64.mjs"
+    "eas-build-post-install": "node scripts/patch-skia-base64.mjs && node scripts/patch-vision-camera-reanimated.mjs",
+    "postinstall": "node scripts/patch-vision-camera-reanimated.mjs"
   },
   "private": true
 }
