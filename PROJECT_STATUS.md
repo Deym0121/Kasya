@@ -105,6 +105,20 @@ ordering. Races: PixHero was unreachable (TLS) — retry for PH photosUrl later;
 MILO Aug legs (Davao/GenSan/Dipolog/CDO) can be added from the same verified
 Pinoy Fitness source if more volume wanted.
 
+## "update races" playbook (ran 2026-08-22: 27 -> 51 events live)
+
+When Lloyd says **update races** (or weekly): (1) research workflow — 3 parallel
+agents (PH gap-fill vs existing seed ids / international gap-fill / results+photos
+enrichment), every date verified by FETCHING its sourceUrl; takbo.ph + pixhero.ph
+are unfetchable to bots (TLS/403) — use pinoyfitness.com, raceroster, official
+pages. (2) merge into src/data/raceSeed.json with standard QC (major=WMM-only,
+whitelists, https, dedupe-by-id absorbing results/photos links), npm run
+check:races + scoped vitest. (3) node scripts/seed-races.mjs -> CONVEX_DEPLOY_KEY
+from .env.local -> npx convex import --table raceEvents --replace --format
+jsonLines scripts/raceEvents.jsonl -y -> verify races:list. (4) commit seed.
+Server data = instant in every app, no OTA. A session cron fires Mondays but is
+session-bound — the playbook is the durable mechanism.
+
 ## Deferred (Lloyd said yes, do after ship)
 
 1. **Weekly race auto-updater**: scheduled routine — research newly announced
