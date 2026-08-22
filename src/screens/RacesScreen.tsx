@@ -18,36 +18,47 @@ import { COUNTRIES, CountryFilter, RaceEvent, countryFor } from '../races/types'
 
 type Props = TabScreenProps<'Races'>;
 
-const STATUS_COPY: Record<RaceStatus, { label: string; color: string; bg: string }> = {
-  open: { label: 'Open', color: colors.success, bg: colors.successSoft },
-  announced: { label: 'Announced', color: colors.muted, bg: colors.surfaceAlt },
-  done: { label: 'Done', color: colors.inkSoft, bg: colors.surfaceAlt },
+// Status drives the whole card tint (bg + rail bubble + tag), timeline-planner
+// style: open = green family, announced = brand orange family, done = muted.
+const STATUS_COPY: Record<
+  RaceStatus,
+  { label: string; color: string; bg: string; cardBg: string }
+> = {
+  open: { label: 'Open', color: colors.success, bg: colors.successSoft, cardBg: colors.successSoft },
+  announced: { label: 'Announced', color: colors.accentInk, bg: colors.accentSoft, cardBg: colors.surface },
+  done: { label: 'Done', color: colors.inkSoft, bg: colors.surfaceAlt, cardBg: colors.surface },
 };
-
-function StatusTag({ status }: { status: RaceStatus }) {
-  const s = STATUS_COPY[status];
-  return (
-    <View style={[styles.status, { backgroundColor: s.bg }]}>
-      <Text style={[styles.statusText, { color: s.color }]}>{s.label}</Text>
-    </View>
-  );
-}
 
 function RaceCard({ event, today, onPress }: { event: RaceEvent; today: Date; onPress: () => void }) {
   const badge = dateBadge(event);
   const country = countryFor(event.country);
+  const status = statusOf(event, today);
+  const s = STATUS_COPY[status];
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${event.name}, ${event.city}`}
-      style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
-    >
-      <View style={styles.dateBadge}>
-        <Text style={styles.dateDay}>{badge.day}</Text>
-        <Text style={styles.dateMon}>{badge.monWeek}</Text>
+    <View style={styles.row}>
+      {/* timeline rail: date bubble + dashed connector */}
+      <View style={styles.rail}>
+        <View style={[styles.railBubble, { borderColor: s.color }]}>
+          <Text style={[styles.railDay, { color: s.color }]}>{badge.day}</Text>
+          <Text style={styles.railMon}>{badge.monWeek.split(' · ')[1] ?? badge.monWeek}</Text>
+        </View>
+        <View style={styles.railLine} />
       </View>
-      <View style={{ flex: 1, marginHorizontal: spacing.md }}>
+
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`${event.name}, ${event.city}`}
+        style={({ pressed }) => [
+          styles.card,
+          { backgroundColor: s.cardBg },
+          pressed && { opacity: 0.85 },
+        ]}
+      >
+        {/* status tab riding the card's top edge, reference-style */}
+        <View style={[styles.statusTab, { backgroundColor: s.bg }]}>
+          <Text style={[styles.statusTabText, { color: s.color }]}>{s.label}</Text>
+        </View>
         <Text style={styles.raceName} numberOfLines={2}>{event.name}</Text>
         <Text style={styles.raceCity}>{country.flag} {event.city}</Text>
         <View style={styles.distRow}>
@@ -55,9 +66,8 @@ function RaceCard({ event, today, onPress }: { event: RaceEvent; today: Date; on
             <View key={d} style={styles.dist}><Text style={styles.distText}>{d}</Text></View>
           ))}
         </View>
-      </View>
-      <StatusTag status={statusOf(event, today)} />
-    </Pressable>
+      </Pressable>
+    </View>
   );
 }
 
@@ -65,6 +75,7 @@ export default function RacesScreen({ navigation }: Props) {
   const { events, source, loading } = useRaces();
   const [view, setView] = useState<'upcoming' | 'results'>('upcoming');
   const [filter, setFilter] = useState<CountryFilter>('all');
+  const [activeMonth, setActiveMonth] = useState<string | null>(null);
   const listRef = useRef<SectionList<RaceEvent>>(null);
   const today = useMemo(() => new Date(), []);
 
@@ -75,8 +86,12 @@ export default function RacesScreen({ navigation }: Props) {
     () => groupByMonth(shown).map((g) => ({ title: monthLabel(g.key), key: g.key, data: g.events })),
     [shown],
   );
+  const currentMonth = activeMonth && sections.some((s) => s.key === activeMonth)
+    ? activeMonth
+    : sections[0]?.key;
 
   const jumpToMonth = (key: string) => {
+    setActiveMonth(key);
     const idx = sections.findIndex((s) => s.key === key);
     if (idx >= 0) listRef.current?.scrollToLocation({ sectionIndex: idx, itemIndex: 0, viewPosition: 0 });
   };
@@ -121,11 +136,22 @@ export default function RacesScreen({ navigation }: Props) {
 
         {sections.length > 1 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.monthRow}>
-            {sections.map((s) => (
-              <Pressable key={s.key} onPress={() => jumpToMonth(s.key)} style={styles.monthPill}>
-                <Text style={styles.monthPillText}>{s.title}</Text>
-              </Pressable>
-            ))}
+            {sections.map((s) => {
+              const [mon, year] = s.title.split(' ');
+              const on = s.key === currentMonth;
+              return (
+                <Pressable
+                  key={s.key}
+                  onPress={() => jumpToMonth(s.key)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}
+                  style={[styles.monthPill, on && styles.monthPillOn]}
+                >
+                  <Text style={[styles.monthPillMon, on && styles.monthPillMonOn]}>{mon}</Text>
+                  <Text style={[styles.monthPillYear, on && styles.monthPillYearOn]}>{year}</Text>
+                </Pressable>
+              );
+            })}
           </ScrollView>
         )}
 
@@ -152,6 +178,11 @@ export default function RacesScreen({ navigation }: Props) {
             renderSectionHeader={({ section }) => <Text style={styles.monthHeader}>{section.title}</Text>}
             stickySectionHeadersEnabled={false}
             onScrollToIndexFailed={() => {}}
+            onViewableItemsChanged={({ viewableItems }) => {
+              const first = viewableItems.find((v) => v.section)?.section?.key;
+              if (first) setActiveMonth(first);
+            }}
+            viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
             contentContainerStyle={{ paddingBottom: spacing.xxl }}
             showsVerticalScrollIndicator={false}
           />
@@ -173,20 +204,70 @@ const styles = StyleSheet.create({
   toggleText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.muted },
   toggleTextOn: { color: colors.bg },
   chipRow: { marginTop: spacing.md, flexGrow: 0 },
-  monthRow: { marginTop: spacing.sm, flexGrow: 0 },
-  monthPill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, marginRight: spacing.sm },
-  monthPillText: { fontFamily: fonts.semibold, fontSize: 12, color: colors.inkSoft, letterSpacing: 0.4 },
+  monthRow: { marginTop: spacing.md, flexGrow: 0 },
+  // tall date-pill selector, planner style: active pill fills with accent
+  monthPill: {
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    marginRight: spacing.sm,
+  },
+  monthPillOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+  monthPillMon: { fontFamily: fonts.extra, fontSize: 15, color: colors.ink, letterSpacing: 0.4 },
+  monthPillMonOn: { color: colors.bg },
+  monthPillYear: { fontFamily: fonts.semibold, fontSize: 10, color: colors.muted, marginTop: 1 },
+  monthPillYearOn: { color: colors.accentSoft },
   sourceNote: { ...T.small, marginTop: spacing.sm },
-  monthHeader: { fontFamily: fonts.semibold, fontSize: 13, color: colors.muted, letterSpacing: 1.2, marginTop: spacing.lg, marginBottom: spacing.sm },
-  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.line, padding: spacing.lg, marginBottom: spacing.sm },
-  dateBadge: { width: 52, alignItems: 'center' },
-  dateDay: { fontFamily: fonts.extra, fontSize: 24, color: colors.accentInk },
-  dateMon: { fontFamily: fonts.semibold, fontSize: 10, color: colors.muted, letterSpacing: 0.6, marginTop: 2 },
+  monthHeader: { fontFamily: fonts.bold, fontSize: 17, color: colors.ink, letterSpacing: 0.3, marginTop: spacing.lg, marginBottom: spacing.md },
+  // timeline rows
+  row: { flexDirection: 'row', alignItems: 'stretch' },
+  rail: { width: 56, alignItems: 'center' },
+  railBubble: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  railDay: { fontFamily: fonts.extra, fontSize: 16, lineHeight: 18 },
+  railMon: { fontFamily: fonts.semibold, fontSize: 8, color: colors.muted, letterSpacing: 0.6 },
+  railLine: {
+    flex: 1,
+    width: 0,
+    borderLeftWidth: 1,
+    borderColor: colors.line,
+    borderStyle: 'dashed',
+    marginVertical: 4,
+  },
+  card: {
+    flex: 1,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.line,
+    padding: spacing.lg,
+    paddingTop: spacing.lg + 6,
+    marginLeft: spacing.sm,
+    marginBottom: spacing.lg,
+    marginTop: 10,
+  },
+  statusTab: {
+    position: 'absolute',
+    top: -11,
+    left: 14,
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  statusTabText: { fontFamily: fonts.semibold, fontSize: 11, letterSpacing: 0.3 },
   raceName: { fontFamily: fonts.semibold, fontSize: 15, color: colors.ink },
   raceCity: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted, marginTop: 2 },
-  distRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 6, gap: 6 },
+  distRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8, gap: 6 },
   dist: { borderRadius: radius.sm, backgroundColor: colors.surfaceAlt, paddingHorizontal: 8, paddingVertical: 3 },
   distText: { fontFamily: fonts.semibold, fontSize: 11, color: colors.inkSoft },
-  status: { borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 },
-  statusText: { fontFamily: fonts.semibold, fontSize: 11 },
 });
