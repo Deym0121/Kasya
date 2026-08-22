@@ -29,11 +29,11 @@ const STATUS_COPY: Record<
   done: { label: 'Done', color: colors.inkSoft, bg: colors.surfaceAlt, cardBg: colors.surface },
 };
 
-// Local, brand-consistent filter chip: the shared Chip selects in white, which
-// fought the orange month pills on this screen (and clipped its label inside
-// the horizontal ScrollView). Selected = soft accent, subordinate to the month
-// pill's solid fill so the two rows read as one hierarchy.
-function FilterChip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+// Local, brand-consistent filter chip. The emoji lives in its OWN Text: mixing
+// Apple Color Emoji glyphs into a Sora-font Text rewrites the line metrics on
+// iOS and pushes the label low enough to clip against the pill — the exact
+// device bug seen on TestFlight twice. Separate Texts keep separate metrics.
+function FilterChip({ icon, label, selected, onPress }: { icon?: string; label: string; selected: boolean; onPress: () => void }) {
   return (
     <Pressable
       onPress={onPress}
@@ -43,6 +43,7 @@ function FilterChip({ label, selected, onPress }: { label: string; selected: boo
       hitSlop={{ top: 4, bottom: 4 }}
       style={[styles.fChip, selected && styles.fChipOn]}
     >
+      {icon ? <Text style={styles.fChipIcon}>{icon}</Text> : null}
       <Text style={[styles.fChipText, selected && styles.fChipTextOn]}>{label}</Text>
     </Pressable>
   );
@@ -178,11 +179,12 @@ export default function RacesScreen({ navigation }: Props) {
           contentContainerStyle={styles.chipRowContent}
         >
           <FilterChip label="All" selected={filter === 'all'} onPress={() => setFilter('all')} />
-          <FilterChip label="🌍 Majors" selected={filter === 'majors'} onPress={() => setFilter('majors')} />
+          <FilterChip icon="🌍" label="Majors" selected={filter === 'majors'} onPress={() => setFilter('majors')} />
           {COUNTRIES.map((c) => (
             <FilterChip
               key={c.code}
-              label={`${c.flag} ${c.code}`}
+              icon={c.flag}
+              label={c.code}
               selected={filter === c.code}
               onPress={() => setFilter(c.code)}
             />
@@ -286,8 +288,10 @@ const styles = StyleSheet.create({
   chipRowContent: { alignItems: 'center', paddingVertical: 2 },
   // compact, brand-consistent country filters (see FilterChip)
   fChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 9,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.line,
@@ -296,8 +300,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   fChipOn: { backgroundColor: colors.accent, borderColor: colors.accent },
-  // generous lineHeight: Sora's tall metrics clip descenders on iOS otherwise
-  fChipText: { fontFamily: fonts.semibold, fontSize: 13, lineHeight: 19, color: colors.inkSoft },
+  // Emoji rendered separately (own metrics); label gets a roomy line box so
+  // Sora's deep descenders never touch the pill bounds on iOS.
+  fChipIcon: { fontSize: 13, lineHeight: 18, marginRight: 6 },
+  fChipText: { fontFamily: fonts.semibold, fontSize: 13, lineHeight: 18, color: colors.inkSoft },
   fChipTextOn: { color: colors.bg },
   monthRow: { marginTop: spacing.lg, flexGrow: 0 },
   monthRowContent: { alignItems: 'center', paddingVertical: 2 },
