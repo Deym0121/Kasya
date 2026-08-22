@@ -15,7 +15,7 @@
       "major": false,
       "regUrl": "https://raceroster.com/events/2026/115048/galaxy-manila-marathon-2026",
       "officialUrl": "https://manilamarathon.ph/",
-      "resultsUrl": "https://manilamarathon.ph/results/",
+      "resultsUrl": "https://my.raceresult.com/396997/",
       "photosUrl": "https://findmyshots.com/events/galaxy-manila-marathon-2026",
       "organizer": "RUNRIO Inc.",
       "sourceUrl": "https://raceroster.com/events/2026/115048/galaxy-manila-marathon-2026"
@@ -33,7 +33,8 @@
       ],
       "major": false,
       "regUrl": "https://basekm.com/races/2026/camsur-marathon-2026/register",
-      "sourceUrl": "https://basekm.com/races/2026/camsur-marathon-2026/register"
+      "sourceUrl": "https://basekm.com/races/2026/camsur-marathon-2026/register",
+      "resultsUrl": "https://basekm.com/races/2026/camsur-marathon-2026/results"
     },
     {
       "id": "singlife-cebu-international-marathon-2026",
@@ -50,7 +51,9 @@
       "major": false,
       "regUrl": "https://raceroster.com/events/2026/114290/singlife-cebu-international-marathon",
       "organizer": "RUNRIO Inc.",
-      "sourceUrl": "https://raceroster.com/events/2026/114290/singlife-cebu-international-marathon"
+      "sourceUrl": "https://raceroster.com/events/2026/114290/singlife-cebu-international-marathon",
+      "resultsUrl": "https://my.raceresult.com/410394/",
+      "photosUrl": "https://findmyshots.com/events/singlife-cebu-international-marathon-2026"
     },
     {
       "id": "vnexpress-marathon-danang-2026",
@@ -71,6 +74,40 @@
       "sourceUrl": "https://vm.vnexpress.net/da-nang-2026"
     },
     {
+      "id": "milo-marathon-davao-leg-2026",
+      "name": "National MILO Marathon 2026 - Davao Leg",
+      "country": "PH",
+      "city": "Davao City",
+      "dateStart": "2026-08-02",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "Other"
+      ],
+      "major": false,
+      "organizer": "MILO Philippines",
+      "officialUrl": "https://www.milo.com.ph/national-milo-marathon",
+      "sourceUrl": "https://www.pinoyfitness.com/2026/01/milo-marathon-2026-full-race-schedule-and-locations-unveiled/"
+    },
+    {
+      "id": "milo-marathon-gensan-leg-2026",
+      "name": "National MILO Marathon 2026 - General Santos Leg",
+      "country": "PH",
+      "city": "General Santos",
+      "dateStart": "2026-08-09",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "Other"
+      ],
+      "major": false,
+      "organizer": "MILO Philippines",
+      "officialUrl": "https://www.milo.com.ph/national-milo-marathon",
+      "sourceUrl": "https://www.pinoyfitness.com/2026/01/milo-marathon-2026-full-race-schedule-and-locations-unveiled/"
+    },
+    {
       "id": "singlife-davao-marathon-2026",
       "name": "Singlife Davao Marathon 2026",
       "country": "PH",
@@ -85,7 +122,26 @@
       "major": false,
       "regUrl": "https://raceroster.com/events/2026/114291/singlife-davao-marathon",
       "organizer": "RUNRIO Inc.",
-      "sourceUrl": "https://raceroster.com/events/2026/114291/singlife-davao-marathon"
+      "sourceUrl": "https://raceroster.com/events/2026/114291/singlife-davao-marathon",
+      "resultsUrl": "https://results.raceroster.com/v3/events/esp5fztz4ghf666e",
+      "photosUrl": "https://findmyshots.com/events/singlife-davao-marathon-2026"
+    },
+    {
+      "id": "milo-marathon-dipolog-leg-2026",
+      "name": "National MILO Marathon 2026 - Dipolog Leg",
+      "country": "PH",
+      "city": "Dipolog",
+      "dateStart": "2026-08-16",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "Other"
+      ],
+      "major": false,
+      "organizer": "MILO Philippines",
+      "officialUrl": "https://www.milo.com.ph/national-milo-marathon",
+      "sourceUrl": "https://www.pinoyfitness.com/2026/01/milo-marathon-2026-full-race-schedule-and-locations-unveiled/"
     },
     {
       "id": "yakult-10-miler-cebu-2026",
@@ -102,6 +158,38 @@
       "officialUrl": "https://yakult10miler.com/",
       "organizer": "Yakult Philippines, Inc.",
       "sourceUrl": "https://yakult10miler.com/race-details"
+    },
+    {
+      "id": "milo-marathon-cdo-leg-2026",
+      "name": "National MILO Marathon 2026 - Cagayan de Oro Leg",
+      "country": "PH",
+      "city": "Cagayan de Oro",
+      "dateStart": "2026-08-23",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "Other"
+      ],
+      "major": false,
+      "organizer": "MILO Philippines",
+      "officialUrl": "https://www.milo.com.ph/national-milo-marathon",
+      "sourceUrl": "https://www.pinoyfitness.com/2026/01/milo-marathon-2026-full-race-schedule-and-locations-unveiled/"
+    },
+    {
+      "id": "maybank-marathon-bali-2026",
+      "name": "Maybank Marathon 2026",
+      "country": "ID",
+      "city": "Gianyar, Bali",
+      "dateStart": "2026-08-23",
+      "distances": [
+        "10K",
+        "21K",
+        "42K"
+      ],
+      "major": false,
+      "officialUrl": "https://www.maybank.co.id/maybank-marathon",
+      "sourceUrl": "https://www.maybank.co.id/maybank-marathon"
     },
     {
       "id": "milo-marathon-cebu-leg-2026",
@@ -138,6 +226,38 @@
       "sourceUrl": "https://vm.vnexpress.net/quy-nhon-2026"
     },
     {
+      "id": "milo-marathon-tagbilaran-leg-2026",
+      "name": "National MILO Marathon 2026 - Tagbilaran Leg",
+      "country": "PH",
+      "city": "Tagbilaran",
+      "dateStart": "2026-09-13",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "Other"
+      ],
+      "major": false,
+      "organizer": "MILO Philippines",
+      "officialUrl": "https://www.milo.com.ph/national-milo-marathon",
+      "sourceUrl": "https://www.pinoyfitness.com/2026/01/milo-marathon-2026-full-race-schedule-and-locations-unveiled/"
+    },
+    {
+      "id": "pampanga-marathon-2026",
+      "name": "Pampanga Marathon 2026",
+      "country": "PH",
+      "city": "Clark, Pampanga",
+      "dateStart": "2026-09-13",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "42K"
+      ],
+      "major": false,
+      "sourceUrl": "https://www.pinoyfitness.com/list-of-events/"
+    },
+    {
       "id": "singlife-one-clark-international-marathon-2026",
       "name": "Singlife One Clark International Marathon 2026",
       "country": "PH",
@@ -153,6 +273,23 @@
       "regUrl": "https://raceroster.com/events/2026/129863/singlife-one-clark-international-marathon-2026",
       "organizer": "RUNRIO Inc.",
       "sourceUrl": "https://raceroster.com/events/2026/129863/singlife-one-clark-international-marathon-2026"
+    },
+    {
+      "id": "milo-marathon-dumaguete-leg-2026",
+      "name": "National MILO Marathon 2026 - Dumaguete Leg",
+      "country": "PH",
+      "city": "Dumaguete",
+      "dateStart": "2026-09-20",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "Other"
+      ],
+      "major": false,
+      "organizer": "MILO Philippines",
+      "officialUrl": "https://www.milo.com.ph/national-milo-marathon",
+      "sourceUrl": "https://www.pinoyfitness.com/2026/01/milo-marathon-2026-full-race-schedule-and-locations-unveiled/"
     },
     {
       "id": "vnexpress-marathon-nghe-an-2026",
@@ -189,6 +326,21 @@
       "sourceUrl": "https://www.bmw-berlin-marathon.com/en/"
     },
     {
+      "id": "masskara-marathon-2026",
+      "name": "MassKara Marathon 2026",
+      "country": "PH",
+      "city": "Bacolod",
+      "dateStart": "2026-09-27",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "42K"
+      ],
+      "major": false,
+      "sourceUrl": "https://www.pinoyfitness.com/list-of-events/"
+    },
+    {
       "id": "kuala-lumpur-standard-chartered-marathon-2026",
       "name": "Kuala Lumpur Standard Chartered Marathon",
       "country": "MY",
@@ -206,6 +358,23 @@
       "regUrl": "https://registration.kl-marathon.com/login",
       "organizer": "Dirigo Events Sdn Bhd",
       "sourceUrl": "https://www.kl-marathon.com/"
+    },
+    {
+      "id": "milo-marathon-bacolod-leg-2026",
+      "name": "National MILO Marathon 2026 - Bacolod Leg",
+      "country": "PH",
+      "city": "Bacolod",
+      "dateStart": "2026-10-04",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "Other"
+      ],
+      "major": false,
+      "organizer": "MILO Philippines",
+      "officialUrl": "https://www.milo.com.ph/national-milo-marathon",
+      "sourceUrl": "https://www.pinoyfitness.com/2026/01/milo-marathon-2026-full-race-schedule-and-locations-unveiled/"
     },
     {
       "id": "puma-philippine-half-marathon-manila-2026",
@@ -239,6 +408,38 @@
       "sourceUrl": "https://www.chicagomarathon.com/"
     },
     {
+      "id": "milo-marathon-cavite-leg-2026",
+      "name": "National MILO Marathon 2026 - Cavite (Vermosa) Leg",
+      "country": "PH",
+      "city": "Imus, Cavite",
+      "dateStart": "2026-10-11",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "Other"
+      ],
+      "major": false,
+      "organizer": "MILO Philippines",
+      "officialUrl": "https://www.milo.com.ph/national-milo-marathon",
+      "sourceUrl": "https://www.pinoyfitness.com/2026/01/milo-marathon-2026-full-race-schedule-and-locations-unveiled/"
+    },
+    {
+      "id": "jpark-mactan-international-marathon-2026",
+      "name": "JPARK Mactan International Marathon 2026",
+      "country": "PH",
+      "city": "Lapu-Lapu City, Cebu",
+      "dateStart": "2026-10-11",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "42K"
+      ],
+      "major": false,
+      "sourceUrl": "https://www.pinoyfitness.com/list-of-events/"
+    },
+    {
       "id": "yakult-10-miler-manila-2026",
       "name": "34th Yakult 10-Miler Trilogy - Manila Leg",
       "country": "PH",
@@ -255,6 +456,23 @@
       "sourceUrl": "https://yakult10miler.com/race-details"
     },
     {
+      "id": "milo-marathon-subic-leg-2026",
+      "name": "National MILO Marathon 2026 - Subic Leg",
+      "country": "PH",
+      "city": "Subic, Zambales",
+      "dateStart": "2026-10-18",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "Other"
+      ],
+      "major": false,
+      "organizer": "MILO Philippines",
+      "officialUrl": "https://www.milo.com.ph/national-milo-marathon",
+      "sourceUrl": "https://www.pinoyfitness.com/2026/01/milo-marathon-2026-full-race-schedule-and-locations-unveiled/"
+    },
+    {
       "id": "garmin-run-marathon-series-manila-2026",
       "name": "Garmin Run Marathon Series 2026 - Manila",
       "country": "PH",
@@ -268,6 +486,35 @@
       "major": false,
       "organizer": "Garmin Philippines",
       "sourceUrl": "https://gadgetsmagazine.com.ph/lifestyle/active-lifestyle/garmin-run-marathon"
+    },
+    {
+      "id": "mainova-frankfurt-marathon-2026",
+      "name": "Mainova Frankfurt Marathon 2026",
+      "country": "DE",
+      "city": "Frankfurt",
+      "dateStart": "2026-10-25",
+      "distances": [
+        "42K"
+      ],
+      "major": false,
+      "officialUrl": "https://www.frankfurt-marathon.com/en/",
+      "sourceUrl": "https://www.frankfurt-marathon.com/en/yourrun/marathon/"
+    },
+    {
+      "id": "jakarta-running-festival-2026",
+      "name": "Jakarta Running Festival 2026",
+      "country": "ID",
+      "city": "Jakarta",
+      "dateStart": "2026-10-25",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "42K"
+      ],
+      "major": false,
+      "officialUrl": "https://jakartarunningfestival.id/",
+      "sourceUrl": "https://jakartarunningfestival.id/event/marathon"
     },
     {
       "id": "nyc-marathon-2026",
@@ -300,6 +547,23 @@
       "officialUrl": "https://trilogyrunasia.com/philippines/",
       "organizer": "Trilogy Run Asia",
       "sourceUrl": "https://trilogyrunasia.com/philippines/"
+    },
+    {
+      "id": "milo-marathon-urdaneta-leg-2026",
+      "name": "National MILO Marathon 2026 - Urdaneta Leg",
+      "country": "PH",
+      "city": "Urdaneta, Pangasinan",
+      "dateStart": "2026-11-08",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "Other"
+      ],
+      "major": false,
+      "organizer": "MILO Philippines",
+      "officialUrl": "https://www.milo.com.ph/national-milo-marathon",
+      "sourceUrl": "https://www.pinoyfitness.com/2026/01/milo-marathon-2026-full-race-schedule-and-locations-unveiled/"
     },
     {
       "id": "borobudur-marathon-2026",
@@ -336,6 +600,21 @@
       "resultsUrl": "https://amazingthailandmarathon.com/?page_id=40",
       "organizer": "Thailand Tri-League",
       "sourceUrl": "https://www.amazingthailandmarathon.com/"
+    },
+    {
+      "id": "aia-rock-n-roll-running-series-manila-2026",
+      "name": "AIA Rock 'n' Roll Running Series Manila 2026",
+      "country": "PH",
+      "city": "Pasay, Metro Manila",
+      "dateStart": "2026-11-29",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "42K"
+      ],
+      "major": false,
+      "sourceUrl": "https://www.pinoyfitness.com/list-of-events/"
     },
     {
       "id": "singapore-international-marathon-2026",
@@ -375,6 +654,34 @@
       "sourceUrl": "https://www.pinoyfitness.com/2026/01/milo-marathon-2026-full-race-schedule-and-locations-unveiled/"
     },
     {
+      "id": "techcombank-hcmc-international-marathon-2026",
+      "name": "Techcombank Ho Chi Minh City International Marathon 2026",
+      "country": "VN",
+      "city": "Ho Chi Minh City",
+      "dateStart": "2026-12-06",
+      "distances": [
+        "42K"
+      ],
+      "major": false,
+      "officialUrl": "https://marathonhcmc.com/en/",
+      "sourceUrl": "https://aims-worldrunning.org/races/10212.html"
+    },
+    {
+      "id": "california-international-marathon-2026",
+      "name": "California International Marathon 2026",
+      "country": "US",
+      "city": "Sacramento",
+      "dateStart": "2026-12-06",
+      "distances": [
+        "42K"
+      ],
+      "major": false,
+      "organizer": "Sacramento Running Association",
+      "officialUrl": "https://runcim.org",
+      "regUrl": "https://raceroster.com/events/2026/112918/2026-california-international-marathon",
+      "sourceUrl": "https://raceroster.com/events/2026/112918/2026-california-international-marathon"
+    },
+    {
       "id": "singlife-cagayan-de-oro-marathon-2026",
       "name": "Singlife Cagayan de Oro Marathon 2026",
       "country": "PH",
@@ -390,6 +697,37 @@
       "regUrl": "https://raceroster.com/events/2026/130696/singlife-cagayan-de-oro-marathon-2026",
       "organizer": "RUNRIO Inc.",
       "sourceUrl": "https://raceroster.com/events/2026/130696/singlife-cagayan-de-oro-marathon-2026"
+    },
+    {
+      "id": "penang-bridge-international-marathon-2026",
+      "name": "Aspen-Klippa Penang Bridge International Marathon 2026",
+      "country": "MY",
+      "city": "Batu Kawan, Penang",
+      "dateStart": "2026-12-13",
+      "distances": [
+        "10K",
+        "21K",
+        "42K"
+      ],
+      "major": false,
+      "officialUrl": "https://penangmarathon.gov.my/",
+      "regUrl": "https://penangmarathon.gov.my/",
+      "sourceUrl": "https://www.thestar.com.my/news/nation/2026/03/17/penang-bridge-international-marathon-now-open-for-registration"
+    },
+    {
+      "id": "chiangmai-marathon-2026",
+      "name": "Chiangmai Marathon 2026",
+      "country": "TH",
+      "city": "Chiang Mai",
+      "dateStart": "2026-12-20",
+      "distances": [
+        "10K",
+        "21K",
+        "42K",
+        "Other"
+      ],
+      "major": false,
+      "sourceUrl": "https://www.runlah.com/en/2qAli7DG"
     },
     {
       "id": "cebu-marathon-2027",
@@ -408,6 +746,34 @@
       "sourceUrl": "https://www.pinoyfitness.com/event/cebu-marathon-2027/"
     },
     {
+      "id": "iloilo-dinagyang-marathon-2027",
+      "name": "Iloilo Dinagyang Marathon 2027 - Heritage Run 4",
+      "country": "PH",
+      "city": "Iloilo City",
+      "dateStart": "2027-01-17",
+      "distances": [
+        "5K",
+        "10K",
+        "21K",
+        "42K"
+      ],
+      "major": false,
+      "sourceUrl": "https://www.pinoyfitness.com/list-of-events/"
+    },
+    {
+      "id": "osaka-marathon-2027",
+      "name": "Osaka Marathon 2027",
+      "country": "JP",
+      "city": "Osaka",
+      "dateStart": "2027-02-28",
+      "distances": [
+        "42K"
+      ],
+      "major": false,
+      "officialUrl": "https://www.osaka-marathon.com/2027/en/",
+      "sourceUrl": "https://www.osaka-marathon.com/2027/en/"
+    },
+    {
       "id": "tokyo-marathon-2027",
       "name": "Tokyo Marathon 2027",
       "country": "JP",
@@ -421,6 +787,20 @@
       "regUrl": "https://entry.onetokyo.org/english/entry/agreement",
       "organizer": "Tokyo Marathon Foundation",
       "sourceUrl": "https://www.marathon.tokyo/en/"
+    },
+    {
+      "id": "nagoya-womens-marathon-2027",
+      "name": "Nagoya Women's Marathon 2027",
+      "country": "JP",
+      "city": "Nagoya",
+      "dateStart": "2027-03-14",
+      "distances": [
+        "42K"
+      ],
+      "major": false,
+      "organizer": "Japan Association of Athletics Federations (JAAF) / The Chunichi Shimbun",
+      "officialUrl": "https://womens-marathon.nagoya/en/",
+      "sourceUrl": "https://womens-marathon.nagoya/en/outline/general/"
     },
     {
       "id": "boston-marathon-2027",
