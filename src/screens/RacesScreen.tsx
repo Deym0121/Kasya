@@ -40,6 +40,7 @@ function FilterChip({ label, selected, onPress }: { label: string; selected: boo
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ selected }}
+      hitSlop={{ top: 4, bottom: 4 }}
       style={[styles.fChip, selected && styles.fChipOn]}
     >
       <Text style={[styles.fChipText, selected && styles.fChipTextOn]}>{label}</Text>
@@ -53,9 +54,20 @@ function RaceCard({ event, today, onPress }: { event: RaceEvent; today: Date; on
   const status = statusOf(event, today);
   const s = STATUS_COPY[status];
   return (
-    <View style={styles.row}>
-      {/* timeline rail: date bubble + dashed connector */}
-      <View style={styles.rail}>
+    // The whole row is the touch target — the date bubble is the most
+    // tappable-looking element, so it must not be a dead zone (audit).
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${event.name}, ${event.city}, ${badge.monWeek} ${badge.day}, ${s.label}, ${event.distances.join(', ')}`}
+      style={({ pressed }) => [styles.row, pressed && { opacity: 0.85 }]}
+    >
+      {/* timeline rail: decorative for VoiceOver — the label above carries it */}
+      <View
+        style={styles.rail}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
         <View style={[styles.railBubble, { borderColor: s.color }]}>
           <Text style={[styles.railDay, { color: s.color }]}>{badge.day}</Text>
           <Text style={styles.railMon}>{badge.monWeek.split(' · ')[1] ?? badge.monWeek}</Text>
@@ -63,18 +75,10 @@ function RaceCard({ event, today, onPress }: { event: RaceEvent; today: Date; on
         <View style={styles.railLine} />
       </View>
 
-      <Pressable
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel={`${event.name}, ${event.city}`}
-        style={({ pressed }) => [
-          styles.card,
-          { backgroundColor: s.cardBg },
-          pressed && { opacity: 0.85 },
-        ]}
-      >
-        {/* status tab riding the card's top edge, reference-style */}
-        <View style={[styles.statusTab, { backgroundColor: s.bg }]}>
+      <View style={[styles.card, { backgroundColor: s.cardBg }]}>
+        {/* status tab riding the card's top edge; bordered so it reads as a
+            deliberate pill even over a same-color card (audit: Open-on-Open) */}
+        <View style={[styles.statusTab, { backgroundColor: s.bg, borderColor: s.color }]}>
           <Text style={[styles.statusTabText, { color: s.color }]}>{s.label}</Text>
         </View>
         <Text style={styles.raceName} numberOfLines={2}>{event.name}</Text>
@@ -84,8 +88,8 @@ function RaceCard({ event, today, onPress }: { event: RaceEvent; today: Date; on
             <View key={d} style={styles.dist}><Text style={styles.distText}>{d}</Text></View>
           ))}
         </View>
-      </Pressable>
-    </View>
+      </View>
+    </Pressable>
   );
 }
 
@@ -97,6 +101,7 @@ export default function RacesScreen({ navigation }: Props) {
   const listRef = useRef<SectionList<RaceEvent>>(null);
   const monthScrollRef = useRef<ScrollView>(null);
   const monthX = useRef<Record<string, number>>({});
+  const suppressViewabilityUntil = useRef(0);
   const today = useMemo(() => new Date(), []);
 
   const filtered = useMemo(() => applyFilter(events, filter), [events, filter]);
@@ -117,8 +122,25 @@ export default function RacesScreen({ navigation }: Props) {
     if (x !== undefined) monthScrollRef.current?.scrollTo({ x: Math.max(0, x - spacing.xl), animated: true });
   }, [currentMonth]);
 
+  // Switching view or country swaps the dataset — never keep a stale scroll
+  // offset into different content (audit: deep-scroll + toggle landed mid-list).
+  useEffect(() => {
+    setActiveMonth(null);
+    suppressViewabilityUntil.current = Date.now() + 400;
+    if (sections.length) {
+      try {
+        listRef.current?.scrollToLocation({ sectionIndex: 0, itemIndex: 0, viewPosition: 0, animated: false });
+      } catch {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, filter]);
+
   const jumpToMonth = (key: string) => {
     setActiveMonth(key);
+    // Audit: viewability events during the animated jump (and the final clamp
+    // when the last section is shorter than the viewport) would overwrite the
+    // tapped month — suppress viewability-driven updates until settled.
+    suppressViewabilityUntil.current = Date.now() + 800;
     const idx = sections.findIndex((s) => s.key === key);
     if (idx >= 0) listRef.current?.scrollToLocation({ sectionIndex: idx, itemIndex: 0, viewPosition: 0 });
   };
@@ -139,6 +161,7 @@ export default function RacesScreen({ navigation }: Props) {
               onPress={() => setView(v)}
               accessibilityRole="button"
               accessibilityState={{ selected: view === v }}
+              hitSlop={{ top: 5, bottom: 5 }}
               style={[styles.toggle, view === v && styles.toggleOn]}
             >
               <Text style={[styles.toggleText, view === v && styles.toggleTextOn]}>
@@ -216,8 +239,25 @@ export default function RacesScreen({ navigation }: Props) {
             )}
             renderSectionHeader={({ section }) => <Text style={styles.monthHeader}>{section.title}</Text>}
             stickySectionHeadersEnabled={false}
-            onScrollToIndexFailed={() => {}}
+            onScrollToIndexFailed={(info) => {
+              // Audit: far targets aren't measured yet, so scrollToLocation
+              // no-ops. Standard two-step: approximate by average item size,
+              // let the target render, then jump precisely.
+              listRef.current?.getScrollResponder()?.scrollTo({
+                y: info.averageItemLength * info.index,
+                animated: true,
+              });
+              const key = currentMonth;
+              setTimeout(() => {
+                const idx = sections.findIndex((s) => s.key === key);
+                if (idx >= 0) {
+                  suppressViewabilityUntil.current = Date.now() + 800;
+                  listRef.current?.scrollToLocation({ sectionIndex: idx, itemIndex: 0, viewPosition: 0 });
+                }
+              }, 120);
+            }}
             onViewableItemsChanged={({ viewableItems }) => {
+              if (Date.now() < suppressViewabilityUntil.current) return;
               const first = viewableItems.find((v) => v.section)?.section?.key;
               if (first) setActiveMonth(first);
             }}
@@ -292,7 +332,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   railDay: { fontFamily: fonts.extra, fontSize: 16, lineHeight: 18 },
-  railMon: { fontFamily: fonts.semibold, fontSize: 8, lineHeight: 11, color: colors.muted, letterSpacing: 0.6 },
+  railMon: { fontFamily: fonts.semibold, fontSize: 10, lineHeight: 13, color: colors.muted, letterSpacing: 0.4 },
   railLine: {
     flex: 1,
     width: 0,
@@ -317,6 +357,7 @@ const styles = StyleSheet.create({
     top: -11,
     left: 14,
     borderRadius: radius.pill,
+    borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 4,
   },

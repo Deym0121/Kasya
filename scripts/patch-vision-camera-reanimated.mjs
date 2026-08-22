@@ -20,16 +20,24 @@ const STUB = `{
     runOnJS: (f) => f,
     runOnUI: (f) => f,
   }`;
+// CRITICAL: vision-camera ships "react-native": "src/index" — Metro bundles
+// from src/, NOT lib/. The src flavor is the one every bundle (dev, EAS
+// release, OTA export) actually uses; lib flavors are patched for parity.
+const FLAVORS = [
+  ['src', path.join('src', 'dependencies', 'ReanimatedProxy.ts')],
+  ['module', path.join('lib', 'module', 'dependencies', 'ReanimatedProxy.js')],
+  ['commonjs', path.join('lib', 'commonjs', 'dependencies', 'ReanimatedProxy.js')],
+];
 let patched = 0;
-for (const flavor of ['module', 'commonjs']) {
-  const file = path.join(root, 'node_modules', 'react-native-vision-camera', 'lib', flavor, 'dependencies', 'ReanimatedProxy.js');
+for (const [flavor, rel] of FLAVORS) {
+  const file = path.join(root, 'node_modules', 'react-native-vision-camera', rel);
   if (!fs.existsSync(file)) {
     console.error('patch-vision-camera: missing ' + flavor + ' ReanimatedProxy — package layout changed, investigate');
     process.exit(1);
   }
   const src = fs.readFileSync(file, 'utf8');
   if (src.includes('useFrameCallback: () => {}')) { patched++; continue; }
-  const THROW_RE = /throw new (?:_ModuleProxy\.)?OptionalDependencyNotInstalledError\(['"]react-native-reanimated['"]\);/;
+  const THROW_RE = /throw new (?:_ModuleProxy\.)?OptionalDependencyNotInstalledError\(['"]react-native-reanimated['"]\);?/;
   if (!THROW_RE.test(src)) {
     console.error('patch-vision-camera: expected throw not found in ' + flavor + ' — investigate');
     process.exit(1);
@@ -38,4 +46,4 @@ for (const flavor of ['module', 'commonjs']) {
   patched++;
   console.log('patch-vision-camera: stubbed ReanimatedProxy (' + flavor + ')');
 }
-console.log('patch-vision-camera: done (' + patched + '/2 flavors ok)');
+console.log('patch-vision-camera: done (' + patched + '/3 flavors ok)');

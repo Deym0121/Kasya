@@ -58,6 +58,7 @@ export default function PoseScanCamera({ navigation, route }) {
   const [count, setCount] = useState(0); // live countdown number
   const [counting, setCounting] = useState(false);
   const [recordVideo, setRecordVideo] = useState(false); // opt-in ephemeral clip
+  const [engineNote, setEngineNote] = useState(null); // visible detector diagnostics
 
   const cameraRef = useRef(null);
   const capturing = useRef(false);
@@ -134,7 +135,10 @@ export default function PoseScanCamera({ navigation, route }) {
   const pose = usePoseDetection(
     {
       onResults: (result) => {
-        const lm = result?.landmarks?.[0];
+        // The package wraps detections: { results: PoseLandmarkerResult[] }
+        // (shared/types.ts ResultBundleMap). The bare-landmarks read kept the
+        // Record button permanently disabled; old shape kept as fallback.
+        const lm = result?.results?.[0]?.landmarks?.[0] ?? result?.landmarks?.[0];
         if (!lm) {
           // Body left the frame — drop the skeleton instead of freezing the last pose.
           lastPoseAt.current = 0;
@@ -143,9 +147,11 @@ export default function PoseScanCamera({ navigation, route }) {
         }
         lastPoseAt.current = Date.now();
         setLandmarks(lm);
+        setEngineNote(null);
         if (capturing.current) frames.current.push(toPoseFrame(lm, Date.now() - startedAt.current));
       },
-      onError: () => {},
+      // A silent detector is indistinguishable from "step into frame" — surface it.
+      onError: (e) => setEngineNote(String((e && e.message) || e || 'pose detector error')),
     },
     RunningMode.LIVE_STREAM,
     'pose_landmarker_lite.task',
@@ -162,6 +168,18 @@ export default function PoseScanCamera({ navigation, route }) {
       }
     }, 400);
     return () => clearInterval(sweep);
+  }, []);
+
+  // Detector never delivering anything looks exactly like "step into frame".
+  // If no pose has EVER arrived within 7s of mount, say so on screen — the
+  // audit showed createDetector failures are otherwise swallowed silently.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (!lastPoseAt.current) {
+        setEngineNote((prev) => prev ?? 'no pose data yet — if this persists, the detector failed to start');
+      }
+    }, 7000);
+    return () => clearTimeout(t);
   }, []);
 
   const beginCapture = useCallback(() => {
@@ -333,6 +351,11 @@ export default function PoseScanCamera({ navigation, route }) {
               ? 'Recording — walk naturally'
               : retry || 'Stand side-on, full body in frame'}
         </Text>
+        {engineNote ? (
+          <Text style={styles.engineNote} numberOfLines={3}>
+            Engine: {engineNote}
+          </Text>
+        ) : null}
       </View>
 
       <View style={styles.bottom} pointerEvents="box-none">
@@ -386,6 +409,18 @@ const styles = StyleSheet.create({
   top: { position: 'absolute', top: 48, left: spacing.xl, right: spacing.xl, alignItems: 'center' },
   back: { position: 'absolute', left: 0, top: 0 },
   backText: { fontFamily: fonts.semibold, color: '#fff', fontSize: 15 },
+  engineNote: {
+    fontFamily: fonts.medium,
+    color: '#F5A83C',
+    fontSize: 12,
+    lineHeight: 16,
+    textAlign: 'center',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginTop: 6,
+  },
   hint: {
     fontFamily: fonts.medium,
     color: '#fff',
