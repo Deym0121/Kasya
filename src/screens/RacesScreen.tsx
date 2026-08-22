@@ -189,6 +189,9 @@ export default function RacesScreen({ navigation }: Props) {
               onPress={() => setFilter(c.code)}
             />
           ))}
+          {/* OTA delivery marker: bump per update so a screenshot of this row
+              tells us which layout revision the device is actually running. */}
+          <Text style={styles.revTag}>r6</Text>
         </ScrollView>
 
         {sections.length > 1 && (
@@ -284,34 +287,41 @@ const styles = StyleSheet.create({
   toggleOn: { backgroundColor: colors.accent },
   toggleText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.muted },
   toggleTextOn: { color: colors.bg },
-  chipRow: { marginTop: spacing.lg, flexGrow: 0 },
-  chipRowContent: { alignItems: 'center', paddingVertical: 2 },
+  // iOS horizontal ScrollViews clip children to their own frame, and their
+  // auto height under-measures text (the true cause of every clipped chip on
+  // device — the original Chip clipped with NO lineHeight and 44pt height).
+  // Fixed row heights taller than fixed child heights leave real slack:
+  // nothing can touch a clip edge.
+  chipRow: { marginTop: spacing.md, height: 52, flexGrow: 0 },
+  chipRowContent: { alignItems: 'center' },
   // compact, brand-consistent country filters (see FilterChip)
   fChip: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    height: 38,
     paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: radius.pill,
+    borderRadius: 19,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.surface,
     marginRight: spacing.sm,
-    justifyContent: 'center',
   },
   fChipOn: { backgroundColor: colors.accent, borderColor: colors.accent },
-  // Emoji rendered separately (own metrics); label gets a roomy line box so
-  // Sora's deep descenders never touch the pill bounds on iOS.
-  fChipIcon: { fontSize: 13, lineHeight: 18, marginRight: 6 },
-  fChipText: { fontFamily: fonts.semibold, fontSize: 13, lineHeight: 18, color: colors.inkSoft },
+  // Natural line boxes only (no lineHeight overrides) — glyphs center inside
+  // the fixed-height pill with slack on both sides.
+  fChipIcon: { fontSize: 13, marginRight: 6 },
+  fChipText: { fontFamily: fonts.semibold, fontSize: 13, color: colors.inkSoft },
   fChipTextOn: { color: colors.bg },
-  monthRow: { marginTop: spacing.lg, flexGrow: 0 },
-  monthRowContent: { alignItems: 'center', paddingVertical: 2 },
+  revTag: { fontFamily: fonts.regular, fontSize: 9, color: colors.line, alignSelf: 'center', marginLeft: 2 },
+  monthRow: { marginTop: spacing.md, height: 72, flexGrow: 0 },
+  monthRowContent: { alignItems: 'center' },
   // tall date-pill selector, planner style: active pill fills with accent
   monthPill: {
     alignItems: 'center',
+    justifyContent: 'center',
+    height: 60,
     paddingHorizontal: 16,
-    paddingVertical: 10,
     borderRadius: 22,
     borderWidth: 1,
     borderColor: colors.line,
