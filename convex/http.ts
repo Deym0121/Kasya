@@ -338,3 +338,64 @@ http.route({ path: '/api/explain', method: 'OPTIONS', handler: preflight });
 http.route({ path: '/revenuecat', method: 'POST', handler: revenuecat });
 
 export default http;
+
+// ---------------------------------------------------------------------------
+// Race-calendar ingest for the weekly cloud refresh routine. Bearer-guarded by
+// RACES_INGEST_TOKEN (scoped secret set via `npx convex env set` — never the
+// deploy key). Server-side re-validation mirrors scripts/check-races-seed.mjs
+// so even a leaked token cannot write malformed rows.
+const RACE_COUNTRIES = ['PH', 'SG', 'MY', 'TH', 'ID', 'VN', 'HK', 'US', 'GB', 'DE', 'JP'];
+const RACE_DISTANCES = ['5K', '10K', '21K', '42K', 'Ultra', 'Other'];
+const WMM_ID = /tokyo|boston|london|berlin|chicago|new-york|nyc/;
+
+function raceProblems(e: any): string | null {
+  if (!e || typeof e !== 'object') return 'not an object';
+  if (!/^[a-z0-9-]{6,80}$/.test(e.id ?? '')) return 'bad id';
+  if (typeof e.name !== 'string' || !e.name.trim() || e.name.length > 120) return 'bad name';
+  if (!RACE_COUNTRIES.includes(e.country)) return 'bad country';
+  if (typeof e.city !== 'string' || !e.city.trim() || e.city.length > 80) return 'bad city';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(e.dateStart ?? '')) return 'bad dateStart';
+  if (!Array.isArray(e.distances) || !e.distances.length || !e.distances.every((d: string) => RACE_DISTANCES.includes(d))) return 'bad distances';
+  if (typeof e.major !== 'boolean' || (e.major && !(WMM_ID.test(e.id) && ['JP', 'US', 'GB', 'DE'].includes(e.country)))) return 'bad major flag';
+  for (const f of ['regUrl', 'officialUrl', 'resultsUrl', 'photosUrl', 'sourceUrl']) {
+    if (e[f] !== undefined && !/^https:\/\/\S{5,300}$/.test(e[f])) return 'bad ' + f;
+  }
+  if (!e.sourceUrl) return 'missing sourceUrl';
+  if (e.organizer !== undefined && (typeof e.organizer !== 'string' || e.organizer.length > 120)) return 'bad organizer';
+  return null;
+}
+
+const ingestRaces = httpAction(async (ctx, req) => {
+  const token = (req.headers.get('authorization') ?? '').replace(/^Bearer /, '');
+  if (!process.env.RACES_INGEST_TOKEN || token !== process.env.RACES_INGEST_TOKEN) {
+    return json(401, { error: 'unauthorized' });
+  }
+  const raw = await req.text();
+  if (raw.length > 500_000) return json(413, { error: 'too large' });
+  let payload: any;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    return json(400, { error: 'invalid json' });
+  }
+  const events = payload?.events;
+  if (!Array.isArray(events) || events.length < 10 || events.length > 300) {
+    return json(400, { error: 'events must be an array of 10-300 rows (full replace)' });
+  }
+  const ids = new Set<string>();
+  for (const e of events) {
+    const problem = raceProblems(e);
+    if (problem) return json(400, { error: problem, id: e?.id });
+    if (ids.has(e.id)) return json(400, { error: 'duplicate id', id: e.id });
+    ids.add(e.id);
+  }
+  const clean = events.map((e: any) => ({
+    id: e.id, name: e.name, country: e.country, city: e.city, dateStart: e.dateStart,
+    distances: e.distances, major: e.major, regUrl: e.regUrl, officialUrl: e.officialUrl,
+    resultsUrl: e.resultsUrl, photosUrl: e.photosUrl, organizer: e.organizer, sourceUrl: e.sourceUrl,
+  }));
+  const result = await ctx.runMutation(internal.races.replaceAll, { events: clean });
+  return json(200, result);
+});
+
+http.route({ path: '/api/races/ingest', method: 'POST', handler: ingestRaces });
