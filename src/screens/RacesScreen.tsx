@@ -1,9 +1,9 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, SectionList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TabScreenProps } from '../navigation';
 import { colors, spacing, radius, type as T, fonts } from '../theme';
-import { Chip, EmptyState } from '../components';
+import { EmptyState } from '../components';
 import { useRaces } from '../races/useRaces';
 import {
   applyFilter,
@@ -28,6 +28,24 @@ const STATUS_COPY: Record<
   announced: { label: 'Announced', color: colors.accentInk, bg: colors.accentSoft, cardBg: colors.surface },
   done: { label: 'Done', color: colors.inkSoft, bg: colors.surfaceAlt, cardBg: colors.surface },
 };
+
+// Local, brand-consistent filter chip: the shared Chip selects in white, which
+// fought the orange month pills on this screen (and clipped its label inside
+// the horizontal ScrollView). Selected = soft accent, subordinate to the month
+// pill's solid fill so the two rows read as one hierarchy.
+function FilterChip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
+      style={[styles.fChip, selected && styles.fChipOn]}
+    >
+      <Text style={[styles.fChipText, selected && styles.fChipTextOn]}>{label}</Text>
+    </Pressable>
+  );
+}
 
 function RaceCard({ event, today, onPress }: { event: RaceEvent; today: Date; onPress: () => void }) {
   const badge = dateBadge(event);
@@ -77,6 +95,8 @@ export default function RacesScreen({ navigation }: Props) {
   const [filter, setFilter] = useState<CountryFilter>('all');
   const [activeMonth, setActiveMonth] = useState<string | null>(null);
   const listRef = useRef<SectionList<RaceEvent>>(null);
+  const monthScrollRef = useRef<ScrollView>(null);
+  const monthX = useRef<Record<string, number>>({});
   const today = useMemo(() => new Date(), []);
 
   const filtered = useMemo(() => applyFilter(events, filter), [events, filter]);
@@ -89,6 +109,13 @@ export default function RacesScreen({ navigation }: Props) {
   const currentMonth = activeMonth && sections.some((s) => s.key === activeMonth)
     ? activeMonth
     : sections[0]?.key;
+
+  // Keep the active month pill visible as the list (or a tap) moves it.
+  useEffect(() => {
+    if (!currentMonth) return;
+    const x = monthX.current[currentMonth];
+    if (x !== undefined) monthScrollRef.current?.scrollTo({ x: Math.max(0, x - spacing.xl), animated: true });
+  }, [currentMonth]);
 
   const jumpToMonth = (key: string) => {
     setActiveMonth(key);
@@ -121,11 +148,16 @@ export default function RacesScreen({ navigation }: Props) {
           ))}
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-          <Chip label="All" selected={filter === 'all'} onPress={() => setFilter('all')} />
-          <Chip label="🌍 Majors" selected={filter === 'majors'} onPress={() => setFilter('majors')} />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.chipRow}
+          contentContainerStyle={styles.chipRowContent}
+        >
+          <FilterChip label="All" selected={filter === 'all'} onPress={() => setFilter('all')} />
+          <FilterChip label="🌍 Majors" selected={filter === 'majors'} onPress={() => setFilter('majors')} />
           {COUNTRIES.map((c) => (
-            <Chip
+            <FilterChip
               key={c.code}
               label={`${c.flag} ${c.code}`}
               selected={filter === c.code}
@@ -135,13 +167,20 @@ export default function RacesScreen({ navigation }: Props) {
         </ScrollView>
 
         {sections.length > 1 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.monthRow}>
+          <ScrollView
+            ref={monthScrollRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.monthRow}
+            contentContainerStyle={styles.monthRowContent}
+          >
             {sections.map((s) => {
               const [mon, year] = s.title.split(' ');
               const on = s.key === currentMonth;
               return (
                 <Pressable
                   key={s.key}
+                  onLayout={(e) => { monthX.current[s.key] = e.nativeEvent.layout.x; }}
                   onPress={() => jumpToMonth(s.key)}
                   accessibilityRole="button"
                   accessibilityState={{ selected: on }}
@@ -203,8 +242,23 @@ const styles = StyleSheet.create({
   toggleOn: { backgroundColor: colors.accent },
   toggleText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.muted },
   toggleTextOn: { color: colors.bg },
-  chipRow: { marginTop: spacing.md, flexGrow: 0 },
-  monthRow: { marginTop: spacing.md, flexGrow: 0 },
+  chipRow: { marginTop: spacing.lg, flexGrow: 0 },
+  chipRowContent: { alignItems: 'center', paddingVertical: 2 },
+  // compact, brand-consistent country filters (see FilterChip)
+  fChip: {
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    marginRight: spacing.sm,
+  },
+  fChipOn: { backgroundColor: colors.accentSoft, borderColor: colors.accent },
+  fChipText: { fontFamily: fonts.semibold, fontSize: 13, lineHeight: 17, color: colors.inkSoft },
+  fChipTextOn: { color: colors.accentInk },
+  monthRow: { marginTop: spacing.lg, flexGrow: 0 },
+  monthRowContent: { alignItems: 'center', paddingVertical: 2 },
   // tall date-pill selector, planner style: active pill fills with accent
   monthPill: {
     alignItems: 'center',
