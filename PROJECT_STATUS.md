@@ -116,8 +116,7 @@ whitelists, https, dedupe-by-id absorbing results/photos links), npm run
 check:races + scoped vitest. (3) node scripts/seed-races.mjs -> CONVEX_DEPLOY_KEY
 from .env.local -> npx convex import --table raceEvents --replace --format
 jsonLines scripts/raceEvents.jsonl -y -> verify races:list. (4) commit seed.
-Server data = instant in every app, no OTA. A session cron fires Mondays but is
-session-bound — the playbook is the durable mechanism.
+Server data = instant in every app, no OTA. FULLY AUTOMATED since 2026-08-22: cloud routine trig_015L53Ward3wkL8L7KrPbVhF (claude.ai/code/routines) runs every Monday 9:23 AM PHT — fetches current calendar via the public races:list query, researches/verifies, and publishes via POST /api/races/ingest guarded by RACES_INGEST_TOKEN (scoped secret in Convex env; the deploy key never leaves this machine). Manual "update races" still works anytime.
 
 ## Deferred (Lloyd said yes, do after ship)
 
