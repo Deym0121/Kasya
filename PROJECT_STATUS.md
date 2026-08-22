@@ -5,13 +5,7 @@
 
 ## ⭐ RESUME HERE — exact next actions
 
-1. **BLOCKED ON EAS BUILD QUOTA (2026-08-21): free-plan iOS builds exhausted; resets Sep 1.** Lloyd decides: upgrade EAS plan at expo.dev/accounts/deym0121/settings/billing (build #22 immediately) or wait for reset. The build fix chain is COMPLETE and committed through c4ee81c (cross-dir resolver, 158 includes) — when builds are available again, just run the usual eas-cli build command (Claude can run it directly now; user paste no longer needed). Previously: **WAITING ON: Lloyd pastes the build command** (below). That produces iOS
-   **build #18**, version **1.1.0**, from branch `feature/shoppable-shoe-finder`
-   @ `(git log HEAD)`, with `--auto-submit` (uploads to App Store Connect by itself).
-
-   ```
-   cd "C:\Users\USER\OneDrive\Desktop\Gait Analyzer" && npx eas-cli build --platform ios --profile production --non-interactive --auto-submit --no-wait
-   ```
+1. **v1.1 SUBMITTED TO APP REVIEW (2026-08-21, ~11pm PHT).** Build #24 (first success after 9 failed builds — full skia fix chain held). Attached to ASC v1.1 + reviewSubmission c9f054ca-0ead-4929-8f47-b4c2ac1178ea, state WAITING_FOR_REVIEW. EAS plan upgraded to Starter ($19/mo, Lloyd may cancel after approval). NEXT: await Apple verdict (24-48h typical) — check /v1/apps/6792974071/reviewSubmissions state, or Lloyd hears via email. On APPROVE: v1.1 live -> OTA era begins; run the deferred items (weekly race auto-updater, camera device test, audit polish via OTA, merge to main). On REJECT: read rejection, fix, resubmit (OTA-able if JS-only after approval... native rejections need new build).
 
 2. **When the build FINISHES** (poll `npx eas-cli build:list --platform ios --limit 1 --non-interactive --json`;
    a Monitor with a 60s poll loop works well, 60-min timeout):
