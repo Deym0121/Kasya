@@ -33,14 +33,21 @@
      patch-vision-camera-reanimated.mjs) stubs BOTH packages × 3 flavors, wired into
      postinstall + eas-build-post-install; SimulatedScanScreen no longer prints raw
      exception text (that WAS the reviewer's "error message").
-   NEXT: (1) Lloyd fixes ASC privacy labels + checks RC dashboard; (2) cut build #25
-   (`npx eas-cli build --platform ios --profile production` — embedded bundle must
-   carry the fixes; App Review runs first-launch = embedded, OTA can't fix review);
-   (3) TestFlight device-verify camera (skeleton appears, Record enables) + sandbox
-   purchase unlocks Coach; (4) publish same JS as OTA for existing build-24 users;
-   (5) attach build 25 to ASC v1.1 (id 12fb4005-...), include the yearly IAP,
-   review notes = where IAP lives + camera steps + "privacy labels corrected, app
-   does not track", resubmit.
+   DONE 2026-08-26: Lloyd fixed ASC privacy labels + verified RC dashboard +
+   TestFlight-verified build 25 (camera opens, sandbox purchase unlocks). OTA
+   published (group 165e716b). Build 25 (EAS 91292171, ASC build 09a21e6c,
+   processingState VALID) attached to ASC v1.1 → old rejected submission c9f054ca
+   CANCELED (a rejected submission's version item can't be reused — cancel, then
+   new submission) → NEW reviewSubmission **83fafb63-893b-4c2c-beb2-3f6cdcbe3e8f**
+   submitted 07:10 UTC, state WAITING_FOR_REVIEW. Review notes rewritten via
+   appStoreReviewDetail 83f56d98 (rejection responses + honest yearly wording).
+   ⚠ REMAINING: the yearly sub CANNOT be attached to a version submission via the
+   public API (no such relationship on appStoreVersions; reviewSubmissionItems
+   don't take subscriptions) — still READY_TO_SUBMIT. After v1.1 approves, Lloyd
+   submits it in the ASC UI (Monetization → Subscriptions → Kasya Pro Yearly →
+   add to a submission); the app hides unavailable plans, so no user impact
+   meanwhile. NEXT: await verdict on submission 83fafb63; on approval, submit
+   yearly, then merge to main.
 
 1. **v1.1 SUBMITTED TO APP REVIEW (2026-08-21, ~11pm PHT).** Build #24 (first success after 9 failed builds — full skia fix chain held). Attached to ASC v1.1 + reviewSubmission c9f054ca-0ead-4929-8f47-b4c2ac1178ea, state WAITING_FOR_REVIEW. EAS plan upgraded to Starter ($19/mo, Lloyd may cancel after approval). ~~NEXT: await Apple verdict~~ → REJECTED, see item 0.
 
