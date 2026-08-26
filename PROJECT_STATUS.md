@@ -19,17 +19,18 @@
      neutral. FIXED in 6e8fa91 ("Continue" + post-denial "Open Settings" path);
      OTA'd (group 3e02ae3a); **build #26 queued** (EAS 3d04640c) — review needs
      the embedded bundle.
-   NEXT (updated 2026-08-27): **build 27 FINISHED** (EAS 68493aa6-eda5-463b-820c-8e8ef99e6957,
-   buildNumber 27 — first binary embedding the camera rework + permission button;
-   builds 25/26 are superseded). Sequence: (1) Lloyd uploads: `npx eas-cli submit
-   --platform ios --profile production --id 68493aa6-eda5-463b-820c-8e8ef99e6957
-   --non-interactive` (eas submit is classifier-blocked for Claude); (2) Lloyd
-   publishes the privacy-label fix in ASC (STILL showing "Data Used to Track You"
-   on the public App Store page as of 08-27 — tracking=No on all 4 types + the
-   blue Publish button); (3) Lloyd confirms camera works on-device (OTA already
-   delivers the same JS to build 25); (4) Claude verifies the public page dropped
-   the tracking section → attach build 27 to v1.1 → cancel old submission if one
-   is open → new reviewSubmission → submit (scratchpad asc.mjs has all steps).
+   RESUBMITTED 2026-08-27 (round 3): **v1.1 + build 27 WAITING_FOR_REVIEW**,
+   submission 3daee3f5-f45e-4adc-9615-2df4a95974d6. Lloyd confirmed: build 27
+   uploaded (ASC build 2b1da1d4, VALID), privacy labels re-published, camera
+   verified working on his device (OTA). Round-2 submission 83fafb63 canceled;
+   review notes rewritten for round 3 (labels published + 5.1.1 Continue-button
+   fix + camera device-verified). CAVEAT: the public App Store page still showed
+   "Data Used to Track You" at submit time — assumed CDN lag vs Lloyd's publish;
+   if round 3 rejects on 5.1.2 again, the label publish did NOT stick and must
+   be done together with a screenshot check of ASC → App Privacy.
+   ON APPROVAL: (1) submit the YEARLY sub in ASC UI (still READY_TO_SUBMIT;
+   API can't attach subs); (2) merge feature/shoppable-shoe-finder → main;
+   (3) camera polish follow-ups are listed under Known follow-ups.
 
 0. **v1.1 (build 24) REJECTED by App Review 2026-08-25** (submission c9f054ca, state
    UNRESOLVED_ISSUES; ASC v1.1 = REJECTED). Three issues, all root-caused 2026-08-26
