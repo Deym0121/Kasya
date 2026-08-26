@@ -8,7 +8,7 @@
 // Types suppressed (@ts-nocheck): native modules aren't verifiable headless.
 // The data contract — toPoseFrame() — is unit-tested in poseMapper.test.ts.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Linking } from 'react-native';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { usePoseDetection, RunningMode, Delegate } from 'react-native-mediapipe-posedetection';
 import { Canvas, Line as SkLine, Circle as SkCircle, vec } from '@shopify/react-native-skia';
@@ -49,6 +49,7 @@ export default function PoseScanCamera({ navigation, route }) {
   const { goal } = route.params;
   const device = useCameraDevice('back');
   const { hasPermission, requestPermission } = useCameraPermission();
+  const [permDenied, setPermDenied] = useState(false);
 
   const [size, setSize] = useState({ w: 1, h: 1 });
   const [landmarks, setLandmarks] = useState(null);
@@ -244,14 +245,30 @@ export default function PoseScanCamera({ navigation, route }) {
   }, [leadIn, beginCapture]);
 
   if (!hasPermission) {
+    // App Review 5.1.1(iv): the pre-permission button must use neutral wording
+    // ("Continue"), never words that presume consent like "Allow camera"; after
+    // a denial iOS won't re-prompt, so route to Settings instead.
     return (
       <View style={styles.perm}>
         <Text style={styles.permTitle}>Camera access needed</Text>
         <Text style={styles.permBody}>
-          Kasya uses your camera to track your stride on-device. Nothing is recorded or uploaded.
+          {permDenied
+            ? 'Camera access is off for Kasya. To run a gait scan, turn it on in Settings — the scan can’t work without it. Nothing is recorded or uploaded.'
+            : 'Kasya uses your camera to track your stride on-device. Nothing is recorded or uploaded. You can choose whether to allow access in the next step.'}
         </Text>
         <View style={{ height: spacing.xl }} />
-        <Button label="Allow camera" icon="camera" onPress={requestPermission} />
+        {permDenied ? (
+          <Button label="Open Settings" icon="settings" onPress={() => Linking.openSettings()} />
+        ) : (
+          <Button
+            label="Continue"
+            icon="arrow-right"
+            onPress={async () => {
+              const granted = await requestPermission();
+              if (!granted) setPermDenied(true);
+            }}
+          />
+        )}
       </View>
     );
   }
