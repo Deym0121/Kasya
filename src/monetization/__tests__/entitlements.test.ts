@@ -32,6 +32,22 @@ describe('planFromCustomerInfo', () => {
     expect(planFromCustomerInfo('junk')).toBe('free');
     expect(planFromCustomerInfo({})).toBe('free');
   });
+
+  // App Review 2.1(b) (build 24): a store-validated purchase must unlock even
+  // when the dashboard forgot to attach the product to an entitlement.
+  it('counts an active store subscription even without an entitlement mapping', () => {
+    expect(
+      planFromCustomerInfo({
+        entitlements: { active: {} },
+        activeSubscriptions: ['com.kasya.app.pro.yearly'],
+      }),
+    ).toBe('premium');
+  });
+
+  it('stays free when activeSubscriptions is empty or malformed', () => {
+    expect(planFromCustomerInfo({ entitlements: { active: {} }, activeSubscriptions: [] })).toBe('free');
+    expect(planFromCustomerInfo({ activeSubscriptions: 'junk' })).toBe('free');
+  });
 });
 
 describe('rcApiKey', () => {

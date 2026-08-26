@@ -43,6 +43,7 @@ export default function PaywallScreen({ navigation }: Props) {
   const [premium, setPremium] = useState(false);
   const [live] = useState(isBillingLive);
   const [packages, setPackages] = useState<PremiumPackage[]>([]);
+  const [pkgsReady, setPkgsReady] = useState(!isBillingLive());
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
   const [sel, setSel] = useState<PlanChoice>('yearly');
@@ -50,7 +51,12 @@ export default function PaywallScreen({ navigation }: Props) {
   useEffect(() => {
     let active = true;
     getPlan().then((p) => active && setPremium(p === 'premium'));
-    if (live) getPremiumPackages().then((p) => active && setPackages(p));
+    if (live)
+      getPremiumPackages().then((p) => {
+        if (!active) return;
+        setPackages(p);
+        setPkgsReady(true);
+      });
     return () => {
       active = false;
     };
@@ -65,20 +71,58 @@ export default function PaywallScreen({ navigation }: Props) {
     [packages, yearlyPkg],
   );
 
-  const yearlyPrice = live && yearlyPkg ? yearlyPkg.price : DEMO.yearly.price;
-  const monthlyPrice = live && monthlyPkg ? monthlyPkg.price : DEMO.monthly.price;
-  const footnote = sel === 'yearly' ? DEMO.yearly.foot : DEMO.monthly.foot;
+  // Live mode only offers plans the store actually returned — a plan without a
+  // loaded product must never render with a made-up price or fake-succeed
+  // (build 24 review: tapping the default Yearly with no loaded product took
+  // the demo path and claimed "Premium unlocked" while everything stayed
+  // locked — App Review 2.1(b)).
+  const showYearly = !live || !!yearlyPkg;
+  const showMonthly = !live || !!monthlyPkg;
+  const selPkg = sel === 'yearly' ? yearlyPkg : monthlyPkg;
+  const storeEmpty = live && pkgsReady && !yearlyPkg && !monthlyPkg;
+
+  useEffect(() => {
+    if (!live || !pkgsReady) return;
+    if (sel === 'yearly' && !yearlyPkg && monthlyPkg) setSel('monthly');
+    else if (sel === 'monthly' && !monthlyPkg && yearlyPkg) setSel('yearly');
+  }, [live, pkgsReady, sel, yearlyPkg, monthlyPkg]);
+
+  const yearlyPrice = live ? yearlyPkg?.price || '…' : DEMO.yearly.price;
+  const monthlyPrice = live ? monthlyPkg?.price || '…' : DEMO.monthly.price;
+  // Live mode quotes the store's own price — never the demo copy's numbers.
+  const footnote = live
+    ? selPkg
+      ? `${selPkg.price} per ${sel === 'yearly' ? 'year' : 'month'}, cancel anytime.`
+      : ''
+    : sel === 'yearly'
+      ? DEMO.yearly.foot
+      : DEMO.monthly.foot;
 
   /** Live: a real store purchase (RevenueCat). Demo: the local flip — and the UI says so. */
   async function buy() {
     setBusy(true);
     setNote('');
     try {
-      const pkg = live ? (sel === 'yearly' ? yearlyPkg?.pkg : monthlyPkg?.pkg) : undefined;
-      const plan = await purchasePremium(pkg);
-      setPremium(plan === 'premium');
-    } catch {
-      setNote('Purchase didn’t complete — you haven’t been charged.');
+      if (live) {
+        if (!selPkg?.pkg) {
+          setNote('That plan isn’t available right now — please try again in a moment, or tap Restore purchases if you’ve subscribed before.');
+          return;
+        }
+        let plan = await purchasePremium(selPkg.pkg);
+        // Store purchase went through but no entitlement came back (e.g. a
+        // dashboard mapping gap): sync once with the store before deciding.
+        if (plan !== 'premium') plan = await restorePurchases();
+        if (plan === 'premium') {
+          setPremium(true);
+        } else {
+          setNote('Your purchase was received but access hasn’t activated yet. Tap Restore purchases in a moment — you won’t be charged twice.');
+        }
+      } else {
+        const plan = await purchasePremium();
+        setPremium(plan === 'premium');
+      }
+    } catch (e: any) {
+      setNote(e?.userCancelled ? '' : 'Purchase didn’t complete — you haven’t been charged.');
     } finally {
       setBusy(false);
     }
@@ -164,14 +208,22 @@ export default function PaywallScreen({ navigation }: Props) {
 
       <View style={{ height: spacing.xl }} />
 
-      <View>
-        {planCard('yearly', 'Yearly', yearlyPrice, live ? null : DEMO.yearly.perMonth)}
-        <View style={styles.saveBadge} pointerEvents="none">
-          <Text style={styles.saveBadgeText}>SAVE 42%</Text>
+      {showYearly && (
+        <View>
+          {planCard('yearly', 'Yearly', yearlyPrice, live ? null : DEMO.yearly.perMonth)}
+          <View style={styles.saveBadge} pointerEvents="none">
+            <Text style={styles.saveBadgeText}>SAVE 42%</Text>
+          </View>
         </View>
-      </View>
-      <View style={{ height: spacing.md }} />
-      {planCard('monthly', 'Monthly', monthlyPrice, null)}
+      )}
+      {showYearly && showMonthly && <View style={{ height: spacing.md }} />}
+      {showMonthly && planCard('monthly', 'Monthly', monthlyPrice, null)}
+      {storeEmpty && (
+        <Text style={styles.notice}>
+          Subscription plans couldn’t be loaded from the store right now. Please try again in a
+          moment, or tap Restore purchases if you’ve subscribed before.
+        </Text>
+      )}
 
       <View style={{ height: spacing.xl }} />
       <Text style={styles.benefitsHead}>Premium benefits</Text>
@@ -188,10 +240,13 @@ export default function PaywallScreen({ navigation }: Props) {
       <View style={{ height: spacing.xl }} />
       <Pressable
         onPress={buy}
-        disabled={busy}
+        disabled={busy || (live && (!pkgsReady || !selPkg))}
         accessibilityRole="button"
         accessibilityLabel={sel === 'yearly' ? 'Subscribe yearly' : 'Subscribe monthly'}
-        style={({ pressed }) => [pressed && { opacity: 0.9 }, busy && { opacity: 0.6 }]}
+        style={({ pressed }) => [
+          pressed && { opacity: 0.9 },
+          (busy || (live && (!pkgsReady || !selPkg))) && { opacity: 0.6 },
+        ]}
       >
         <LinearGradient
           colors={[colors.accent, '#FF7A3D']}
@@ -200,7 +255,13 @@ export default function PaywallScreen({ navigation }: Props) {
           style={styles.cta}
         >
           <Text style={styles.ctaText}>
-            {busy ? 'One moment…' : sel === 'yearly' ? 'Subscribe Yearly' : 'Subscribe Monthly'}
+            {busy
+              ? 'One moment…'
+              : live && !pkgsReady
+                ? 'Loading plans…'
+                : sel === 'yearly'
+                  ? 'Subscribe Yearly'
+                  : 'Subscribe Monthly'}
           </Text>
         </LinearGradient>
       </Pressable>

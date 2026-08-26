@@ -21,10 +21,18 @@ import { getUser, setUser } from '../storage/session';
 
 export type Plan = 'free' | 'premium';
 
-/** Pure: map a RevenueCat CustomerInfo-shaped object to a plan. */
+/**
+ * Pure: map a RevenueCat CustomerInfo-shaped object to a plan.
+ * A paid user must never be stranded: any active entitlement counts, and — as a
+ * safety net for a dashboard product→entitlement mapping gap (App Review 2.1(b),
+ * build 24: "paid features failed to unlock after purchasing") — so does any
+ * store-validated active subscription even without an entitlement attached.
+ */
 export function planFromCustomerInfo(info: unknown): Plan {
   const active = (info as any)?.entitlements?.active;
   if (active && typeof active === 'object' && Object.keys(active).length > 0) return 'premium';
+  const subs = (info as any)?.activeSubscriptions;
+  if (Array.isArray(subs) && subs.length > 0) return 'premium';
   return 'free';
 }
 
@@ -73,6 +81,14 @@ function purchases(): any | null {
     const P = require('react-native-purchases').default;
     if (!configured) {
       P.configure({ apiKey: key });
+      // Keep the local mirror in step with every store-side change (purchase
+      // completing async, Ask to Buy approval, renewal, refund) so gates that
+      // fall back to the mirror while offline stay truthful.
+      try {
+        P.addCustomerInfoUpdateListener((info: unknown) => {
+          mirrorPlan(planFromCustomerInfo(info)).catch(() => {});
+        });
+      } catch {}
       configured = true;
     }
     return P;
@@ -133,11 +149,15 @@ async function mirrorPlan(plan: Plan): Promise<void> {
 
 /**
  * Buy premium. Live: a real store purchase via RevenueCat (throws when the user
- * cancels or the store errors). Demo: the honest local flip, as before.
+ * cancels, the store errors, or no package was provided — NEVER a silent local
+ * flip: build 24 flipped the mirror to premium when offerings failed to load,
+ * showing "Premium unlocked" with no purchase while every gate read free —
+ * App Review 2.1(b)). Demo (web/Expo Go/no key): the honest local flip.
  */
 export async function purchasePremium(pkg?: unknown): Promise<Plan> {
   const P = purchases();
-  if (P && pkg) {
+  if (P) {
+    if (!pkg) throw new Error('No subscription package available to purchase');
     const { customerInfo } = await P.purchasePackage(pkg);
     const plan = planFromCustomerInfo(customerInfo);
     await mirrorPlan(plan);
