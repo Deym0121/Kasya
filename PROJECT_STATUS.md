@@ -5,6 +5,26 @@
 
 ## ⭐ RESUME HERE — exact next actions
 
+-1. **BUILD 25 REJECTED AGAIN 2026-08-26** (submission 83fafb63) — but the camera
+   (2.1a) and IAP (2.1b) fixes PASSED (absent from rejection; reviewer reached the
+   camera permission screen). Two issues remain:
+   - **5.1.2(i) privacy labels STILL say tracking** — VERIFIED via the public App
+     Store page (apps.apple.com/us/app/kasya/id6792974071 still shows "Data Used
+     to Track You": Health & Fitness, Purchases, Contact Info, Identifiers).
+     Lloyd's label edit never published. He must: ASC → Kasya → App Privacy →
+     Edit each type → tracking = No → **Publish button top-right** (labels are
+     app-level, publish immediately, no version needed). Verify by re-checking
+     the public App Store page before resubmitting.
+   - **5.1.1(iv) NEW**: pre-permission button said "Allow camera" → must be
+     neutral. FIXED in 6e8fa91 ("Continue" + post-denial "Open Settings" path);
+     OTA'd (group 3e02ae3a); **build #26 queued** (EAS 3d04640c) — review needs
+     the embedded bundle.
+   NEXT: build 26 finishes → Lloyd uploads via `npx eas-cli submit --platform ios
+   --profile production --id 3d04640c-...` (eas submit is classifier-blocked for
+   Claude) → CONFIRM public App Store page no longer shows tracking → attach
+   build 26 to v1.1 + new reviewSubmission (old one must be CANCELED first —
+   same dance as before, scratchpad asc.mjs has the steps) → resubmit.
+
 0. **v1.1 (build 24) REJECTED by App Review 2026-08-25** (submission c9f054ca, state
    UNRESOLVED_ISSUES; ASC v1.1 = REJECTED). Three issues, all root-caused 2026-08-26
    (multi-agent investigation, this session):
