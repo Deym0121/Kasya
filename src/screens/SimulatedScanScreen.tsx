@@ -16,6 +16,12 @@ type Props = NativeStackScreenProps<RootStackParamList, 'PoseScan'>;
 export default function SimulatedScanScreen({ navigation, route }: Props) {
   const { goal } = route.params;
 
+  // A real build that failed to start the live camera lands here with
+  // realCameraError set. Users get plain, calm copy — the raw exception text
+  // already went to the console for diagnostics (App Review read the previous
+  // on-screen raw error as an app bug, 2.1(a) rejection of build 24).
+  const cameraBroke = !!realCameraError;
+
   return (
     <ScreenContainer
       title="Gait scan"
@@ -31,18 +37,18 @@ export default function SimulatedScanScreen({ navigation, route }: Props) {
       <View style={styles.center}>
         <IconBubble icon="camera-off" tint={colors.surfaceAlt} color={colors.ink} size={72} />
       </View>
-      <Text style={[T.h1, styles.h]}>Live tracking runs in the app build</Text>
-      <Text style={[T.bodyMuted, styles.p]}>
-        Real camera tracking with the skeleton on your legs and feet runs in the browser (open
-        Kasya on the web) or the Kasya development build — not in Expo Go. Run a simulated
-        scan here to see the full flow.
+      <Text style={[T.h1, styles.h]}>
+        {cameraBroke ? 'Live camera scan isn’t available right now' : 'Live tracking runs in the app build'}
       </Text>
-      {realCameraError ? (
-        <Text style={styles.err}>
-          Camera engine note: {realCameraError.slice(0, 160)} — results below are simulated demo
-          data, marked with a Demo badge.
-        </Text>
-      ) : null}
+      <Text style={[T.bodyMuted, styles.p]}>
+        {cameraBroke
+          ? 'Kasya couldn’t start live camera tracking on this device. You can still run a ' +
+            'simulated scan to see how the analysis works — its results are demo data, ' +
+            'clearly marked with a Demo badge, not a reading of your own gait.'
+          : 'Real camera tracking with the skeleton on your legs and feet runs in the browser (open ' +
+            'Kasya on the web) or the Kasya development build — not in Expo Go. Run a simulated ' +
+            'scan here to see the full flow.'}
+      </Text>
       <Disclaimer />
     </ScreenContainer>
   );
@@ -52,5 +58,4 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', marginTop: spacing.xxl },
   h: { textAlign: 'center', marginTop: spacing.xl },
   p: { textAlign: 'center', marginTop: spacing.sm },
-  err: { ...T.small, color: colors.warn, textAlign: 'center', marginTop: spacing.md },
 });
