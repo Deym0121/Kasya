@@ -8,11 +8,12 @@
 // Types suppressed (@ts-nocheck): native modules aren't verifiable headless.
 // The data contract — toPoseFrame() — is unit-tested in poseMapper.test.ts.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Linking } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Linking, Platform } from 'react-native';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { usePoseDetection, RunningMode, Delegate } from 'react-native-mediapipe-posedetection';
 import { Canvas, Line as SkLine, Circle as SkCircle, vec } from '@shopify/react-native-skia';
 import Svg, { Circle as SvgCircle, Line as SvgLine } from 'react-native-svg';
+import { Feather } from '@expo/vector-icons';
 import { colors, spacing, fonts, radius } from '../theme';
 import { Button } from '../components';
 import { toPoseFrame, analyzeGait } from '../gait';
@@ -47,11 +48,19 @@ const visible = (p) => p && (p.visibility ?? p.presence ?? 1) > 0.5;
 
 export default function PoseScanCamera({ navigation, route }) {
   const { goal } = route.params;
-  const device = useCameraDevice('back');
+  // Back camera is the gait-scan default (someone films you side-on); the flip
+  // button switches to front for self-checks.
+  const [position, setPosition] = useState('back');
+  const device = useCameraDevice(position);
   const { hasPermission, requestPermission } = useCameraPermission();
   const [permDenied, setPermDenied] = useState(false);
+  // GPU first; the first detector error retries once on CPU (GPU delegate is
+  // the least-proven piece under static frameworks — the hook recreates the
+  // detector when the delegate option changes).
+  const [delegate, setDelegate] = useState(Delegate.GPU);
 
   const [size, setSize] = useState({ w: 1, h: 1 });
+  const sizeRef = useRef({ w: 1, h: 1 });
   const [landmarks, setLandmarks] = useState(null);
   const [recording, setRecording] = useState(false);
   const [retry, setRetry] = useState('');
@@ -133,31 +142,121 @@ export default function PoseScanCamera({ navigation, route }) {
     [goal, navigation],
   );
 
-  const pose = usePoseDetection(
-    {
-      onResults: (result) => {
-        // The package wraps detections: { results: PoseLandmarkerResult[] }
-        // (shared/types.ts ResultBundleMap). The bare-landmarks read kept the
-        // Record button permanently disabled; old shape kept as fallback.
-        const lm = result?.results?.[0]?.landmarks?.[0] ?? result?.landmarks?.[0];
-        if (!lm) {
-          // Body left the frame — drop the skeleton instead of freezing the last pose.
-          lastPoseAt.current = 0;
-          setLandmarks(null);
-          return;
+  // One-shot GPU→CPU retry bookkeeping. iOS swallows detector-CREATION
+  // failures entirely (createDetector resolves, a nil landmarker just no-ops),
+  // so silence is the only signal a dead GPU delegate gives — the retry has to
+  // live in the no-pose watchdog as well as onError.
+  const triedCpu = useRef(false);
+  const cpuSwitchAt = useRef(0);
+  const switchToCpu = useCallback(() => {
+    if (triedCpu.current) return false;
+    triedCpu.current = true;
+    cpuSwitchAt.current = Date.now();
+    setEngineNote('restarting the pose engine…');
+    setDelegate(Delegate.CPU);
+    return true;
+  }, []);
+
+  // STABLE callbacks (refs + setters only): fresh arrows here make the hook
+  // rebuild its frame processor every render — vision-camera then re-installs
+  // it natively on every landmark tick.
+  const onPoseResults = useCallback((result, vc) => {
+    // The package wraps detections: { results: PoseLandmarkerResult[] }
+    // (shared/types.ts ResultBundleMap). The bare-landmarks read kept the
+    // Record button permanently disabled; old shape kept as fallback.
+    const lm = result?.results?.[0]?.landmarks?.[0] ?? result?.landmarks?.[0];
+    if (!lm) {
+      // Body left the frame — drop the skeleton instead of freezing the last pose.
+      lastPoseAt.current = 0;
+      setLandmarks(null);
+      return;
+    }
+    // The package's ViewCoordinator is the only correct frame→view mapping
+    // (sensor/output rotation + cover-crop + front-camera mirroring). From the
+    // view-space point we derive TWO spaces:
+    //  - overlay: view-normalized, drawn as x*viewW / y*viewH — the skeleton
+    //    sits on the body the user actually sees;
+    //  - analysis + saved frames: upright frame coords with BOTH axes divided
+    //    by frame HEIGHT — isotropic units. Per-axis normalization skews x
+    //    against y by the aspect ratio, which pegged overstride and knee-angle
+    //    math (they mix x and y).
+    let draw = lm;
+    let analysis = null;
+    try {
+      if (vc?.getFrameDims && vc?.convertPoint) {
+        const fd = vc.getFrameDims(result);
+        const { w: vw, h: vh } = sizeRef.current;
+        // Invert convertPoint's cover-fit (same math as the package's
+        // framePointToView) to recover upright frame px from view px.
+        const fr = fd.width / fd.height;
+        const vr = vw / vh;
+        let scale, xoff = 0, yoff = 0;
+        if (fr > vr) {
+          scale = vh / fd.height;
+          xoff = (vw - fd.width * scale) / 2;
+        } else {
+          scale = vw / fd.width;
+          yoff = (vh - fd.height * scale) / 2;
         }
-        lastPoseAt.current = Date.now();
-        setLandmarks(lm);
-        setEngineNote(null);
-        if (capturing.current) frames.current.push(toPoseFrame(lm, Date.now() - startedAt.current));
-      },
-      // A silent detector is indistinguishable from "step into frame" — surface it.
-      onError: (e) => setEngineNote(String((e && e.message) || e || 'pose detector error')),
-    },
+        const d = [];
+        const a = [];
+        for (const p of lm) {
+          const v = vc.convertPoint(fd, p);
+          d.push({ x: v.x / (vw || 1), y: v.y / (vh || 1), z: p.z, visibility: p.visibility, presence: p.presence });
+          a.push({
+            x: (v.x - xoff) / scale / fd.height,
+            y: (v.y - yoff) / scale / fd.height,
+            z: p.z,
+            visibility: p.visibility,
+            presence: p.presence,
+          });
+        }
+        // NaN guard (a throw-based catch misses silent NaN dims): only trust
+        // the mapping when it produced real numbers.
+        if (Number.isFinite(d[0]?.x) && Number.isFinite(d[0]?.y)) {
+          draw = d;
+          analysis = a;
+        }
+      }
+    } catch {}
+    lastPoseAt.current = Date.now();
+    setLandmarks(draw);
+    setEngineNote(analysis ? null : 'skeleton mapping unavailable on this device');
+    // No valid mapping → skip the frame rather than mixing coordinate spaces
+    // inside one capture; an empty capture fails the quality gate honestly.
+    if (capturing.current && analysis) frames.current.push(toPoseFrame(analysis, Date.now() - startedAt.current));
+  }, []);
+
+  const onPoseError = useCallback((e) => {
+    const msg = String((e && e.message) || e || 'pose detector error');
+    if (switchToCpu()) return; // first error: silent retry on CPU
+    // The released GPU detector can echo late errors for a beat after the
+    // switch — don't let them clobber the "restarting" note.
+    if (Date.now() - cpuSwitchAt.current > 2500) setEngineNote(msg);
+  }, [switchToCpu]);
+
+  const pose = usePoseDetection(
+    { onResults: onPoseResults, onError: onPoseError },
     RunningMode.LIVE_STREAM,
     'pose_landmarker_lite.task',
-    { numPoses: 1, minPoseDetectionConfidence: 0.5, delegate: Delegate.GPU },
+    {
+      numPoses: 1,
+      minPoseDetectionConfidence: 0.5,
+      delegate,
+      // Mirror only the front camera (matches the mirrored preview iOS shows).
+      mirrorMode: 'mirror-front-only',
+      // The package's iOS layer throttles inference AND events to ~15fps
+      // internally; 30 here just halves the wasted worklet→native calls.
+      fpsMode: 30,
+    },
   );
+
+  // The package needs to know which physical camera is live (mirroring +
+  // sensor orientation) — its own MediapipeCamera wires this; a raw Camera
+  // must do it by hand.
+  useEffect(() => {
+    if (device) pose.cameraDeviceChangeHandler(device);
+  }, [device, pose.cameraDeviceChangeHandler]);
 
   // Staleness sweep: if detection just goes quiet (no onResults at all), the
   // skeleton must not stay frozen on screen.
@@ -171,17 +270,19 @@ export default function PoseScanCamera({ navigation, route }) {
     return () => clearInterval(sweep);
   }, []);
 
-  // Detector never delivering anything looks exactly like "step into frame".
-  // If no pose has EVER arrived within 7s of mount, say so on screen — the
-  // audit showed createDetector failures are otherwise swallowed silently.
+  // Detector never delivering anything looks exactly like "step into frame",
+  // and iOS gives NO error for a detector that failed to create (the promise
+  // resolves; a nil landmarker silently no-ops). So the watchdog is the real
+  // GPU→CPU fallback: 7s of total silence retries once on CPU (delegate change
+  // recreates the detector); 7 more silent seconds says so on screen.
   useEffect(() => {
     const t = setTimeout(() => {
-      if (!lastPoseAt.current) {
-        setEngineNote((prev) => prev ?? 'no pose data yet — if this persists, the detector failed to start');
-      }
+      if (lastPoseAt.current) return;
+      if (switchToCpu()) return; // re-arms via the delegate dep below
+      setEngineNote((prev) => prev ?? 'no pose data yet — if this persists, the detector failed to start');
     }, 7000);
     return () => clearTimeout(t);
-  }, []);
+  }, [delegate, switchToCpu]);
 
   const beginCapture = useCallback(() => {
     setCounting(false);
@@ -273,9 +374,24 @@ export default function PoseScanCamera({ navigation, route }) {
     );
   }
   if (device == null) {
+    // Reachable via the Flip button on hardware lacking that camera — must
+    // never dead-end: always offer a way back.
     return (
       <View style={styles.perm}>
         <Text style={styles.permTitle}>No camera found</Text>
+        {position === 'front' ? (
+          <>
+            <Text style={styles.permBody}>This device doesn’t have a usable front camera for the scan.</Text>
+            <View style={{ height: spacing.xl }} />
+            <View style={{ alignSelf: 'stretch' }}>
+              <Button label="Use back camera" icon="refresh-cw" onPress={() => setPosition('back')} />
+            </View>
+          </>
+        ) : null}
+        <View style={{ height: spacing.md, alignSelf: 'stretch' }} />
+        <View style={{ alignSelf: 'stretch' }}>
+          <Button label="Close" onPress={() => navigation.goBack()} />
+        </View>
       </View>
     );
   }
@@ -286,8 +402,20 @@ export default function PoseScanCamera({ navigation, route }) {
   return (
     <View
       style={StyleSheet.absoluteFill}
-      onLayout={(e) => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
+      onLayout={(e) => {
+        const d = { w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height };
+        sizeRef.current = d;
+        setSize(d);
+      }}
     >
+      {/* Wiring mirrors the package's own MediapipeCamera (its reference
+          integration): on iOS pixelFormat="rgb" is REQUIRED — the plugin
+          builds MPImage from the sample buffer and silently produces nothing
+          on the YUV default (Android's MediaImageBuilder handles YUV natively,
+          and RGB is unsupported on some Android cameras — keep yuv there).
+          resizeMode="cover" must match the ViewCoordinator's crop math; the
+          orientation handler feeds skeleton rotation. video stays on for the
+          opt-in review clip. */}
       <Camera
         ref={cameraRef}
         style={StyleSheet.absoluteFill}
@@ -295,8 +423,11 @@ export default function PoseScanCamera({ navigation, route }) {
         isActive
         video={true}
         audio={false}
+        pixelFormat={Platform.OS === 'ios' ? 'rgb' : 'yuv'}
+        resizeMode="cover"
         frameProcessor={pose.frameProcessor}
         onLayout={pose.cameraViewLayoutChangeHandler}
+        onOutputOrientationChanged={pose.cameraOrientationChangedHandler}
       />
       <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
         {landmarks &&
@@ -361,6 +492,23 @@ export default function PoseScanCamera({ navigation, route }) {
         <Pressable onPress={closeScan} hitSlop={12} style={styles.back}>
           <Text style={styles.backText}>Close</Text>
         </Pressable>
+        {!recording && !counting ? (
+          <Pressable
+            onPress={() => {
+              // New camera = new geometry; drop the stale skeleton until the
+              // detector reports against the flipped feed.
+              setLandmarks(null);
+              setPosition((p) => (p === 'back' ? 'front' : 'back'));
+            }}
+            hitSlop={12}
+            style={styles.flip}
+            accessibilityRole="button"
+            accessibilityLabel={position === 'back' ? 'Switch to front camera' : 'Switch to back camera'}
+          >
+            <Feather name="refresh-cw" size={16} color="#fff" />
+            <Text style={styles.backText}> Flip</Text>
+          </Pressable>
+        ) : null}
         <Text style={styles.hint}>
           {counting
             ? 'Get ready — start walking when it hits 0'
@@ -425,6 +573,7 @@ const styles = StyleSheet.create({
   permBody: { fontFamily: fonts.regular, fontSize: 15, color: colors.muted, textAlign: 'center', marginTop: spacing.sm },
   top: { position: 'absolute', top: 48, left: spacing.xl, right: spacing.xl, alignItems: 'center' },
   back: { position: 'absolute', left: 0, top: 0 },
+  flip: { position: 'absolute', right: 0, top: 0, flexDirection: 'row', alignItems: 'center' },
   backText: { fontFamily: fonts.semibold, color: '#fff', fontSize: 15 },
   engineNote: {
     fontFamily: fonts.medium,

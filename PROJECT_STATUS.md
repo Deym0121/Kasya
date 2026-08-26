@@ -154,7 +154,34 @@ cd "C:\Users\USER\OneDrive\Desktop\Gait Analyzer" && npx eas-cli update --channe
 - **The test**: scan on a real iPhone. Real ≈ 10s capture with skeleton;
   fallback = instant results + Demo badge + a visible "Camera engine note" line.
 
+## Camera rework 2026-08-27 (audit vs the package's own reference wiring)
+
+Root cause of "preview shows, no landmarks ever" on device: the app's raw
+vision-camera `<Camera>` was missing `pixelFormat="rgb"` — the iOS plugin
+builds MPImage from the sample buffer and SILENTLY produces nothing on the YUV
+default (verified in the package's Swift source; its reference MediapipeCamera
+hardcodes rgb). Also wired: onOutputOrientationChanged + cameraDeviceChangeHandler
+(rotation/mirroring), ViewCoordinator-based skeleton mapping (was raw
+coords x view size — misplaced overlay), front/back Flip button
+(mirrorMode 'mirror-front-only'), GPU→CPU one-shot retry driven by the 7s
+no-pose watchdog (iOS swallows creation failures — silence is the only signal),
+stable callbacks (were reinstalling the native frame processor ~15x/s).
+COORDINATE SPACES (do not regress): overlay = view-normalized; analysis+saved
+frames = upright frame coords, BOTH axes normalized by frame HEIGHT (isotropic —
+per-axis normalization pegs overstride/knee-angle math); VideoReplay.native
+multiplies both axes by video height accordingly. Web unchanged
+(frame-normalized) — cross-platform metric drift is a known follow-up.
+
 ## Known follow-ups (all OTA-able after v1.1)
+
+From the 3-lens camera-rework review (2026-08-27): events.ts contact/toe-off
+labels assume walking toward +x (mirrored/leftward walks swap them — affects
+stance% and knee-at-contact; pre-existing, web too); native captures are ~15fps
+(package's internal iOS throttle) vs web's rAF rate — coarser step timing;
+native (isotropic) vs web (frame-normalized) units drift for overstride/knee
+angles — unify by aspect-correcting the web path too, then recheck
+MIN_SWING_AMPLITUDE margins; SkeletonPlayer draws native x range 0..~0.56
+(left-biased in its 0..1 viewBox) — cosmetic.
 
 From the accuracy audit (headline metrics are trustworthy — cadence ±2.1% over
 54 configs, symmetry tracks truth, gates work): heavy-jitter standing subject

@@ -75,7 +75,9 @@ export function VideoReplay({ videoUri, frames, height = 340 }) {
     const h = videoSize.height * scale;
     rect = { position: 'absolute', left: (stage.width - w) / 2, top: (stage.height - h) / 2, width: w, height: h };
   }
-  // Landmarks are normalized to the video frame; scale into the viewBox below.
+  // Native capture stores landmarks in upright-frame ISOTROPIC units — both
+  // axes normalized by frame HEIGHT (see PoseScanCamera onResults) — so both
+  // axes scale by the video's height to land in frame px.
   const sx = videoSize ? videoSize.width : 1;
   const sy = videoSize ? videoSize.height : 1;
 
@@ -94,9 +96,9 @@ export function VideoReplay({ videoUri, frames, height = 340 }) {
               valid(f.landmarks[a]) && valid(f.landmarks[b]) ? (
                 <SvgLine
                   key={`l${k}`}
-                  x1={f.landmarks[a].x * sx}
+                  x1={f.landmarks[a].x * sy}
                   y1={f.landmarks[a].y * sy}
-                  x2={f.landmarks[b].x * sx}
+                  x2={f.landmarks[b].x * sy}
                   y2={f.landmarks[b].y * sy}
                   stroke="#39FF14"
                   strokeWidth={0.012 * sx}
@@ -106,7 +108,7 @@ export function VideoReplay({ videoUri, frames, height = 340 }) {
             )}
           {f &&
             f.landmarks.map((p, k) =>
-              valid(p) ? <Circle key={`p${k}`} cx={p.x * sx} cy={p.y * sy} r={0.013 * sx} fill="#FF3B30" /> : null,
+              valid(p) ? <Circle key={`p${k}`} cx={p.x * sy} cy={p.y * sy} r={0.013 * sx} fill="#FF3B30" /> : null,
             )}
         </Svg>
       </View>
