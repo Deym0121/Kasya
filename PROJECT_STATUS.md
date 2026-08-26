@@ -5,7 +5,44 @@
 
 ## ⭐ RESUME HERE — exact next actions
 
-1. **v1.1 SUBMITTED TO APP REVIEW (2026-08-21, ~11pm PHT).** Build #24 (first success after 9 failed builds — full skia fix chain held). Attached to ASC v1.1 + reviewSubmission c9f054ca-0ead-4929-8f47-b4c2ac1178ea, state WAITING_FOR_REVIEW. EAS plan upgraded to Starter ($19/mo, Lloyd may cancel after approval). NEXT: await Apple verdict (24-48h typical) — check /v1/apps/6792974071/reviewSubmissions state, or Lloyd hears via email. On APPROVE: v1.1 live -> OTA era begins; run the deferred items (weekly race auto-updater, camera device test, audit polish via OTA, merge to main). On REJECT: read rejection, fix, resubmit (OTA-able if JS-only after approval... native rejections need new build).
+0. **v1.1 (build 24) REJECTED by App Review 2026-08-25** (submission c9f054ca, state
+   UNRESOLVED_ISSUES; ASC v1.1 = REJECTED). Three issues, all root-caused 2026-08-26
+   (multi-agent investigation, this session):
+   - **5.1.2(i) ATT/privacy**: ASC privacy labels wrongly say the app "tracks"
+     (Purchase History / Fitness / User ID / Email). The app has NO tracking
+     (no ads/analytics SDK, no IDFA). FIX = Lloyd edits App Privacy in ASC web UI
+     (labels can't be edited via the API): each type → "used for tracking?" = **No**
+     (keep Collected + Linked to identity, purpose App Functionality). Do NOT add
+     the ATT framework. Publish labels BEFORE replying / resubmitting.
+   - **2.1(b) IAP didn't unlock**: yearly sub `com.kasya.app.pro.yearly` is still
+     **READY_TO_SUBMIT** in ASC (never submitted; monthly is APPROVED). Paywall
+     defaulted to Yearly; with the product unresolved, `purchasePremium(undefined)`
+     silently demo-flipped → "Premium unlocked" shown while every gate read free.
+     CODE FIXED this session (no silent flip; activeSubscriptions fallback;
+     CustomerInfo listener; unavailable plans hidden; honest notes; store-price
+     footnote). REMAINING: submit the yearly IAP WITH the next review submission +
+     Lloyd verifies RC dashboard (both products attached to entitlement `Kasya Pro`
+     + in the current Offering).
+   - **2.1(a) camera error**: "react-native-reanimated is not installed!" — thrown
+     at require time. Build 24 had no patch at all; the OTA'd patch (fe94f70) only
+     stubbed vision-camera's ReanimatedProxy, but **@shopify/react-native-skia
+     2.6.2 vendors the SAME throwing proxy and touches it at MODULE SCOPE**
+     (src/external/reanimated/useVideoLoading.ts:8 createWorkletRuntime, re-exported
+     unconditionally from skia's index) — that's why the error survived the OTAs.
+     FIXED this session: `scripts/patch-reanimated-proxies.mjs` (replaces
+     patch-vision-camera-reanimated.mjs) stubs BOTH packages × 3 flavors, wired into
+     postinstall + eas-build-post-install; SimulatedScanScreen no longer prints raw
+     exception text (that WAS the reviewer's "error message").
+   NEXT: (1) Lloyd fixes ASC privacy labels + checks RC dashboard; (2) cut build #25
+   (`npx eas-cli build --platform ios --profile production` — embedded bundle must
+   carry the fixes; App Review runs first-launch = embedded, OTA can't fix review);
+   (3) TestFlight device-verify camera (skeleton appears, Record enables) + sandbox
+   purchase unlocks Coach; (4) publish same JS as OTA for existing build-24 users;
+   (5) attach build 25 to ASC v1.1 (id 12fb4005-...), include the yearly IAP,
+   review notes = where IAP lives + camera steps + "privacy labels corrected, app
+   does not track", resubmit.
+
+1. **v1.1 SUBMITTED TO APP REVIEW (2026-08-21, ~11pm PHT).** Build #24 (first success after 9 failed builds — full skia fix chain held). Attached to ASC v1.1 + reviewSubmission c9f054ca-0ead-4929-8f47-b4c2ac1178ea, state WAITING_FOR_REVIEW. EAS plan upgraded to Starter ($19/mo, Lloyd may cancel after approval). ~~NEXT: await Apple verdict~~ → REJECTED, see item 0.
 
 2. **When the build FINISHES** (poll `npx eas-cli build:list --platform ios --limit 1 --non-interactive --json`;
    a Monitor with a 60s poll loop works well, 60-min timeout):
@@ -138,3 +175,12 @@ Server data = instant in every app, no OTA. FULLY AUTOMATED since 2026-08-22: cl
 - Vitest must exclude `.claude/worktrees/**` (root vitest.config.ts does).
 - reanimated stays REMOVED (worklets dual-runtime conflict); babel has ONLY
   `react-native-worklets-core/plugin`.
+- TWO packages ship the throwing ReanimatedProxy: vision-camera AND
+  @shopify/react-native-skia (module-scope touch in useVideoLoading.ts — skia's
+  was the thrower that survived the vision-camera-only patch).
+  `scripts/patch-reanimated-proxies.mjs` stubs both × 3 flavors (src is what
+  Metro bundles — both packages set "react-native": "src/...").
+- App Review evaluates the EMBEDDED bundle (first launch) — an OTA can never fix
+  a rejected binary for review; cut a new build.
+- ASC App Privacy labels cannot be edited via the API — ASC web UI only
+  (Account Holder / Admin / App Manager).
