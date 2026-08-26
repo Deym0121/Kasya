@@ -19,11 +19,17 @@
      neutral. FIXED in 6e8fa91 ("Continue" + post-denial "Open Settings" path);
      OTA'd (group 3e02ae3a); **build #26 queued** (EAS 3d04640c) — review needs
      the embedded bundle.
-   NEXT: build 26 finishes → Lloyd uploads via `npx eas-cli submit --platform ios
-   --profile production --id 3d04640c-...` (eas submit is classifier-blocked for
-   Claude) → CONFIRM public App Store page no longer shows tracking → attach
-   build 26 to v1.1 + new reviewSubmission (old one must be CANCELED first —
-   same dance as before, scratchpad asc.mjs has the steps) → resubmit.
+   NEXT (updated 2026-08-27): **build 27 FINISHED** (EAS 68493aa6-eda5-463b-820c-8e8ef99e6957,
+   buildNumber 27 — first binary embedding the camera rework + permission button;
+   builds 25/26 are superseded). Sequence: (1) Lloyd uploads: `npx eas-cli submit
+   --platform ios --profile production --id 68493aa6-eda5-463b-820c-8e8ef99e6957
+   --non-interactive` (eas submit is classifier-blocked for Claude); (2) Lloyd
+   publishes the privacy-label fix in ASC (STILL showing "Data Used to Track You"
+   on the public App Store page as of 08-27 — tracking=No on all 4 types + the
+   blue Publish button); (3) Lloyd confirms camera works on-device (OTA already
+   delivers the same JS to build 25); (4) Claude verifies the public page dropped
+   the tracking section → attach build 27 to v1.1 → cancel old submission if one
+   is open → new reviewSubmission → submit (scratchpad asc.mjs has all steps).
 
 0. **v1.1 (build 24) REJECTED by App Review 2026-08-25** (submission c9f054ca, state
    UNRESOLVED_ISSUES; ASC v1.1 = REJECTED). Three issues, all root-caused 2026-08-26
