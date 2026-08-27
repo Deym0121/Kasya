@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
+import Svg, { Path } from 'react-native-svg';
 import { RootScreenProps } from '../navigation';
 import { colors, spacing, radius, fonts } from '../theme';
 import { Button, TextField } from '../components';
@@ -41,6 +42,30 @@ type Mode = 'signup' | 'login';
 // at bundle time; indirect reads are undefined in production builds.
 const GOOGLE_SIGNIN_ENABLED = process.env.EXPO_PUBLIC_GOOGLE_SIGNIN === '1';
 const APPLE_SIGNIN_ENABLED = process.env.EXPO_PUBLIC_APPLE_SIGNIN === '1';
+
+/** The official multicolor Google "G" (brand guidelines require the real mark). */
+function GoogleG() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 48 48">
+      <Path
+        fill="#EA4335"
+        d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+      />
+      <Path
+        fill="#4285F4"
+        d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+      />
+      <Path
+        fill="#FBBC05"
+        d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+      />
+      <Path
+        fill="#34A853"
+        d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+      />
+    </Svg>
+  );
+}
 
 export default function SignInScreen({ navigation }: Props) {
   // On narrow phones the walker art and the 34px title can't share the hero
@@ -209,7 +234,7 @@ export default function SignInScreen({ navigation }: Props) {
                       style={({ pressed }) => [styles.socialBtn, styles.socialApple, pressed && { opacity: 0.9 }]}
                     >
                       <Text style={styles.appleLogo}></Text>
-                      <Text style={[styles.socialText, { color: '#FFFFFF' }]}>Continue with Apple</Text>
+                      <Text style={[styles.socialText, { color: '#000000' }]}>Continue with Apple</Text>
                     </Pressable>
                   )}
                   {showGoogle && (
@@ -220,7 +245,7 @@ export default function SignInScreen({ navigation }: Props) {
                       accessibilityLabel="Continue with Google"
                       style={({ pressed }) => [styles.socialBtn, pressed && { opacity: 0.9 }]}
                     >
-                      <Text style={styles.socialG}>G</Text>
+                      <GoogleG />
                       <Text style={styles.socialText}>Continue with Google</Text>
                     </Pressable>
                   )}
@@ -357,12 +382,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     marginBottom: spacing.sm,
   },
-  // Deliberate literals: Apple HIG mandates a white sign-in button with black
-  // logo/text on dark backgrounds (fg overridden inline to #000000).
-  // HIG "Sign in with Apple" black style: black fill, white logo + label.
-  socialApple: { backgroundColor: '#000000', borderColor: '#000000' },
-  appleLogo: { fontSize: 18, color: '#FFFFFF', marginTop: -2 },
-  socialG: { fontFamily: fonts.extra, fontSize: 17, color: '#4285F4' },
+  // Deliberate literals: on a dark UI the HIG "Sign in with Apple" style is the
+  // WHITE button — black fill would disappear into the near-black screen.
+  socialApple: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
+  appleLogo: { fontSize: 18, color: '#000000', marginTop: -2 },
   socialText: { fontFamily: fonts.semibold, fontSize: 15, color: colors.bg },
   orRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginVertical: spacing.lg },
   orLine: { flex: 1, height: 1, backgroundColor: colors.line },
