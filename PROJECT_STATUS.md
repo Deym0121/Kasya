@@ -5,6 +5,36 @@
 
 ## ⭐ RESUME HERE — exact next actions
 
+-2. **ROUND-3 REJECTION (2026-08-27, reviewed on iPad) + FULL COMPLIANCE AUDIT DONE.**
+   Rejected: 5.1.2 labels AGAIN (still published wrong — public page verified twice,
+   NOT CDN lag; Lloyd's publish has failed 3x); NEW 5.1.1(v) camera-denied dead-end;
+   NEW 5.1.1(v) no account deletion found (it existed but hid behind a live
+   network-query gate). Ran a 5-agent audit (19 findings) and fixed the ENTIRE batch
+   in 68bfa4a: camera-denied → demo-scan fallback + Not now (never a dead end),
+   demo-scan link on the live camera screen, calm engine-error copy, deterministic
+   Delete-account row + visible failure note + Privacy/Support rows in Profile,
+   DEMO labels on Result/Review/PDF/sticker, paywall SAVE 33% (was false 42%) +
+   $79.99 demo price + iOS-only store copy, camera purpose strings acknowledge the
+   opt-in clip, NSPhotoLibraryAddUsageDescription added (Share→Save Image crashed),
+   usesAppleSignIn removed, r6 marker hidden, guest shows as "Guest",
+   authRateLimits purged on deleteAccount (Convex DEPLOYED), privacy/support pages
+   reworded (DEPLOYED). Demo account CREATED on prod (review@kasya.app /
+   KasyaReview#2026) + set in ASC review details (demoAccountRequired true).
+   OTA published (group 583e47d8); **build 28 queued (EAS 4f92f346-9b12-4b4b-b249-f79a06dab3b6)**.
+   BLOCKING LLOYD ACTIONS: (1) ASC App Privacy — the publish has failed 3 times;
+   verify INSIDE ASC that no "Data Used to Track You" card remains after Publish,
+   or use Apple's fallback (Resolution Center reply: "app does not track, please
+   advise if the label isn't updating"); send Claude a screenshot of the App
+   Privacy page if unsure. (2) ASC age-rating questionnaire: answer the in-app
+   AI-chat question YES (guardrailed coach). (3) Upload build 28 when finished:
+   `npx eas-cli submit --platform ios --profile production --id 4f92f346-9b12-4b4b-b249-f79a06dab3b6 --non-interactive`
+   (4) Record on a physical device: create account → Profile → Delete account →
+   two-tap confirm → back at onboarding → old credentials fail; ALSO deny camera →
+   demo scan works. Upload video (Drive), give Claude the link — Apple requires it
+   in the notes. THEN Claude resubmits (attach build 28, cancel old submission,
+   new reviewSubmission, notes updated with recording link + demo-account +
+   camera-denied flow).
+
 -1. **BUILD 25 REJECTED AGAIN 2026-08-26** (submission 83fafb63) — but the camera
    (2.1a) and IAP (2.1b) fixes PASSED (absent from rejection; reviewer reached the
    camera permission screen). Two issues remain:
