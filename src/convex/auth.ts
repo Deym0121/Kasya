@@ -56,12 +56,69 @@ export async function signInWithEmail(email: string, password: string): Promise<
 export type OAuthProvider = 'google' | 'apple';
 
 /**
- * Social sign-in is STAGED on Convex: add the Google provider in
- * convex/auth.ts and flip EXPO_PUBLIC_GOOGLE_SIGNIN to '1' to re-enable the
- * button. Until then this resolves with a readable notice.
+ * Social sign-in. Backends are live (convex/auth.ts: Google OAuth +
+ * apple-native token verification); the BUTTONS are gated behind
+ * EXPO_PUBLIC_GOOGLE_SIGNIN / EXPO_PUBLIC_APPLE_SIGNIN so nothing changes for
+ * shipped builds until the flags flip (see SOCIAL_AUTH_SETUP.md).
+ *
+ *  - apple: native Sign in with Apple sheet → identityToken → the
+ *    'apple-native' Convex provider verifies it against Apple's JWKS.
+ *  - google (native): Convex Auth's RN flow — signIn returns the OAuth URL,
+ *    we open it in the auth session browser, the deep-link back carries a
+ *    one-time code, and a second signIn call exchanges it.
+ *  - google (web): plain browser redirect.
+ *
+ * Returns the signed-in email when the provider shares it (first Apple
+ * sign-in only) so callers can mirror the local session.
  */
-export async function signInWithProvider(_provider: OAuthProvider): Promise<AuthResult> {
-  return { ok: false, error: 'Social sign-in is not enabled yet — use email and password for now.' };
+export async function signInWithProvider(provider: OAuthProvider): Promise<AuthResult & { email?: string; name?: string }> {
+  if (!isCloudEnabled()) return { ok: false, error: CLOUD_OFF };
+  const actions = getAuthActions();
+  if (!actions) return { ok: false, error: NOT_READY };
+
+  if (provider === 'apple') {
+    let Apple: any;
+    try {
+      Apple = require('expo-apple-authentication');
+      if (!(await Apple.isAvailableAsync())) throw new Error('unavailable');
+    } catch {
+      return { ok: false, error: 'Sign in with Apple isn’t available in this build.' };
+    }
+    try {
+      const cred = await Apple.signInAsync({
+        requestedScopes: [Apple.AppleAuthenticationScope.FULL_NAME, Apple.AppleAuthenticationScope.EMAIL],
+      });
+      if (!cred?.identityToken) return { ok: false, error: 'Apple sign-in didn’t complete — try again.' };
+      const name = [cred.fullName?.givenName, cred.fullName?.familyName].filter(Boolean).join(' ') || undefined;
+      await actions.signIn('apple-native', { identityToken: cred.identityToken, ...(name ? { name } : {}) });
+      return { ok: true, email: cred.email ?? undefined, name };
+    } catch (e: any) {
+      if (e?.code === 'ERR_REQUEST_CANCELED') return { ok: false, error: '' }; // user closed the sheet — not an error
+      return { ok: false, error: 'Apple sign-in failed — try again, or use email and password.' };
+    }
+  }
+
+  try {
+    const { Platform } = require('react-native');
+    if (Platform.OS === 'web') {
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const { redirect } = await actions.signIn('google', origin ? { redirectTo: origin } : {});
+      if (redirect && typeof window !== 'undefined') window.location.href = redirect.toString();
+      return { ok: true };
+    }
+    const WebBrowser = require('expo-web-browser');
+    const redirectTo = 'kasya://auth';
+    const { redirect } = await actions.signIn('google', { redirectTo });
+    if (!redirect) return { ok: false, error: 'Google sign-in couldn’t start — try again in a moment.' };
+    const result = await WebBrowser.openAuthSessionAsync(redirect.toString(), redirectTo);
+    if (result.type !== 'success' || !result.url) return { ok: false, error: '' }; // cancelled — not an error
+    const code = new URL(result.url).searchParams.get('code');
+    if (!code) return { ok: false, error: 'Google sign-in didn’t complete — try again.' };
+    await actions.signIn('google', { code });
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'Google sign-in failed — try again, or use email and password.' };
+  }
 }
 
 /** Sign out of the cloud session; never throws (local sign-out must always work). */

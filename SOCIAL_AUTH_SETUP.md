@@ -1,64 +1,55 @@
-# Google & Apple sign-in — setup guide
+# Social sign-in (Google + Apple) — built, flag-gated OFF
 
-The app side is DONE: "Continue with Google" / "Continue with Apple" buttons on the sign-in
-screen run Supabase's OAuth PKCE flow (web = full-page redirect; native = system browser →
-`kasya://auth-callback` → code exchange). Until you enable the providers in the dashboard,
-tapping them shows "provider is not enabled" — nothing breaks.
+_Rewritten 2026-08-27. The CODE is fully in place (server + client); nothing shows
+in the app until the env flags flip. Do NOT flip anything until the pending App
+Review submission is approved._
 
-Your project callback URL (needed in both consoles):
+## What's implemented
 
-    https://mvsgrlvyxhufmyjwjzcb.supabase.co/auth/v1/callback
+| Piece | Where | State |
+|---|---|---|
+| Google OAuth provider (Auth.js) | `convex/auth.ts` | Deployed; inert until `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` env vars exist |
+| Apple native-token provider (`apple-native`) | `convex/auth.ts` | Deployed; verifies the identityToken JWT against Apple's JWKS (aud = `com.kasya.app`); no server secret needed |
+| Deep-link redirect whitelist (`kasya://`) | `convex/auth.ts` callbacks.redirect | Deployed |
+| Client flows (native Apple sheet; Google RN code-exchange via `expo-web-browser`; Google web redirect) | `src/convex/auth.ts` `signInWithProvider` | Shipped, unreachable while flags are off |
+| Sign-in buttons (HIG-correct Apple button; 4.8 coupling: on iOS Google only renders when Apple does) | `src/screens/SignInScreen.tsx` | Shipped, hidden while flags are off |
+| `expo-apple-authentication` npm package | package.json | Installed (JS only — config plugin/entitlement NOT added yet) |
 
-## Part 1 — Google (do this first; works on web + Android + iOS)
+## Activation checklist (after the current review clears)
 
-1. Go to https://console.cloud.google.com → create a project (e.g. "Kasya").
-2. **APIs & Services → OAuth consent screen**: External · app name **Kasya** · your support
-   email · add your domain later; scopes: just the default openid/email/profile. Save.
-3. **APIs & Services → Credentials → Create credentials → OAuth client ID**:
-   - Application type: **Web application** (yes, web — Supabase handles the exchange for
-     every platform in this flow).
-   - Authorized redirect URIs: paste the callback URL above.
-   - Create → copy the **Client ID** and **Client secret**.
-4. Supabase dashboard → **Authentication → Sign In / Providers → Google**:
-   - Enable · paste Client ID + Client secret · Save.
-5. Test: web app → Sign in → "Continue with Google". Done.
+1. **Google Cloud Console** (console.cloud.google.com → APIs & Services → Credentials):
+   create an OAuth client, type **Web application**, authorized redirect URI:
+   `https://youthful-civet-99.convex.site/api/auth/callback/google`
+   Then set the secrets on the Convex deployment:
+   ```bash
+   npx convex env set AUTH_GOOGLE_ID <client-id> && npx convex env set AUTH_GOOGLE_SECRET <client-secret>
+   ```
+   (run from the repo root with CONVEX_DEPLOY_KEY exported, as usual)
+2. **Apple**: nothing server-side. The native flow verifies the token against the
+   bundle id. In `app.json`: add `"usesAppleSignIn": true` back under `ios`, and
+   add `"expo-apple-authentication"` to `plugins` (adds the entitlement). The
+   Sign in with Apple capability must also be ON for the App ID in the Apple
+   Developer portal (it was previously).
+3. **Flags**: in `eas.json` production env add
+   `"EXPO_PUBLIC_GOOGLE_SIGNIN": "1", "EXPO_PUBLIC_APPLE_SIGNIN": "1"`.
+4. **New native build** (the entitlement + pod are native): bump nothing, just
+   `npx eas-cli build --platform ios --profile production`, TestFlight-verify BOTH
+   buttons on a device, then release (this is NOT OTA-able).
+5. App Review note when submitting the build that turns this on: mention Sign in
+   with Apple is offered alongside Google (guideline 4.8), and that account
+   deletion covers social accounts too (it does — deleteAccount wipes authAccounts
+   for every provider).
 
-Native note (later, with the dev build): the same flow works in the system browser via the
-`kasya://` scheme — no extra Google config needed. Only if you later want the *native* Google
-account sheet do you add Android/iOS client IDs + @react-native-google-signin.
+## Guardrails (why it's safe today)
 
-## Part 2 — Apple (needs the paid Apple Developer Program, $99/yr)
+- Flags off → the sign-in screen renders exactly as in build 28.
+- The server providers are additive: Password auth is untouched, and `apple-native`
+  can only mint sessions for tokens Apple actually signed for our bundle id.
+- Google sign-in without the env vars set fails server-side with an error the
+  client turns into a friendly message — but the button can't even render yet.
 
-Store rule to know: once the iOS app ships with ANY social login, Apple **requires**
-Sign in with Apple (Guideline 4.8). On web/Android it's optional — the app already hides
-the Apple button on Android.
+## 4.8 coupling (do not undo)
 
-1. https://developer.apple.com → **Certificates, Identifiers & Profiles**.
-2. **Identifiers → App ID** (e.g. `com.kasya.app`): enable the **Sign in with Apple** capability.
-3. **Identifiers → Services ID** (e.g. `com.kasya.web`): enable Sign in with Apple → Configure:
-   - Primary App ID: the App ID above
-   - Domains: `mvsgrlvyxhufmyjwjzcb.supabase.co`
-   - Return URLs: the callback URL above.
-4. **Keys → create a key** with Sign in with Apple enabled → download the `.p8` (once!), note
-   the Key ID and your Team ID.
-5. Generate the **Secret Key** locally (the `.p8` never leaves your machine):
-
-       node scripts/apple-secret.mjs ./AuthKey_XXXX.p8 <TEAM_ID> <KEY_ID> <SERVICES_ID>
-
-   Paste the printed JWT into Supabase → **Authentication → Sign In / Providers → Apple**
-   (enable · Client ID = the Services ID · Secret Key = the JWT). ⚠ Apple caps the secret at
-   **6 months** — the script prints the expiry date; calendar a re-run.
-6. Set `EXPO_PUBLIC_APPLE_SIGNIN=1` in `.env` — the Apple button stays hidden until this flag
-   is on, so users never meet a dead button.
-7. Test on web first; native needs the dev build.
-
-## How it behaves in the app
-
-- First social sign-in auto-creates the Supabase user (no email confirmation needed — the
-  provider already verified the address).
-- On return, the sign-in screen detects the session and walks straight into the app, then
-  cloud-syncs any local scans.
-- Guest mode is unchanged: local-only, no account.
-
-Keep the client secret values in the dashboards only — never in the repo or `.env` shipped
-values (the app needs no secrets for OAuth; `npm run check:secrets` guards the repo).
+On iOS, the Google button only renders when the Apple button also renders
+(`SignInScreen.tsx`). Never ship an iOS build with Google visible and Apple
+hidden — automatic rejection.

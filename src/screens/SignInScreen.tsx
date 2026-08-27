@@ -95,18 +95,19 @@ export default function SignInScreen({ navigation }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** Google / Apple via Supabase OAuth. On web this navigates away and back. */
+  /** Google / Apple via Convex Auth. On web, Google navigates away and back. */
   async function social(provider: OAuthProvider) {
     setBusy(true);
     setNotice(null);
     try {
       const res = await signInWithProvider(provider);
       if (!res.ok) {
-        setNotice({ tone: 'error', text: res.error ?? 'Sign-in failed — try again.' });
+        // Empty error = the user cancelled the sheet/browser — say nothing.
+        if (res.error) setNotice({ tone: 'error', text: res.error });
         return;
       }
       // Native resolves with a live session; web resolves by redirecting away.
-      const e = await currentUserEmail();
+      const e = (await currentUserEmail()) ?? res.email ?? null;
       if (e) {
         await enterApp(e);
         syncReports().catch(() => {});
@@ -187,37 +188,50 @@ export default function SignInScreen({ navigation }: Props) {
             ))}
           </View>
 
-          {cloud && GOOGLE_SIGNIN_ENABLED && (
-            <>
-              <Pressable
-                onPress={() => social('google')}
-                disabled={busy}
-                accessibilityRole="button"
-                accessibilityLabel="Continue with Google"
-                style={({ pressed }) => [styles.socialBtn, pressed && { opacity: 0.9 }]}
-              >
-                <Text style={styles.socialG}>G</Text>
-                <Text style={styles.socialText}>Continue with Google</Text>
-              </Pressable>
-              {Platform.OS !== 'android' && APPLE_SIGNIN_ENABLED && (
-                <Pressable
-                  onPress={() => social('apple')}
-                  disabled={busy}
-                  accessibilityRole="button"
-                  accessibilityLabel="Continue with Apple"
-                  style={({ pressed }) => [styles.socialBtn, styles.socialApple, pressed && { opacity: 0.9 }]}
-                >
-                  <Feather name="smartphone" size={17} color="#000000" />
-                  <Text style={[styles.socialText, { color: '#000000' }]}>Continue with Apple</Text>
-                </Pressable>
-              )}
-              <View style={styles.orRow}>
-                <View style={styles.orLine} />
-                <Text style={styles.orText}>or use email</Text>
-                <View style={styles.orLine} />
-              </View>
-            </>
-          )}
+          {/* App Review 4.8: on iOS, Google may only ship when Apple sign-in
+              also ships — the coupling lives HERE, not in the env flags. Apple
+              is iOS-only (native sheet); Google alone is fine on Android/web.
+              The Apple button follows the HIG: Apple logo glyph, no other
+              icons, "Continue with Apple" wording. */}
+          {cloud &&
+            (() => {
+              const showApple = Platform.OS === 'ios' && APPLE_SIGNIN_ENABLED;
+              const showGoogle = GOOGLE_SIGNIN_ENABLED && (Platform.OS !== 'ios' || showApple);
+              if (!showApple && !showGoogle) return null;
+              return (
+                <>
+                  {showApple && (
+                    <Pressable
+                      onPress={() => social('apple')}
+                      disabled={busy}
+                      accessibilityRole="button"
+                      accessibilityLabel="Continue with Apple"
+                      style={({ pressed }) => [styles.socialBtn, styles.socialApple, pressed && { opacity: 0.9 }]}
+                    >
+                      <Text style={styles.appleLogo}></Text>
+                      <Text style={[styles.socialText, { color: '#FFFFFF' }]}>Continue with Apple</Text>
+                    </Pressable>
+                  )}
+                  {showGoogle && (
+                    <Pressable
+                      onPress={() => social('google')}
+                      disabled={busy}
+                      accessibilityRole="button"
+                      accessibilityLabel="Continue with Google"
+                      style={({ pressed }) => [styles.socialBtn, pressed && { opacity: 0.9 }]}
+                    >
+                      <Text style={styles.socialG}>G</Text>
+                      <Text style={styles.socialText}>Continue with Google</Text>
+                    </Pressable>
+                  )}
+                  <View style={styles.orRow}>
+                    <View style={styles.orLine} />
+                    <Text style={styles.orText}>or use email</Text>
+                    <View style={styles.orLine} />
+                  </View>
+                </>
+              );
+            })()}
 
           <TextField
             label="Email"
@@ -345,7 +359,9 @@ const styles = StyleSheet.create({
   },
   // Deliberate literals: Apple HIG mandates a white sign-in button with black
   // logo/text on dark backgrounds (fg overridden inline to #000000).
-  socialApple: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
+  // HIG "Sign in with Apple" black style: black fill, white logo + label.
+  socialApple: { backgroundColor: '#000000', borderColor: '#000000' },
+  appleLogo: { fontSize: 18, color: '#FFFFFF', marginTop: -2 },
   socialG: { fontFamily: fonts.extra, fontSize: 17, color: '#4285F4' },
   socialText: { fontFamily: fonts.semibold, fontSize: 15, color: colors.bg },
   orRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginVertical: spacing.lg },
