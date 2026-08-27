@@ -84,14 +84,16 @@ export function buildReportHtml(report: GaitReportRecord): string {
   .muted { color: #6B6E76; font-size: 12.5px; margin-top: 2px; }
   .tip { background: #FFE9DF; border-radius: 12px; padding: 14px 16px; font-size: 14px; line-height: 1.5; margin-top: 10px; }
   .disc { color: #6B6E76; font-size: 11.5px; line-height: 1.6; margin-top: 30px; border-top: 1px solid #ECEAE4; padding-top: 14px; }
+  .demo { background: #FFE9DF; color: #B4400F; border-radius: 8px; padding: 8px 12px; font-size: 12.5px; font-weight: 700; margin-top: 12px; }
 </style>
 </head>
 <body>
   <div class="brand"><span class="dot"></span><b>Kasya</b></div>
   <div class="sub">Gait scan report · ${goal} · ${date}</div>
+  ${report.simulated ? '<div class="demo">DEMO — sample data from a simulated scan, not a reading of your own gait.</div>' : ''}
 
   <div class="hero">
-    <div class="kicker">CADENCE</div>
+    <div class="kicker">CADENCE${report.simulated ? ' · DEMO' : ''}</div>
     <div><span class="num">${cadence}</span><span class="unit">spm</span></div>
     <div class="cap">steps per minute · every number in this report is an estimate from a single-camera scan</div>
   </div>

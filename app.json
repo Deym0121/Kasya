@@ -11,9 +11,9 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.kasya.app",
-      "usesAppleSignIn": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "Kasya needs camera access to track your stride. Nothing is recorded or uploaded.",
+        "NSCameraUsageDescription": "Kasya uses the camera to analyze your stride on your device. Video is never uploaded; an optional review clip stays on your phone and is deleted after review.",
+        "NSPhotoLibraryAddUsageDescription": "Lets you save your shared Kasya result image to your Photos if you choose Save Image.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -27,7 +27,6 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.CAMERA",
         "android.permission.CAMERA"
       ]
     },
@@ -40,7 +39,7 @@
       [
         "react-native-vision-camera",
         {
-          "cameraPermissionText": "Kasya needs camera access to track your stride. Nothing is recorded or uploaded.",
+          "cameraPermissionText": "Kasya uses the camera to analyze your stride on your device. Video is never uploaded; an optional review clip stays on your phone and is deleted after review.",
           "enableMicrophonePermission": false,
           "enableCodeScanner": false
         }

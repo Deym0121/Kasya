@@ -79,7 +79,7 @@ export function buildResultStickerSvg(report: GaitReportRecord, opts: StickerOpt
   <circle cx="112" cy="122" r="22" fill="#FF4D0D"${textFilter}/>
   <text x="156" y="140" font-family="${FONT}" font-size="52" letter-spacing="-1" fill="#FFFFFF"${textFilter}>Kasya</text>
 
-  <text x="90" y="356" font-family="${FONT_MED}" font-size="34" letter-spacing="6" fill="#FF8A54"${textFilter}>AI GAIT SCAN</text>
+  <text x="90" y="356" font-family="${FONT_MED}" font-size="34" letter-spacing="6" fill="#FF8A54"${textFilter}>${report.simulated ? 'DEMO · SAMPLE DATA' : 'AI GAIT SCAN'}</text>
 
   <!-- headline cadence -->
   <text x="82" y="620" font-family="${FONT}" font-size="290" letter-spacing="-10" fill="#FFFFFF"${textFilter}>${cadence}</text>

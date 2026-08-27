@@ -295,7 +295,7 @@ const privacyPage = httpAction(async () =>
 <p>Kasya estimates walking/running cadence and form from your phone camera and suggests comfort-led shoe matches. Privacy is the product's core design constraint.</p>
 <h2>What never leaves your phone</h2>
 <ul><li><b>No video is recorded or uploaded by default.</b> The camera is read live on your device as body landmark positions; only derived numbers (like steps per minute) are kept.</li>
-<li>The optional "keep a clip for review" toggle stores the clip in memory only and deletes it right after you view it. It is never uploaded.</li>
+<li>The optional "keep a clip for review" toggle keeps the clip temporarily on your device only and deletes it right after you view it. It is never uploaded.</li>
 <li>Raw landmark motion used for the in-app replay stays on your device and is never synced.</li></ul>
 <h2>What we collect</h2>
 <ul><li><b>Account (optional):</b> your email address and a password (stored as a salted hash). Guest mode collects nothing.</li>
@@ -317,7 +317,7 @@ const supportPage = httpAction(async () =>
     `<h1>Kasya Support</h1>
 <h2>Common questions</h2>
 <ul><li><b>The scan says capture failed.</b> Prop your phone side-on, step 3–4 meters back, make sure your whole body is in frame with decent lighting, then follow the countdown.</li>
-<li><b>Does Kasya record video?</b> No — by default nothing is recorded or uploaded. See our <a href="/privacy">privacy policy</a>.</li>
+<li><b>Does Kasya record video?</b> Not by default, and video is never uploaded. If you opt in to "keep a clip for review", the clip stays on your device and is deleted right after you view it. See our <a href="/privacy">privacy policy</a>.</li>
 <li><b>How do I cancel my subscription?</b> Subscriptions are billed by the App Store / Google Play — manage or cancel them in your store account settings, or in the app under Profile → Manage subscription.</li>
 <li><b>How do I delete my account?</b> Profile → Delete account, or email us.</li></ul>
 <h2>Contact us</h2>

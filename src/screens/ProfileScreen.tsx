@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import type { ComponentProps } from 'react';
-import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Platform, Linking } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { TabScreenProps } from '../navigation';
@@ -58,6 +58,7 @@ export default function ProfileScreen({ navigation }: Props) {
   const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [cloudEmail, setCloudEmail] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteNote, setDeleteNote] = useState('');
   const [deleting, setDeleting] = useState(false);
   const deleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -110,6 +111,7 @@ export default function ProfileScreen({ navigation }: Props) {
     if (deleting) return;
     if (!confirmDelete) {
       setConfirmDelete(true);
+      setDeleteNote('');
       if (deleteTimer.current) clearTimeout(deleteTimer.current);
       deleteTimer.current = setTimeout(() => setConfirmDelete(false), 5000);
       return;
@@ -119,7 +121,12 @@ export default function ProfileScreen({ navigation }: Props) {
     setDeleting(true);
     const res = await deleteCloudAccount();
     setDeleting(false);
-    if (!res.ok) return; // connection hiccup — the row stays, user can retry
+    if (!res.ok) {
+      // Silent failure read as "deletion doesn't work" to App Review — say
+      // what happened and that the account still exists.
+      setDeleteNote('Couldn’t delete the account — check your connection, or sign in again and retry. Nothing was deleted.');
+      return;
+    }
     await clearSyncedMap(); // scans still on-device would re-sync to a future account
     await signOut();
     navigation.getParent()?.reset({ index: 0, routes: [{ name: 'Onboarding' }] });
@@ -169,7 +176,11 @@ export default function ProfileScreen({ navigation }: Props) {
           </View>
           <View style={{ flex: 1, marginLeft: spacing.lg }}>
             <Text style={styles.name}>{user?.name ?? 'Runner'}</Text>
-            <Text style={styles.email}>{user?.email ?? 'demo@kasya.app'}</Text>
+            <Text style={styles.email}>
+              {!user?.email || user.email === 'demo@kasya.app'
+                ? 'Guest — your scans stay on this device'
+                : user.email}
+            </Text>
           </View>
         </View>
         <View style={{ marginTop: spacing.lg }}>
@@ -235,8 +246,25 @@ export default function ProfileScreen({ navigation }: Props) {
           danger
         />
         <View style={styles.div} />
+        <Row
+          icon="shield"
+          label="Privacy Policy"
+          onPress={() => Linking.openURL('https://youthful-civet-99.convex.site/privacy')}
+        />
+        <View style={styles.div} />
+        <Row
+          icon="help-circle"
+          label="Support"
+          onPress={() => Linking.openURL('https://youthful-civet-99.convex.site/support')}
+        />
+        <View style={styles.div} />
         <Row icon="log-out" label="Sign out" onPress={handleSignOut} danger />
-        {cloudEmail != null && (
+        {/* App Review 5.1.1(v): the Delete-account row must be findable
+            DETERMINISTICALLY for any signed-in account — never gated on a live
+            network query (cloudEmail could be null on a flaky connection or
+            before the auth bridge warms, which hid the row from the reviewer).
+            Guests (no account) don't need deletion. */}
+        {(cloudEmail != null || (user?.email && user.email !== 'demo@kasya.app')) && (
           <>
             <View style={styles.div} />
             <Row
@@ -251,6 +279,7 @@ export default function ProfileScreen({ navigation }: Props) {
               onPress={handleDeleteAccount}
               danger
             />
+            {deleteNote ? <Text style={[T.small, styles.deleteNote]}>{deleteNote}</Text> : null}
           </>
         )}
       </Card>
@@ -277,5 +306,6 @@ const styles = StyleSheet.create({
   menu: { padding: spacing.sm },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg, paddingVertical: spacing.lg, paddingHorizontal: spacing.md },
   rowLabel: { flex: 1, fontFamily: fonts.medium, fontSize: 16, color: colors.ink },
+  deleteNote: { color: colors.danger, paddingHorizontal: spacing.md, paddingBottom: spacing.md },
   div: { height: 1, backgroundColor: colors.line, marginHorizontal: spacing.md },
 });

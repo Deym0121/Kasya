@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Image, Linking } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Image, Linking, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { RootScreenProps } from '../navigation';
@@ -30,8 +30,10 @@ const BENEFITS: { icon: 'message-circle' | 'file-text'; title: string; sub: stri
 ];
 
 // Demo-mode price display; live mode shows the store's own priceString.
+// Mirrors the REAL store products ($9.99/mo, $79.99/yr) — a mismatched number
+// here is a metadata-accuracy (2.3.1) problem.
 const DEMO = {
-  yearly: { price: '$69.99/y', perMonth: '$5.83/mo', foot: '$69.99 per year, cancel anytime.' },
+  yearly: { price: '$79.99/y', perMonth: '$6.67/mo', foot: '$79.99 per year, cancel anytime.' },
   monthly: { price: '$9.99/mo', perMonth: null, foot: '$9.99 per month, cancel anytime.' },
 };
 
@@ -211,8 +213,9 @@ export default function PaywallScreen({ navigation }: Props) {
       {showYearly && (
         <View>
           {planCard('yearly', 'Yearly', yearlyPrice, live ? null : DEMO.yearly.perMonth)}
+          {/* 12 × $9.99 = $119.88 vs $79.99/yr → 33% — must match the real math. */}
           <View style={styles.saveBadge} pointerEvents="none">
-            <Text style={styles.saveBadgeText}>SAVE 42%</Text>
+            <Text style={styles.saveBadgeText}>SAVE 33%</Text>
           </View>
         </View>
       )}
@@ -286,8 +289,8 @@ export default function PaywallScreen({ navigation }: Props) {
 
       <Text style={styles.note}>
         {live
-          ? 'Subscriptions are billed to your App Store / Google Play account and renew automatically until cancelled at least 24 hours before the end of the current period, in your store account settings. Scans, history and shoe matches stay free for everyone.'
-          : 'Demo: no real billing yet. In-app purchases (App Store / Google Play via RevenueCat) activate once store products are configured. Scans, history and shoe matches stay free for everyone.'}
+          ? `Subscriptions are billed to your ${Platform.OS === 'ios' ? 'App Store' : 'Google Play'} account and renew automatically until cancelled at least 24 hours before the end of the current period, in your store account settings. Scans, history and shoe matches stay free for everyone.`
+          : 'Demo: no real billing yet. In-app purchases activate once store products are configured. Scans, history and shoe matches stay free for everyone.'}
       </Text>
 
       {/* App Review 3.1.2: functional Privacy Policy + Terms links on the paywall. */}

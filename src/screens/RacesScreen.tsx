@@ -189,9 +189,10 @@ export default function RacesScreen({ navigation }: Props) {
               onPress={() => setFilter(c.code)}
             />
           ))}
-          {/* OTA delivery marker: bump per update so a screenshot of this row
-              tells us which layout revision the device is actually running. */}
-          <Text style={styles.revTag}>r6</Text>
+          {/* OTA delivery marker: invisible to users (accessibility-only) but a
+              screen-reader/inspector still reveals which layout revision the
+              device runs. A visible tag read as debug residue to App Review. */}
+          <View accessibilityLabel="layout-r7" />
         </ScrollView>
 
         {sections.length > 1 && (

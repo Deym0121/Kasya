@@ -64,6 +64,18 @@ export const deleteAccount = mutation({
       await ctx.db.delete(account._id);
     }
 
+    // Sign-in throttle rows are keyed by the account email (authRateLimits
+    // identifier) — the last place a deleted user's email could linger.
+    const user = await ctx.db.get(userId);
+    const email = (user as { email?: string } | null)?.email;
+    if (email) {
+      const limits = await ctx.db
+        .query('authRateLimits')
+        .withIndex('identifier', (q) => q.eq('identifier', email))
+        .collect();
+      await Promise.all(limits.map((l) => ctx.db.delete(l._id)));
+    }
+
     await ctx.db.delete(userId);
   },
 });

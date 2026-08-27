@@ -99,6 +99,7 @@ export default function ResultScreen({ navigation, route }: Props) {
           <View style={styles.heroTop}>
             <Text style={styles.kicker}>CADENCE</Text>
             <View style={styles.heroTopRight}>
+              {report.simulated ? <Badge label="DEMO" tint={colors.accent} color={colors.onDark} /> : null}
               <Badge label={frontal ? 'Side + Rear' : 'Side view'} tint="rgba(255,255,255,0.14)" color={colors.onDark} />
               <Pressable
                 onPress={() => setCadenceInfo((v) => !v)}
@@ -119,6 +120,9 @@ export default function ResultScreen({ navigation, route }: Props) {
           <Text style={styles.unitCaption}>steps per minute</Text>
           <View style={{ height: spacing.sm }} />
           <ConfidenceChip confidence={result.cadence.confidence} />
+          {report.simulated ? (
+            <Text style={styles.demoNote}>Demo — sample data, not a reading of your own gait.</Text>
+          ) : null}
         </View>
         {cadenceInfo && (
           <View style={styles.infoPanel}>
@@ -249,6 +253,7 @@ const styles = StyleSheet.create({
   big: { fontFamily: fonts.extra, fontSize: 60, color: colors.onDark, letterSpacing: -1.5 },
   unit: { fontFamily: fonts.semibold, fontSize: 22, color: colors.onDarkMuted, marginLeft: 8 },
   unitCaption: { fontFamily: fonts.regular, fontSize: 13, color: colors.onDarkMuted, marginTop: 2 },
+  demoNote: { fontFamily: fonts.medium, fontSize: 12, color: colors.onDarkMuted, marginTop: spacing.sm },
   infoPanel: {
     backgroundColor: colors.surfaceAlt,
     borderRadius: radius.md,

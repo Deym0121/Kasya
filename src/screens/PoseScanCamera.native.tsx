@@ -228,11 +228,15 @@ export default function PoseScanCamera({ navigation, route }) {
   }, []);
 
   const onPoseError = useCallback((e) => {
-    const msg = String((e && e.message) || e || 'pose detector error');
+    // Raw exception text on screen read as "app is broken" to App Review
+    // (build 24) — keep the diagnostics in the console, show calm copy.
+    console.warn('[Kasya] pose detector error', e);
     if (switchToCpu()) return; // first error: silent retry on CPU
     // The released GPU detector can echo late errors for a beat after the
     // switch — don't let them clobber the "restarting" note.
-    if (Date.now() - cpuSwitchAt.current > 2500) setEngineNote(msg);
+    if (Date.now() - cpuSwitchAt.current > 2500) {
+      setEngineNote('Live tracking isn’t working on this device right now — you can still run a demo scan below.');
+    }
   }, [switchToCpu]);
 
   const pose = usePoseDetection(
@@ -279,7 +283,7 @@ export default function PoseScanCamera({ navigation, route }) {
     const t = setTimeout(() => {
       if (lastPoseAt.current) return;
       if (switchToCpu()) return; // re-arms via the delegate dep below
-      setEngineNote((prev) => prev ?? 'no pose data yet — if this persists, the detector failed to start');
+      setEngineNote((prev) => prev ?? 'Live tracking isn’t starting on this device — you can still run a demo scan below.');
     }, 7000);
     return () => clearTimeout(t);
   }, [delegate, switchToCpu]);
@@ -346,30 +350,50 @@ export default function PoseScanCamera({ navigation, route }) {
   }, [leadIn, beginCapture]);
 
   if (!hasPermission) {
-    // App Review 5.1.1(iv): the pre-permission button must use neutral wording
-    // ("Continue"), never words that presume consent like "Allow camera"; after
-    // a denial iOS won't re-prompt, so route to Settings instead.
+    // App Review 5.1.1(iv)+(v): neutral button wording ("Continue", never
+    // "Allow…"), and a denial must NEVER dead-end — the user always gets a
+    // demo-scan alternative and a way back (round-3 rejection: "app is not
+    // functional when this access is denied").
     return (
       <View style={styles.perm}>
-        <Text style={styles.permTitle}>Camera access needed</Text>
+        <Text style={styles.permTitle}>{permDenied ? 'Camera is off for Kasya' : 'Camera access'}</Text>
         <Text style={styles.permBody}>
           {permDenied
-            ? 'Camera access is off for Kasya. To run a gait scan, turn it on in Settings — the scan can’t work without it. Nothing is recorded or uploaded.'
-            : 'Kasya uses your camera to track your stride on-device. Nothing is recorded or uploaded. You can choose whether to allow access in the next step.'}
+            ? 'A live gait scan needs the camera, which you can turn on anytime in Settings. Video is never uploaded. You can also try a demo scan with sample data instead.'
+            : 'Kasya uses the camera to analyze your stride on your device. Video is never uploaded; an optional review clip stays on your phone and is deleted after review. You choose whether to allow access in the next step.'}
         </Text>
         <View style={{ height: spacing.xl }} />
-        {permDenied ? (
-          <Button label="Open Settings" icon="settings" onPress={() => Linking.openSettings()} />
-        ) : (
-          <Button
-            label="Continue"
-            icon="arrow-right"
-            onPress={async () => {
-              const granted = await requestPermission();
-              if (!granted) setPermDenied(true);
-            }}
-          />
-        )}
+        <View style={{ alignSelf: 'stretch' }}>
+          {permDenied ? (
+            <>
+              <Button label="Open Settings" icon="settings" onPress={() => Linking.openSettings()} />
+              <View style={{ height: spacing.md }} />
+              <Button
+                label="Try a demo scan (sample data)"
+                icon="play"
+                variant="secondary"
+                onPress={() => navigation.replace('Processing', { goal })}
+              />
+            </>
+          ) : (
+            <Button
+              label="Continue"
+              icon="arrow-right"
+              onPress={async () => {
+                const granted = await requestPermission();
+                if (!granted) setPermDenied(true);
+              }}
+            />
+          )}
+        </View>
+        <Pressable
+          onPress={() => navigation.goBack()}
+          style={styles.permClose}
+          accessibilityRole="button"
+          accessibilityLabel="Not now"
+        >
+          <Text style={styles.permCloseText}>Not now</Text>
+        </Pressable>
       </View>
     );
   }
@@ -562,6 +586,18 @@ export default function PoseScanCamera({ navigation, route }) {
           onPress={startCapture}
           disabled={recording || counting || !landmarks}
         />
+        {/* Nobody to film? A reviewer at a desk (or anyone alone) can still see
+            the full flow — clearly-labeled sample data, never a dead end. */}
+        {!recording && !counting ? (
+          <Pressable
+            onPress={() => navigation.replace('Processing', { goal })}
+            style={styles.demoLink}
+            accessibilityRole="button"
+            accessibilityLabel="Try a demo scan with sample data"
+          >
+            <Text style={styles.demoLinkText}>No one to film right now? Try a demo scan (sample data)</Text>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
@@ -569,6 +605,8 @@ export default function PoseScanCamera({ navigation, route }) {
 
 const styles = StyleSheet.create({
   perm: { flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
+  permClose: { marginTop: spacing.lg, minHeight: 44, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch' },
+  permCloseText: { fontFamily: fonts.medium, fontSize: 15, color: colors.muted },
   permTitle: { fontFamily: fonts.bold, fontSize: 20, color: colors.ink },
   permBody: { fontFamily: fonts.regular, fontSize: 15, color: colors.muted, textAlign: 'center', marginTop: spacing.sm },
   top: { position: 'absolute', top: 48, left: spacing.xl, right: spacing.xl, alignItems: 'center' },
@@ -629,4 +667,12 @@ const styles = StyleSheet.create({
   checkOn: { backgroundColor: colors.accent, borderColor: colors.accent },
   checkMark: { color: '#fff', fontSize: 13, fontFamily: fonts.bold },
   vidText: { flex: 1, fontFamily: fonts.medium, fontSize: 13, color: '#fff' },
+  demoLink: { alignItems: 'center', marginTop: spacing.md, minHeight: 40, justifyContent: 'center' },
+  demoLinkText: {
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    color: '#fff',
+    textDecorationLine: 'underline',
+    textAlign: 'center',
+  },
 });

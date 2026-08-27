@@ -105,6 +105,12 @@ export default function ReviewScreen({ navigation, route }: Props) {
         />
       }
     >
+      {report.simulated ? (
+        <View style={styles.demoRow}>
+          <Label>DEMO</Label>
+          <Text style={styles.demoText}>Sample data — not a reading of your own gait.</Text>
+        </View>
+      ) : null}
       <Card>
         <View style={styles.head}>
           <IconBubble icon="eye" tint={colors.accentSoft} color={colors.accent} size={40} />
@@ -255,6 +261,8 @@ const styles = StyleSheet.create({
   step: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, color: colors.inkSoft, marginTop: spacing.md },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   cardTitle: { fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
+  demoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md },
+  demoText: { flex: 1, fontFamily: fonts.medium, fontSize: 13, color: colors.muted },
   li: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, color: colors.inkSoft, marginTop: spacing.sm },
   toggle: {
     flexDirection: 'row',

@@ -56,8 +56,10 @@ export default function SignInScreen({ navigation }: Props) {
 
   /** Mirror the identity locally and enter the app (works for cloud and guest). */
   async function enterApp(emailAddr: string) {
+    // 'demo@kasya.app' is the guest SENTINEL (a storage key — changing it
+    // would orphan existing guests' local data); users only ever see "Guest".
     const trimmed = emailAddr.trim() || 'demo@kasya.app';
-    const name = trimmed.split('@')[0] || 'Runner';
+    const name = trimmed === 'demo@kasya.app' ? 'Guest' : trimmed.split('@')[0] || 'Runner';
     // A different account shouldn't inherit the last user's scans, AI
     // allowance or reminder schedule — clear them. The same person returning
     // (any capitalization) keeps everything.
