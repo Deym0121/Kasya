@@ -17,14 +17,32 @@ Review submission is approved._
 
 ## Activation checklist (after the current review clears)
 
-1. **Google Cloud Console** (console.cloud.google.com → APIs & Services → Credentials):
-   create an OAuth client, type **Web application**, authorized redirect URI:
-   `https://youthful-civet-99.convex.site/api/auth/callback/google`
-   Then set the secrets on the Convex deployment:
+1. **Google Cloud Console** (console.cloud.google.com), step by step:
+   1. Top bar → project picker → **New project** → name `Kasya` → Create (skip if reusing one).
+   2. Menu → **APIs & Services → OAuth consent screen** (a.k.a. Google Auth Platform → Branding):
+      User type **External** → app name `Kasya` → support email = your Gmail →
+      **App domain / homepage**: `https://trykasya.online` → developer contact = your
+      Gmail → save. Under **Audience/Publishing status** click **Publish app**
+      (basic email/profile scopes need no Google review).
+      To show `trykasya.online` as a verified brand domain: **Authorized domains →
+      add `trykasya.online`** — Google will ask to verify it in Search Console;
+      since the domain is on Vercel, verification = add the TXT record Google
+      gives you in Vercel → Domains → trykasya.online → DNS records.
+   3. **APIs & Services → Credentials → + Create credentials → OAuth client ID**:
+      type **Web application**, name `Kasya Convex`,
+      **Authorized redirect URIs → add exactly**:
+      `https://youthful-civet-99.convex.site/api/auth/callback/google`
+      (no JavaScript origins needed — this is a server-side flow). Create.
+   4. Copy the **Client ID** and **Client secret**, then set them on the Convex
+      deployment (repo root, CONVEX_DEPLOY_KEY exported as usual):
    ```bash
    npx convex env set AUTH_GOOGLE_ID <client-id> && npx convex env set AUTH_GOOGLE_SECRET <client-secret>
    ```
-   (run from the repo root with CONVEX_DEPLOY_KEY exported, as usual)
+   Note on the domain: the REDIRECT stays on convex.site (that's where Convex
+   Auth's callback endpoint lives — pointing it at trykasya.online would 404).
+   The domain is for consent-screen branding now, and later for hosting the web
+   app / privacy pages; a Convex custom domain (Pro plan) could put the callback
+   on auth.trykasya.online eventually — cosmetic, not required.
 2. **Apple**: nothing server-side. The native flow verifies the token against the
    bundle id. In `app.json`: add `"usesAppleSignIn": true` back under `ios`, and
    add `"expo-apple-authentication"` to `plugins` (adds the entitlement). The
