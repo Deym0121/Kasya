@@ -5,6 +5,24 @@
 
 ## ⭐ RESUME HERE — exact next actions
 
+-3. **ROUND 4 SUBMITTED 2026-08-28 (05:45 PHT)** — submission
+   **de0c7333-d7af-4fe2-bbd1-57d5d8735212**, WAITING_FOR_REVIEW, carrying:
+   v1.1 **build 28** (all 19 audit fixes embedded) AND **the yearly subscription**
+   (Lloyd added it via ASC UI — finally rides along; state WAITING_FOR_REVIEW).
+   Every blocker independently verified before submitting: privacy labels FIXED
+   AND PUBLISHED (public App Store page shows NO "Data Used to Track You" on
+   us+ph storefronts since 2026-08-27 17:59); deletion+camera-denied screen
+   recording uploaded by Lloyd (Drive file 1JLq3fD3HTPoP2xS7jy4wIeZFAEw-IFfR,
+   in link-shared folder 1eFGB_Z9Ijz0zdPBsE37OrJzjYXcfSb6Y) and linked in the
+   review notes; demo account review@kasya.app / KasyaReview#2026 set in ASC;
+   notes rewritten (rejection responses + both subs available).
+   ON APPROVAL: (1) flip social login per SOCIAL_AUTH_SETUP.md (Google creds
+   already on Convex; needs entitlement + flags + build 29 + Apple-token
+   revocation on deleteAccount BEFORE shipping Apple sign-in); (2) merge
+   feature/shoppable-shoe-finder → main; (3) Known follow-ups section.
+   ON REJECTION: read it fresh — do NOT assume it's a repeat; the full audit
+   already cleared everything the first four rounds flagged.
+
 -2. **ROUND-3 REJECTION (2026-08-27, reviewed on iPad) + FULL COMPLIANCE AUDIT DONE.**
    Rejected: 5.1.2 labels AGAIN (still published wrong — public page verified twice,
    NOT CDN lag; Lloyd's publish has failed 3x); NEW 5.1.1(v) camera-denied dead-end;
