@@ -54,6 +54,16 @@ export default function PoseScanCamera({ navigation, route }) {
   const device = useCameraDevice(position);
   const { hasPermission, requestPermission } = useCameraPermission();
   const [permDenied, setPermDenied] = useState(false);
+  // 5.1.1(iv): the system permission dialog must follow the explainer
+  // unconditionally — fire it as soon as the screen opens, exactly once.
+  const askedPermission = useRef(false);
+  useEffect(() => {
+    if (hasPermission || askedPermission.current) return;
+    askedPermission.current = true;
+    requestPermission().then((granted) => {
+      if (!granted) setPermDenied(true);
+    });
+  }, [hasPermission, requestPermission]);
   // GPU first; the first detector error retries once on CPU (GPU delegate is
   // the least-proven piece under static frameworks — the hook recreates the
   // detector when the delegate option changes).
@@ -350,22 +360,25 @@ export default function PoseScanCamera({ navigation, route }) {
   }, [leadIn, beginCapture]);
 
   if (!hasPermission) {
-    // App Review 5.1.1(iv)+(v): neutral button wording ("Continue", never
-    // "Allow…"), and a denial must NEVER dead-end — the user always gets a
-    // demo-scan alternative and a way back (round-3 rejection: "app is not
-    // functional when this access is denied").
+    // App Review 5.1.1(iv), round-5 correction: a pre-permission message must
+    // ALWAYS proceed to the system permission dialog — no button that skips or
+    // delays it. So the system prompt fires immediately (the effect above),
+    // the explainer is passive text visible beneath it, and the user's real
+    // decision point is Apple's own dialog. Only AFTER a denial does the
+    // screen offer recovery — Settings, the demo scan, and a way back — the
+    // exact pattern Apple's guidance endorses (and what round 3 required).
     return (
       <View style={styles.perm}>
         <Text style={styles.permTitle}>{permDenied ? 'Camera is off for Kasya' : 'Camera access'}</Text>
         <Text style={styles.permBody}>
           {permDenied
             ? 'A live gait scan needs the camera, which you can turn on anytime in Settings. Video is never uploaded. You can also try a demo scan with sample data instead.'
-            : 'Kasya uses the camera to analyze your stride on your device. Video is never uploaded; an optional review clip stays on your phone and is deleted after review. You choose whether to allow access in the next step.'}
+            : 'Kasya uses the camera to analyze your stride on your device. Video is never uploaded; an optional review clip stays on your phone and is deleted after review.'}
         </Text>
-        <View style={{ height: spacing.xl }} />
-        <View style={{ alignSelf: 'stretch' }}>
-          {permDenied ? (
-            <>
+        {permDenied ? (
+          <>
+            <View style={{ height: spacing.xl }} />
+            <View style={{ alignSelf: 'stretch' }}>
               <Button label="Open Settings" icon="settings" onPress={() => Linking.openSettings()} />
               <View style={{ height: spacing.md }} />
               <Button
@@ -374,26 +387,17 @@ export default function PoseScanCamera({ navigation, route }) {
                 variant="secondary"
                 onPress={() => navigation.replace('Processing', { goal })}
               />
-            </>
-          ) : (
-            <Button
-              label="Continue"
-              icon="arrow-right"
-              onPress={async () => {
-                const granted = await requestPermission();
-                if (!granted) setPermDenied(true);
-              }}
-            />
-          )}
-        </View>
-        <Pressable
-          onPress={() => navigation.goBack()}
-          style={styles.permClose}
-          accessibilityRole="button"
-          accessibilityLabel="Not now"
-        >
-          <Text style={styles.permCloseText}>Not now</Text>
-        </Pressable>
+            </View>
+            <Pressable
+              onPress={() => navigation.goBack()}
+              style={styles.permClose}
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+            >
+              <Text style={styles.permCloseText}>Back</Text>
+            </Pressable>
+          </>
+        ) : null}
       </View>
     );
   }
