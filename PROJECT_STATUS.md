@@ -5,6 +5,22 @@
 
 ## ⭐ RESUME HERE — exact next actions
 
+-4. **ROUND-5 VERDICT (2026-08-28, iPad): ONE issue left — everything else PASSED.**
+   Only 5.1.1(iv): the pre-permission "Not now" button let users delay the system
+   dialog (Apple: the message must ALWAYS proceed to the request). FIXED in
+   aa267f8 (system prompt fires on screen open; explainer is passive text;
+   Settings/demo/Back only AFTER denial) + OTA'd (group 0c7a9571, iOS).
+   ⭐ APPLE OFFERED THE BUG-FIX-SUBMISSION PATH: reply in Resolution Center →
+   they approve build 28 AS-IS, the 5.1.1(iv) fix rides the next update.
+   Lloyd must send the reply (no API for Resolution Center) — draft is in the
+   recovery artifact + chat. If Apple approves via reply: v1.1 LIVE → then
+   social-login activation (SOCIAL_AUTH_SETUP.md; fold the aa267f8 fix into
+   build 29) + merge to main. If they insist on resubmission: build 29 with
+   aa267f8 embedded → same submission chain (scratchpad asc.mjs).
+   NOTE: eas update from the MAIN repo needs its node_modules current (npm
+   install after merges that touch package.json — a missing package fails the
+   bundle; hermesc can crash transiently → retry with --platform ios).
+
 -3. **ROUND 4 SUBMITTED 2026-08-28 (05:45 PHT)** — submission
    **de0c7333-d7af-4fe2-bbd1-57d5d8735212**, WAITING_FOR_REVIEW, carrying:
    v1.1 **build 28** (all 19 audit fixes embedded) AND **the yearly subscription**
