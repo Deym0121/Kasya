@@ -18,9 +18,17 @@
    (a) OTA would have stripped the flags (now in .env + EAS env), (b) Apple
    button's U+F8FF glyph was ALWAYS missing — now `{''}` escape,
    (c) social() dead-end on unresolved email — now 3s retry + honest error.
-   Build 29 + ASC v1.2 submission: see the commits/session log; release type
-   MANUAL so Lloyd controls go-live (ideally after the SIWA key is set).
-   TestFlight: both buttons must be device-verified when build 29 processes.
+   ✅ SUBMITTED 2026-08-31 09:17 UTC: build 29 (EAS e72d3dd9, ASC f7426597,
+   VALID) attached to ASC v1.2 (73cbe773), reviewSubmission
+   **d4d70b8d-7195-4f66-b779-68444af8a29e** WAITING_FOR_REVIEW. Release type
+   MANUAL — Lloyd controls go-live (ideally after the SIWA key is set).
+   Review notes: 4.8 coupling, deletion covers social + revocation, demo
+   account, deletion-video link. Branch merged to **master** (repo's main
+   branch is `master`, not `main`). NOW: (1) Lloyd TestFlight-verifies BOTH
+   buttons on device (build 29 is live in TestFlight already — no need to wait
+   for review); (2) Lloyd creates the SIWA key (SOCIAL_AUTH_SETUP.md ⭐);
+   (3) on approval, Lloyd releases in ASC (or ask Claude via API).
+   ON REJECTION: read the reviewer text fresh before assuming anything.
    Only 5.1.1(iv): the pre-permission "Not now" button let users delay the system
    dialog (Apple: the message must ALWAYS proceed to the request). FIXED in
    aa267f8 (system prompt fires on screen open; explainer is passive text;
