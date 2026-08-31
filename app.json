@@ -3,7 +3,7 @@
     "name": "Kasya",
     "slug": "kasya",
     "scheme": "kasya",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -11,6 +11,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.kasya.app",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "NSCameraUsageDescription": "Kasya uses the camera to analyze your stride on your device. Video is never uploaded; an optional review clip stays on your phone and is deleted after review.",
         "NSPhotoLibraryAddUsageDescription": "Lets you save your shared Kasya result image to your Photos if you choose Save Image.",
@@ -36,6 +37,7 @@
     "plugins": [
       "expo-font",
       "expo-dev-client",
+      "expo-apple-authentication",
       [
         "react-native-vision-camera",
         {

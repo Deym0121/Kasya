@@ -3,6 +3,7 @@ import { Password } from '@convex-dev/auth/providers/Password';
 import { ConvexCredentials } from '@convex-dev/auth/providers/ConvexCredentials';
 import Google from '@auth/core/providers/google';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
+import { internal } from './_generated/api';
 
 /**
  * Convex Auth providers:
@@ -54,20 +55,29 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         // the client forwards it then; later sign-ins just match the account.
         const email = typeof payload.email === 'string' ? payload.email : undefined;
         const name = typeof credentials.name === 'string' && credentials.name ? credentials.name : undefined;
+        let userId;
         try {
           const existing = await retrieveAccount(ctx, {
             provider: 'apple-native',
             account: { id: appleUserId },
           });
-          return { userId: existing.user._id };
+          userId = existing.user._id;
         } catch {
           const created = await createAccount(ctx, {
             provider: 'apple-native',
             account: { id: appleUserId },
             profile: { ...(email ? { email } : {}), ...(name ? { name } : {}) },
           });
-          return { userId: created.user._id };
+          userId = created.user._id;
         }
+        // Apple also sends a one-time authorizationCode — exchange it in the
+        // background for the refresh token that deleteAccount must revoke
+        // (see convex/apple.ts). Sign-in never waits on Apple's endpoint.
+        const authorizationCode = credentials.authorizationCode;
+        if (typeof authorizationCode === 'string' && authorizationCode) {
+          await ctx.scheduler.runAfter(0, internal.apple.exchangeAndStore, { userId, authorizationCode });
+        }
+        return { userId };
       },
     }),
   ],

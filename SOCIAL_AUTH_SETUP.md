@@ -1,8 +1,55 @@
-# Social sign-in (Google + Apple) — built, flag-gated OFF
+# Social sign-in (Google + Apple) — ACTIVATED in v1.2 (2026-08-31)
 
-_Rewritten 2026-08-27. The CODE is fully in place (server + client); nothing shows
-in the app until the env flags flip. Do NOT flip anything until the pending App
-Review submission is approved._
+_v1.1 was approved and the flags are now ON. This file records the live state
+plus the one remaining Lloyd step (the Sign in with Apple key for token
+revocation)._
+
+## Activation state (2026-08-31)
+
+- Flags ON in three places (all needed): `eas.json` production build env
+  (binary builds), **`.env`** (what `eas update` OTA bundles read — REMOVING
+  THEM FROM .env WOULD STRIP THE BUTTONS ON THE NEXT OTA), and the EAS
+  server-side **production environment** (`eas env:list production` — used by
+  `eas update --environment production`).
+- `app.json`: `ios.usesAppleSignIn: true` + `expo-apple-authentication` plugin
+  → the `com.apple.developer.applesignin` entitlement (verified via
+  `npx expo config --type introspect`).
+- Apple Developer: APPLE_ID_AUTH capability added to bundle id `R38H87S8D2`
+  via the ASC API; fresh App Store profile `QWQJ3N3MR8`
+  ("Kasya AppStore SIWA v2 2026-08-31") saved over
+  `kasya-appstore.mobileprovision` (old profile kept as `.bak-v1.1`).
+- **Apple token revocation on account deletion is implemented**
+  (`convex/apple.ts` + `appleAuth` table): sign-in forwards Apple's
+  authorizationCode → server exchanges it for a refresh token →
+  `users.deleteAccount` schedules `/auth/revoke`. Deployed to Convex.
+  It NO-OPS until the SIWA key env vars exist (next section) — deletion
+  itself never blocks on Apple.
+
+## ⭐ LLOYD — one remaining step: create the Sign in with Apple key
+
+Revocation needs a client secret signed with a SIWA key (the ASC API key and
+the IAP key CANNOT sign it). Takes 2 minutes:
+
+1. developer.apple.com → Account → Certificates, IDs & Profiles → **Keys** →
+   **+** → name `Kasya SIWA` → check **Sign in with Apple** → Configure →
+   primary App ID = `com.kasya.app` → Save → Continue → Register →
+   **Download** the `AuthKey_XXXXXXXXXX.p8` (one-time download) and note the
+   **Key ID**.
+2. Put the .p8 in the repo root (it's gitignored like the other keys), then
+   from the repo root (CONVEX_DEPLOY_KEY exported as usual):
+
+```bash
+npx convex env set APPLE_SIWA_KEY_ID <KEY_ID>
+```
+
+```bash
+node -e "const fs=require('fs');const {execSync}=require('child_process');execSync('npx convex env set APPLE_SIWA_PRIVATE_KEY -- \"'+fs.readFileSync(process.argv[1],'utf8').trim().replace(/\r/g,'')+'\"',{stdio:'inherit'})" ./AuthKey_XXXXXXXXXX.p8
+```
+
+   (`APPLE_TEAM_ID=GH24ATQ8FD` is already set.) No build needed — revocation
+   activates the moment the env vars exist.
+
+# Original design notes (kept for reference)
 
 ## What's implemented
 

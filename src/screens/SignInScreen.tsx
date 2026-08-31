@@ -23,6 +23,7 @@ import {
   signUpWithEmail,
   signInWithEmail,
   signInWithProvider,
+  signOutCloud,
   currentUserEmail,
   OAuthProvider,
 } from '../convex/auth';
@@ -132,10 +133,23 @@ export default function SignInScreen({ navigation }: Props) {
         return;
       }
       // Native resolves with a live session; web resolves by redirecting away.
-      const e = (await currentUserEmail()) ?? res.email ?? null;
+      // The query client learns about the new token in a later React effect,
+      // so the first users.me read can race it and come back null — poll
+      // briefly instead of dead-ending a successful sign-in.
+      let e: string | null = res.email ?? null;
+      for (let i = 0; i < 12 && !e; i++) {
+        e = await currentUserEmail();
+        if (!e) await new Promise((r) => setTimeout(r, 250));
+      }
       if (e) {
         await enterApp(e);
         syncReports().catch(() => {});
+      } else if (Platform.OS !== 'web') {
+        // No identity ever resolved — drop the half-open session so retrying
+        // starts clean, and say so instead of silently doing nothing.
+        // (On web the Google flow redirects away, so this never renders.)
+        await signOutCloud();
+        setNotice({ tone: 'error', text: 'Sign-in didn’t finish — please try again.' });
       }
     } finally {
       setBusy(false);
@@ -233,7 +247,10 @@ export default function SignInScreen({ navigation }: Props) {
                       accessibilityLabel="Continue with Apple"
                       style={({ pressed }) => [styles.socialBtn, styles.socialApple, pressed && { opacity: 0.9 }]}
                     >
-                      <Text style={styles.appleLogo}></Text>
+                      {/* U+F8FF as an escape — the literal glyph is invisible
+                          off-Apple platforms and Windows tooling has silently
+                          stripped it from this file before. */}
+                      <Text style={styles.appleLogo}>{'\uF8FF'}</Text>
                       <Text style={[styles.socialText, { color: '#000000' }]}>Continue with Apple</Text>
                     </Pressable>
                   )}

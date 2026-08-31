@@ -71,6 +71,17 @@ export default defineSchema({
     updatedAt: v.float64(),
   }).index('by_date', ['dateStart']),
 
+  /**
+   * Sign in with Apple refresh tokens, kept ONLY so deleteAccount can revoke
+   * the user's Apple session (Apple requires revocation on account deletion).
+   * One row per user; removed with the account.
+   */
+  appleAuth: defineTable({
+    userId: v.id('users'),
+    refreshToken: v.string(),
+    updatedAt: v.float64(),
+  }).index('by_user', ['userId']),
+
   /** Server-side AI coach quota: one row per user per UTC day. */
   aiUsage: defineTable({
     userId: v.id('users'),

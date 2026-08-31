@@ -1,5 +1,6 @@
 import { mutation, query } from './_generated/server';
 import { getAuthUserId } from '@convex-dev/auth/server';
+import { internal } from './_generated/api';
 
 /** The signed-in user's identity for the app shell (null when signed out). */
 export const me = query({
@@ -62,6 +63,18 @@ export const deleteAccount = mutation({
         .collect();
       await Promise.all(codes.map((c) => ctx.db.delete(c._id)));
       await ctx.db.delete(account._id);
+    }
+
+    // Apple requires revoking Sign in with Apple tokens when the account is
+    // deleted — hand the stored refresh token to the revocation action (runs
+    // after this mutation commits; deletion itself never blocks on Apple).
+    const appleTokens = await ctx.db
+      .query('appleAuth')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .collect();
+    for (const row of appleTokens) {
+      await ctx.scheduler.runAfter(0, internal.apple.revoke, { refreshToken: row.refreshToken });
+      await ctx.db.delete(row._id);
     }
 
     // Sign-in throttle rows are keyed by the account email (authRateLimits

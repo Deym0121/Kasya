@@ -5,7 +5,22 @@
 
 ## ⭐ RESUME HERE — exact next actions
 
--4. **ROUND-5 VERDICT (2026-08-28, iPad): ONE issue left — everything else PASSED.**
+-5. **v1.1 APPROVED (READY_FOR_SALE, both subs APPROVED) → v1.2 SOCIAL-LOGIN PUSH
+   (2026-08-31, this session).** Everything in SOCIAL_AUTH_SETUP.md activated:
+   flags ON (eas.json production + `.env` + EAS production environment — all
+   three matter, see OTA policy below), `usesAppleSignIn` + expo-apple-
+   authentication plugin (entitlement verified in introspect), version 1.2.0,
+   ASC capability APPLE_ID_AUTH added + fresh profile QWQJ3N3MR8 replacing
+   kasya-appstore.mobileprovision. **Apple token revocation implemented**
+   (convex/apple.ts, appleAuth table, deleteAccount schedules /auth/revoke;
+   deployed; no-ops until Lloyd creates the SIWA key — exact steps in
+   SOCIAL_AUTH_SETUP.md ⭐). 3-lens adversarial review found + fixed pre-build:
+   (a) OTA would have stripped the flags (now in .env + EAS env), (b) Apple
+   button's U+F8FF glyph was ALWAYS missing — now `{''}` escape,
+   (c) social() dead-end on unresolved email — now 3s retry + honest error.
+   Build 29 + ASC v1.2 submission: see the commits/session log; release type
+   MANUAL so Lloyd controls go-live (ideally after the SIWA key is set).
+   TestFlight: both buttons must be device-verified when build 29 processes.
    Only 5.1.1(iv): the pre-permission "Not now" button let users delay the system
    dialog (Apple: the message must ALWAYS proceed to the request). FIXED in
    aa267f8 (system prompt fires on screen open; explainer is passive text;
@@ -176,7 +191,13 @@ cd "C:\Users\USER\OneDrive\Desktop\Gait Analyzer" && npx eas-cli update --channe
 ```
 
 - Works only for users on build ≥15 (first binary with expo-updates) and same
-  runtimeVersion (policy `appVersion` → currently 1.1.0).
+  runtimeVersion (policy `appVersion` → currently 1.2.0).
+- ⚠ OTA bundles read env from **`.env`** (and EAS server env with
+  `--environment production`) — NOT from eas.json build env. The social-login
+  flags EXPO_PUBLIC_GOOGLE_SIGNIN/EXPO_PUBLIC_APPLE_SIGNIN live in `.env` and
+  the EAS production environment; removing them there would silently strip the
+  sign-in buttons from the next OTA (this nearly shipped in v1.2 — caught in
+  review).
 - A new native BUILD is needed only when native bits change: new/removed native
   packages or config plugins, app.json native config, `assets/models/*`,
   expo-updates config itself, or an expo SDK upgrade. (babel.config.js changes

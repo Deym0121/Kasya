@@ -90,7 +90,13 @@ export async function signInWithProvider(provider: OAuthProvider): Promise<AuthR
       });
       if (!cred?.identityToken) return { ok: false, error: 'Apple sign-in didn’t complete — try again.' };
       const name = [cred.fullName?.givenName, cred.fullName?.familyName].filter(Boolean).join(' ') || undefined;
-      await actions.signIn('apple-native', { identityToken: cred.identityToken, ...(name ? { name } : {}) });
+      await actions.signIn('apple-native', {
+        identityToken: cred.identityToken,
+        // One-time code the server trades for the refresh token that account
+        // deletion must revoke (Apple requirement — convex/apple.ts).
+        ...(cred.authorizationCode ? { authorizationCode: cred.authorizationCode } : {}),
+        ...(name ? { name } : {}),
+      });
       return { ok: true, email: cred.email ?? undefined, name };
     } catch (e: any) {
       if (e?.code === 'ERR_REQUEST_CANCELED') return { ok: false, error: '' }; // user closed the sheet — not an error
