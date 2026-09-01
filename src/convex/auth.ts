@@ -116,7 +116,7 @@ export async function signInWithProvider(provider: OAuthProvider): Promise<AuthR
       const raw = (e instanceof Error ? e.message : String(e)).slice(0, 120);
       return {
         ok: false,
-        error: `We couldn’t verify the Apple sign-in with our server${raw ? ` (${raw})` : ''} — try again in a moment, or use email and password.`,
+        error: `We couldn’t verify the Apple sign-in with our server${raw ? ` (${raw})` : ''} — try again in a moment.`,
       };
     }
     return { ok: true, email: cred.email ?? undefined, name };
@@ -141,7 +141,7 @@ export async function signInWithProvider(provider: OAuthProvider): Promise<AuthR
     await actions.signIn('google', { code });
     return { ok: true };
   } catch {
-    return { ok: false, error: 'Google sign-in failed — try again, or use email and password.' };
+    return { ok: false, error: 'Google sign-in failed — please try again.' };
   }
 }
 

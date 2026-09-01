@@ -44,6 +44,11 @@ type Mode = 'signup' | 'login';
 const GOOGLE_SIGNIN_ENABLED = process.env.EXPO_PUBLIC_GOOGLE_SIGNIN === '1';
 const APPLE_SIGNIN_ENABLED = process.env.EXPO_PUBLIC_APPLE_SIGNIN === '1';
 
+// App Review 4.8: on iOS, Google may only ship when Apple sign-in also ships.
+// Apple is iOS-only (native sheet); Google alone is fine on Android/web.
+const SHOW_APPLE = Platform.OS === 'ios' && APPLE_SIGNIN_ENABLED;
+const SHOW_GOOGLE = GOOGLE_SIGNIN_ENABLED && (Platform.OS !== 'ios' || SHOW_APPLE);
+
 /** The official multicolor Google "G" (brand guidelines require the real mark). */
 function GoogleG() {
   return (
@@ -79,6 +84,11 @@ export default function SignInScreen({ navigation }: Props) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ tone: 'error' | 'info'; text: string } | null>(null);
   const cloud = isCloudEnabled();
+  // Accounts are social-only (Lloyd's call, 2026-09-01): when Apple/Google can
+  // render, the email+password form is gone. It stays ONLY as the fallback for
+  // builds where no social provider is available (flags off, demo mode) so the
+  // screen is never a dead end.
+  const socialOnly = cloud && (SHOW_APPLE || SHOW_GOOGLE);
 
   /** Mirror the identity locally and enter the app (works for cloud and guest). */
   async function enterApp(emailAddr: string) {
@@ -194,10 +204,14 @@ export default function SignInScreen({ navigation }: Props) {
         </View>
         <View style={styles.heroText}>
           <Text style={[styles.heroTitle, compact && styles.heroTitleCompact]}>
-            {mode === 'signup' ? 'Your stride,\nunderstood.' : 'Welcome\nback.'}
+            {socialOnly || mode === 'signup' ? 'Your stride,\nunderstood.' : 'Welcome\nback.'}
           </Text>
           <Text style={styles.heroSub}>
-            {mode === 'signup' ? 'Create an account and take your first free gait scan.' : 'Log in to pick up where you left off.'}
+            {socialOnly
+              ? `One tap with ${SHOW_APPLE && SHOW_GOOGLE ? 'Apple or Google' : SHOW_APPLE ? 'Apple' : 'Google'} — new or returning, it just signs you in.`
+              : mode === 'signup'
+                ? 'Create an account and take your first free gait scan.'
+                : 'Log in to pick up where you left off.'}
           </Text>
         </View>
         <View style={styles.heroGlow} pointerEvents="none" />
@@ -211,31 +225,30 @@ export default function SignInScreen({ navigation }: Props) {
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView style={styles.sheet} contentContainerStyle={styles.sheetInner} keyboardShouldPersistTaps="handled">
-          <View style={styles.segment} accessibilityRole="tablist">
-            {(['signup', 'login'] as Mode[]).map((m) => (
-              <Pressable
-                key={m}
-                onPress={() => setMode(m)}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: mode === m }}
-                style={[styles.segmentBtn, mode === m && styles.segmentOn]}
-              >
-                <Text style={[styles.segmentText, mode === m && styles.segmentTextOn]}>
-                  {m === 'signup' ? 'Create account' : 'Log in'}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+          {!socialOnly && (
+            <View style={styles.segment} accessibilityRole="tablist">
+              {(['signup', 'login'] as Mode[]).map((m) => (
+                <Pressable
+                  key={m}
+                  onPress={() => setMode(m)}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: mode === m }}
+                  style={[styles.segmentBtn, mode === m && styles.segmentOn]}
+                >
+                  <Text style={[styles.segmentText, mode === m && styles.segmentTextOn]}>
+                    {m === 'signup' ? 'Create account' : 'Log in'}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
 
-          {/* App Review 4.8: on iOS, Google may only ship when Apple sign-in
-              also ships — the coupling lives HERE, not in the env flags. Apple
-              is iOS-only (native sheet); Google alone is fine on Android/web.
-              The Apple button follows the HIG: Apple logo glyph, no other
+          {/* The Apple button follows the HIG: Apple logo glyph, no other
               icons, "Continue with Apple" wording. */}
           {cloud &&
             (() => {
-              const showApple = Platform.OS === 'ios' && APPLE_SIGNIN_ENABLED;
-              const showGoogle = GOOGLE_SIGNIN_ENABLED && (Platform.OS !== 'ios' || showApple);
+              const showApple = SHOW_APPLE;
+              const showGoogle = SHOW_GOOGLE;
               if (!showApple && !showGoogle) return null;
               return (
                 <>
@@ -266,32 +279,38 @@ export default function SignInScreen({ navigation }: Props) {
                       <Text style={styles.socialText}>Continue with Google</Text>
                     </Pressable>
                   )}
-                  <View style={styles.orRow}>
-                    <View style={styles.orLine} />
-                    <Text style={styles.orText}>or use email</Text>
-                    <View style={styles.orLine} />
-                  </View>
+                  {!socialOnly && (
+                    <View style={styles.orRow}>
+                      <View style={styles.orLine} />
+                      <Text style={styles.orText}>or use email</Text>
+                      <View style={styles.orLine} />
+                    </View>
+                  )}
                 </>
               );
             })()}
 
-          <TextField
-            label="Email"
-            value={email}
-            onChangeText={setEmail}
-            placeholder="you@email.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            icon="mail"
-          />
-          <TextField
-            label="Password"
-            value={password}
-            onChangeText={setPassword}
-            placeholder="••••••••"
-            secureTextEntry
-            icon="lock"
-          />
+          {!socialOnly && (
+            <>
+              <TextField
+                label="Email"
+                value={email}
+                onChangeText={setEmail}
+                placeholder="you@email.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                icon="mail"
+              />
+              <TextField
+                label="Password"
+                value={password}
+                onChangeText={setPassword}
+                placeholder="••••••••"
+                secureTextEntry
+                icon="lock"
+              />
+            </>
+          )}
 
           {notice && (
             <Text style={[styles.notice, notice.tone === 'error' ? { color: colors.danger } : { color: colors.success }]}>
@@ -299,13 +318,17 @@ export default function SignInScreen({ navigation }: Props) {
             </Text>
           )}
 
-          <Button
-            label={busy ? 'One moment…' : mode === 'signup' ? 'Create account' : 'Log in'}
-            variant="accent"
-            loading={busy}
-            onPress={proceed}
-          />
-          <View style={{ height: spacing.sm }} />
+          {!socialOnly && (
+            <>
+              <Button
+                label={busy ? 'One moment…' : mode === 'signup' ? 'Create account' : 'Log in'}
+                variant="accent"
+                loading={busy}
+                onPress={proceed}
+              />
+              <View style={{ height: spacing.sm }} />
+            </>
+          )}
           <Button label="Continue as guest" variant="ghost" onPress={() => enterApp('')} />
 
           <Image
