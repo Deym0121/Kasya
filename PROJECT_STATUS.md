@@ -27,10 +27,16 @@
    update*)"` to permissions.allow there for prompt-free future OTAs.
    NEXT: Lloyd relaunches Kasya twice → clean Apple test (Profile → Sign out
    → Continue with Apple) → report the exact message.
-   ➕ SECOND OTA fed09b30 (commit c0e5b1d): SIGN-IN IS SOCIAL-ONLY (Lloyd's
-   call) — Apple + Google + guest; email/password form removed from the UI
-   (renders only as fallback when no social provider is available, e.g. flags
-   off / demo builds — never a dead end). Password auth STAYS live server-side.
+   ➕ CANONICAL OTA = **7ece3b97** (commit 800b7a8, supersedes fed09b30/aee77332):
+   sign-in = Apple + Google ONLY with the Kasya logo on a fixed no-scroll
+   sheet — NO email form, NO guest button (both Lloyd's explicit calls; they
+   survive only in the no-social fallback so dev/demo builds can't dead-end).
+   Published with env vars FORCED in the shell AND --environment production;
+   bundle BYTE-VERIFIED (eas update bundles locally → grep dist/_expo/.../*.hbc;
+   Hermes stores strings containing any non-ASCII char, e.g. em dashes, as
+   UTF-16 — ASCII grep misses them). ⚠ Guest removal = mild 5.1.1
+   forced-registration risk at the NEXT binary review (Lloyd's call, noted).
+   Password auth STAYS live server-side.
    ⚠ FUTURE BINARY SUBMISSIONS (v1.3+): the review demo account
    (review@kasya.app) is unreachable in the new UI — rewrite the ASC review
    notes to say "sign in with Apple"; the CURRENT in-review build 29 embeds
