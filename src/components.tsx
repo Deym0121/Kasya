@@ -256,11 +256,25 @@ export function Badge({
   );
 }
 
+/**
+ * Presentation-only wording for the stored high/medium/low confidence values —
+ * "reading" language instead of lab-speak. Mirrored in report/reportHtml.ts.
+ */
+const CONFIDENCE_READING: Record<string, string> = {
+  high: 'Solid reading',
+  medium: 'Fair reading — rough estimate',
+  low: 'Weak reading — worth re-scanning',
+};
+
 export function ConfidenceChip({ confidence }: { confidence: string }) {
   const c = confidenceColor[confidence] ?? colors.muted;
+  const label = CONFIDENCE_READING[confidence] ?? `${confidence} confidence`;
   return (
-    <View style={[styles.badge, { backgroundColor: c }]} accessibilityLabel={`${confidence} confidence estimate`}>
-      <Text style={[styles.badgeText, { color: colors.bg }]}>{confidence} confidence</Text>
+    <View
+      style={[styles.badge, { backgroundColor: c }]}
+      accessibilityLabel={`${label}. Confidence is how clearly the camera saw your steps, not how good your walk is.`}
+    >
+      <Text style={[styles.badgeText, { color: colors.bg }]}>{label}</Text>
     </View>
   );
 }
@@ -292,6 +306,7 @@ export function Metric({
   band = 'unknown',
   onPress,
   expanded,
+  notMeasured,
 }: {
   label: string;
   value: string | number;
@@ -299,15 +314,18 @@ export function Metric({
   band?: 'typical' | 'outside' | 'unknown';
   onPress?: () => void;
   expanded?: boolean;
+  /** renders '—' with no unit and reads "not measured" to screen readers */
+  notMeasured?: boolean;
 }) {
   const body = (
     <View style={styles.metric}>
       <Text style={[styles.metricVal, band === 'outside' && { color: colors.warn }]}>
-        {value}
-        {unit ? <Text style={styles.metricUnit}> {unit}</Text> : null}
+        {notMeasured ? '—' : value}
+        {!notMeasured && unit ? <Text style={styles.metricUnit}> {unit}</Text> : null}
         {band === 'outside' ? <Text style={{ color: colors.warn }}> •</Text> : null}
       </Text>
       <Text style={styles.metricLabel}>{label}</Text>
+      {onPress ? <Feather name="info" size={13} color={colors.muted} style={styles.metricHintIcon} /> : null}
     </View>
   );
   if (!onPress) return body;
@@ -315,7 +333,9 @@ export function Metric({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${label}, ${value}${unit ? ` ${unit}` : ''}. Opens explanation`}
+      accessibilityLabel={`${label}, ${
+        notMeasured ? 'not measured' : `${value}${unit ? ` ${unit}` : ''}`
+      }. Opens explanation`}
       accessibilityState={{ expanded: !!expanded }}
       style={({ pressed }) => pressed && { opacity: 0.7 }}
     >
@@ -331,6 +351,11 @@ export interface MetricGridItem {
   /** numeric value for band tinting when `value` is a formatted string */
   raw?: number;
 }
+
+const gridRaw = (it: MetricGridItem) => it.raw ?? (typeof it.value === 'number' ? it.value : 0);
+/** analyzers emit 0 for "could not measure" — never render it as a real score */
+const gridNotMeasured = (it: MetricGridItem) =>
+  typicalBand(it.key, gridRaw(it)) === 'unknown' && gridRaw(it) === 0;
 
 /**
  * Metric tiles + one tap-to-open plain-English explainer panel below the grid.
@@ -351,12 +376,14 @@ export function MetricGrid({ items, columns = 3 }: { items: MetricGridItem[]; co
   }, [openKey, fade]);
 
   const open = openKey ? METRIC_INFO[openKey] : null;
+  const openItem = openKey ? items.find((i) => i.key === openKey) : undefined;
+  const openNotMeasured = !!openItem && gridNotMeasured(openItem);
   return (
     <View>
       <View style={styles.metricsWrap}>
         {items.map((it) => {
           const info = METRIC_INFO[it.key];
-          const raw = it.raw ?? (typeof it.value === 'number' ? it.value : 0);
+          const raw = gridRaw(it);
           // Legacy reports store unrounded floats — show at most 1 decimal on the
           // tile (and in its accessibility label); `raw` stays raw for band tinting.
           const shown = typeof it.value === 'number' ? Math.round(it.value * 10) / 10 : it.value;
@@ -367,6 +394,7 @@ export function MetricGrid({ items, columns = 3 }: { items: MetricGridItem[]; co
                 value={shown}
                 unit={it.unit ?? info.unit}
                 band={typicalBand(it.key, raw)}
+                notMeasured={gridNotMeasured(it)}
                 onPress={() => setOpenKey(openKey === it.key ? null : it.key)}
                 expanded={openKey === it.key}
               />
@@ -374,11 +402,19 @@ export function MetricGrid({ items, columns = 3 }: { items: MetricGridItem[]; co
           );
         })}
       </View>
+      <Text style={[T.small, { marginTop: spacing.xs }]}>
+        Tap any number to see what it means · an orange dot means it sat outside the typical range
+        this scan — not danger.
+      </Text>
       {open ? (
         <Animated.View style={[styles.metricPanel, { opacity: fade }]}>
           <Text style={styles.metricPanelTitle}>{open.label}</Text>
           <Text style={[T.body, { marginTop: 2 }]}>{open.plain}</Text>
-          <Text style={[T.small, { marginTop: spacing.xs }]}>{open.typical}</Text>
+          <Text style={[T.small, { marginTop: spacing.xs }]}>
+            {openNotMeasured
+              ? 'We couldn’t measure this from this scan — a clearer side-on capture usually fixes it.'
+              : open.typical}
+          </Text>
         </Animated.View>
       ) : null}
     </View>
@@ -630,6 +666,7 @@ const styles = StyleSheet.create({
   metricVal: { fontFamily: fonts.extra, fontSize: 24, color: colors.ink },
   metricUnit: { fontFamily: fonts.semibold, fontSize: 13, color: colors.muted },
   metricLabel: { fontFamily: fonts.medium, fontSize: 13, color: colors.muted, marginTop: 2 },
+  metricHintIcon: { position: 'absolute', top: 4, right: spacing.sm, opacity: 0.7 },
   metricsWrap: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.sm },
   metricPanel: {
     backgroundColor: colors.surfaceAlt,

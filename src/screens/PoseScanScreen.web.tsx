@@ -291,7 +291,7 @@ export default function PoseScanScreen({ navigation, route }) {
             gate.issues[0] ||
               (view === 'rear'
                 ? 'We couldn’t read the rear view. Face away, stay fully in frame, and walk the whole time.'
-                : 'We couldn’t read your stride. Stay fully in frame and walk for the whole ten seconds.'),
+                : 'We couldn’t read your stride. Walk back and forth across the frame — or on a treadmill — and stay fully in frame the whole ten seconds.'),
           );
           return;
         }
@@ -351,7 +351,7 @@ export default function PoseScanScreen({ navigation, route }) {
   }, [goal, navigation]);
 
   const rear = view === 'rear';
-  const walkHint = rear ? 'walk away from the camera' : 'walk side-on';
+  const walkHint = rear ? 'walk away from the camera' : 'walk back and forth, side-on';
 
   let buttonLabel = rear ? `Record rear view · ${CAPTURE_SECONDS}s` : `Record ${CAPTURE_SECONDS} seconds`;
   let buttonIcon = 'camera';
@@ -372,7 +372,10 @@ export default function PoseScanScreen({ navigation, route }) {
   } else if (status === 'recording') {
     buttonLabel = `Recording… ${count}s`;
     buttonDisabled = true;
-  } else if (status === 'ready' && !detected) {
+  } else if (status === 'ready' && !detected && leadIn < 3) {
+    // A solo runner is behind the lens when they tap Record — with a lead-in
+    // countdown set, let them start and get into frame during it. The capture
+    // quality gate still fails an empty recording honestly.
     buttonLabel = 'Step fully into frame';
     buttonDisabled = true;
   }
@@ -392,7 +395,7 @@ export default function PoseScanScreen({ navigation, route }) {
               : 'Face away and line up with the outline — whole body in frame'
             : detected
               ? '✓ You’re in frame — press Record and walk'
-              : 'Line up with the outline — step back so your whole body shows'
+              : 'Line up with the outline — step back so your whole body shows. No one in frame yet? Tap Record, then get into position during the countdown.'
         : '';
 
   return (

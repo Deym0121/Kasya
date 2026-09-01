@@ -8,6 +8,9 @@
  * wellness-hedged: framed as observations, never targets or judgments.
  */
 
+import type { FormMetrics } from './form';
+import type { StepAnalysis } from './stepAnalysis';
+
 export type MetricKey =
   | 'cadence'
   | 'stepTime'
@@ -105,6 +108,32 @@ export const METRIC_INFO: Record<MetricKey, MetricInfoEntry> = {
     typical: 'Above about 80% is common; re-check with a clean rear capture before reading much into a difference.',
   },
 };
+
+/** One tile in the shared side-view metric grid — shape-compatible with MetricGridItem. */
+export interface SideMetricItem {
+  key: MetricKey;
+  value: string | number;
+  /** numeric value for band tinting when `value` is a formatted string */
+  raw?: number;
+}
+
+/**
+ * The side-view "Your numbers" tiles, built in one place so the Result and
+ * Review screens can never drift apart. Type-only imports keep this module
+ * pure (no RN) and node-testable like the rest of the gait language.
+ */
+export function buildSideMetricItems(cadenceSpm: number, m: FormMetrics, s?: StepAnalysis): SideMetricItem[] {
+  return [
+    { key: 'cadence', value: Math.round(cadenceSpm) },
+    ...(s ? [{ key: 'stepTime' as const, value: s.meanStepTimeSec.toFixed(2), raw: s.meanStepTimeSec }] : []),
+    ...(s ? [{ key: 'stance' as const, value: s.stanceRatioPct }] : []),
+    { key: 'bounce', value: m.verticalOscillationPct },
+    { key: 'overstride', value: m.overstrideScore },
+    { key: 'rhythm', value: m.rhythmRegularityPct },
+    { key: 'symmetry', value: m.symmetryPct },
+    { key: 'kneeBend', value: m.kneeFlexionRangeDeg },
+  ];
+}
 
 /**
  * Is this value inside the broad typical band? Mirrors the exact flag logic in

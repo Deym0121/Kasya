@@ -23,6 +23,9 @@ type Props = RootScreenProps<'Processing'>;
 
 export default function ProcessingScreen({ navigation, route }: Props) {
   const { goal, frames, frontalFrames } = route.params;
+  // No side capture means a demo run — the copy below must say so, and the
+  // report is built from synthetic frames.
+  const simulated = !frames || frames.length === 0;
   const [phase, setPhase] = useState<'working' | 'done' | 'failed'>('working');
   const [ringP, setRingP] = useState(0);
   const navigated = useRef(false);
@@ -37,13 +40,11 @@ export default function ProcessingScreen({ navigation, route }: Props) {
     // has elapsed, so it doubles as the back-out window.
     const hold = sleep(1200);
     const work = (async (): Promise<GaitReportRecord> => {
-      const hasSide = !!frames && frames.length > 0;
       const hasRear = !!frontalFrames && frontalFrames.length > 0;
       // A rear pass with no side capture shouldn't be reachable — if it is,
       // fail honestly rather than pairing the real rear view with an invented
       // side walk presented as real.
-      if (!hasSide && hasRear) throw new Error('rear view without a side capture');
-      const simulated = !hasSide;
+      if (simulated && hasRear) throw new Error('rear view without a side capture');
       const captured = simulated
         ? makeSyntheticWalk({ durationSec: 8, fps: 30, cadence: 150 + Math.round(Math.random() * 40) })
         : frames!;
@@ -92,7 +93,9 @@ export default function ProcessingScreen({ navigation, route }: Props) {
         navTimer = setTimeout(() => {
           if (!navigated.current && mounted) {
             navigated.current = true;
-            navigation.replace('Result', { report: record });
+            // Rebase the stack under the report so back from Result lands on
+            // Tabs, not the mid-flow capture screens.
+            navigation.reset({ index: 1, routes: [{ name: 'Tabs' }, { name: 'Result', params: { report: record } }] });
           }
         }, 1150);
       } catch {
@@ -157,11 +160,15 @@ export default function ProcessingScreen({ navigation, route }: Props) {
             </>
           )}
         </View>
-        <Text style={styles.title}>{phase === 'working' ? 'Analyzing your stride' : 'Done'}</Text>
+        <Text style={styles.title}>
+          {phase === 'working' ? (simulated ? 'Preparing your demo' : 'Analyzing your stride') : 'Done'}
+        </Text>
         <Text style={styles.step}>
           {phase === 'working'
-            ? 'Reading the motion we captured — this stays on your device.'
-            : 'Building your report…'}
+            ? simulated
+              ? 'Building a sample report from demo walking data — it will be marked DEMO, not a reading of your own gait.'
+              : 'Reading the motion we captured — this stays on your device.'
+            : 'Opening your report'}
         </Text>
       </View>
     </SafeAreaView>

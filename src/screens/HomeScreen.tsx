@@ -124,7 +124,7 @@ export default function HomeScreen({ navigation }: Props) {
           <View style={styles.rowBetween}>
             <Label>Latest result</Label>
             <View style={styles.dateRow}>
-              {latest.simulated && <Badge label="Demo" tint={colors.surfaceAlt} color={colors.muted} />}
+              {latest.simulated && <Badge label="Demo data" tint={colors.accentSoft} color={colors.accentInk} />}
               <Text style={styles.date}>{new Date(latest.createdAt).toLocaleDateString()}</Text>
             </View>
           </View>
@@ -134,7 +134,9 @@ export default function HomeScreen({ navigation }: Props) {
                 <Text style={styles.bigNum}>{Math.round(latest.result.cadence.value)}</Text>
                 <Text style={styles.unit}>spm</Text>
               </View>
-              <Text style={styles.unitCaption}>steps per minute</Text>
+              <Text style={styles.unitCaption}>
+                {latest.simulated ? 'steps per minute · sample data, not your gait' : 'steps per minute'}
+              </Text>
             </View>
             <ConfidenceChip confidence={latest.result.cadence.confidence} />
           </View>

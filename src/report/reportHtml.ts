@@ -19,6 +19,16 @@ function row(label: string, value: string): string {
   return `<tr><td class="k">${label}</td><td class="v">${value}</td></tr>`;
 }
 
+/**
+ * Presentation-only wording for the stored high/medium/low confidence values —
+ * mirrors ConfidenceChip in components.tsx so app and PDF speak the same language.
+ */
+const CONFIDENCE_READING: Record<string, string> = {
+  high: 'solid reading',
+  medium: 'fair reading — rough estimate',
+  low: 'weak reading — worth re-scanning',
+};
+
 export function buildReportHtml(report: GaitReportRecord): string {
   const cadence = Math.round(report.result.cadence.value);
   const goal = esc(report.scanType.replace(/_/g, ' '));
@@ -28,9 +38,19 @@ export function buildReportHtml(report: GaitReportRecord): string {
   const f = report.frontal?.metrics;
 
   const metricRows: string[] = [
-    row('Cadence', `about ${cadence} steps/min (${esc(report.result.cadence.confidence)} confidence)`),
+    row(
+      'Cadence',
+      `about ${cadence} steps/min (${esc(
+        CONFIDENCE_READING[report.result.cadence.confidence] ?? `${report.result.cadence.confidence} confidence`,
+      )})`,
+    ),
     row('Steps captured', `${report.result.stepCount} over ${Math.round(report.result.durationSec)}s`),
-    row('Capture quality', `${Math.round(q.visibilityScore * 100)}% visible · ${q.gaitCyclesDetected} gait cycles`),
+    row(
+      'Capture quality',
+      `body in view ${Math.round(q.visibilityScore * 100)}% of the time · ${q.gaitCyclesDetected} full stride${
+        q.gaitCyclesDetected === 1 ? '' : 's'
+      } caught`,
+    ),
   ];
   if (m?.rhythmRegularityPct != null) metricRows.push(row('Step rhythm', `about ${Math.round(m.rhythmRegularityPct)}% regular`));
   if (m?.symmetryPct != null) metricRows.push(row('Left/right symmetry', `about ${Math.round(m.symmetryPct)}%`));

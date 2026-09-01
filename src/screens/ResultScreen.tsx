@@ -17,7 +17,8 @@ import {
 } from '../components';
 import { explainGait } from '../ai/explain';
 import { frontalSummary } from '../gait';
-import { METRIC_INFO } from '../gait/metricInfo';
+import { cadenceVerdict } from '../gait/insights';
+import { METRIC_INFO, buildSideMetricItems } from '../gait/metricInfo';
 import { buildReportHtml } from '../report/reportHtml';
 import { exportReport } from '../report/exportReport';
 import { getPlan } from '../monetization/entitlements';
@@ -69,27 +70,50 @@ export default function ResultScreen({ navigation, route }: Props) {
 
   const qualityOk = q.ok && q.issues.length === 0;
 
+  // One hedged line answering "is my number OK?" — skipped when the reading
+  // itself isn't trustworthy (low confidence / nothing measured).
+  const verdict =
+    result.cadence.confidence !== 'low' && result.cadence.value > 0
+      ? cadenceVerdict(result.cadence.value, report.scanType)
+      : null;
+
   return (
     <ScreenContainer
       title="Your result"
       onBack={() => navigation.popToTop()}
       footer={
+        // Shoe-shopping is never the primary CTA on demo data (do a real scan
+        // instead) or on a poor capture (the card's "Scan again" leads).
         <View style={styles.footerRow}>
           <View style={{ flex: 1 }}>
-            <Button
-              label="Shoe matches"
-              icon="shopping-bag"
-              onPress={() => navigation.navigate('ShoeMatches', { report })}
-            />
+            {report.simulated ? (
+              <Button label="Do a real scan" icon="camera" onPress={() => navigation.navigate('ScanSetup')} />
+            ) : (
+              <Button
+                label="Shoe matches"
+                icon="shopping-bag"
+                variant={qualityOk ? 'primary' : 'secondary'}
+                onPress={() => navigation.navigate('ShoeMatches', { report })}
+              />
+            )}
           </View>
           <View style={{ width: spacing.sm }} />
           <View style={{ flex: 1 }}>
-            <Button
-              label="Share result"
-              icon="share-2"
-              variant="secondary"
-              onPress={() => navigation.navigate('Share', { report })}
-            />
+            {report.simulated ? (
+              <Button
+                label="Shoe matches"
+                icon="shopping-bag"
+                variant="secondary"
+                onPress={() => navigation.navigate('ShoeMatches', { report })}
+              />
+            ) : (
+              <Button
+                label="Share result"
+                icon="share-2"
+                variant="secondary"
+                onPress={() => navigation.navigate('Share', { report })}
+              />
+            )}
           </View>
         </View>
       }
@@ -120,6 +144,7 @@ export default function ResultScreen({ navigation, route }: Props) {
           <Text style={styles.unitCaption}>steps per minute</Text>
           <View style={{ height: spacing.sm }} />
           <ConfidenceChip confidence={result.cadence.confidence} />
+          {verdict ? <Text style={styles.verdictLine}>{verdict.line}</Text> : null}
           {report.simulated ? (
             <Text style={styles.demoNote}>Demo — sample data, not a reading of your own gait.</Text>
           ) : null}
@@ -188,7 +213,8 @@ export default function ResultScreen({ navigation, route }: Props) {
           <View style={styles.qualityRow}>
             <Feather name="check-circle" size={16} color={colors.success} />
             <Text style={styles.qualityText}>
-              Good capture · {Math.round(q.visibilityScore * 100)}% visible · {q.gaitCyclesDetected} cycles
+              Good capture — your whole body was in view {Math.round(q.visibilityScore * 100)}% of the time and we
+              caught {q.gaitCyclesDetected} full {q.gaitCyclesDetected === 1 ? 'stride' : 'strides'}
             </Text>
           </View>
         ) : (
@@ -198,16 +224,32 @@ export default function ResultScreen({ navigation, route }: Props) {
               <Text style={styles.cardTitle}>Capture quality</Text>
             </View>
             <Text style={[T.body, { marginTop: spacing.md }]}>
-              Could be better · {Math.round(q.visibilityScore * 100)}% visible · {q.gaitCyclesDetected} cycles
+              Could be better — your whole body was in view {Math.round(q.visibilityScore * 100)}% of the time and we
+              caught {q.gaitCyclesDetected} full {q.gaitCyclesDetected === 1 ? 'stride' : 'strides'}
             </Text>
             {q.issues.map((issue, i) => (
               <Text key={i} style={styles.issue}>
                 • {issue}
               </Text>
             ))}
+            <View style={{ height: spacing.lg }} />
+            <Button label="Scan again" icon="camera" onPress={() => navigation.navigate('ScanSetup')} />
           </Card>
         )}
       </Reveal>
+
+      {report.metrics ? (
+        <Reveal delay={frontal ? 480 : 360}>
+          <Card style={{ marginTop: spacing.md }}>
+            <View style={styles.head}>
+              <IconBubble icon="bar-chart-2" tint={colors.accentSoft} color={colors.accent} size={40} />
+              <Text style={styles.cardTitle}>Your numbers</Text>
+            </View>
+            <View style={{ height: spacing.sm }} />
+            <MetricGrid columns={3} items={buildSideMetricItems(result.cadence.value, report.metrics, report.steps)} />
+          </Card>
+        </Reveal>
+      ) : null}
 
       <View style={{ height: spacing.lg }} />
       <Button
@@ -217,7 +259,7 @@ export default function ResultScreen({ navigation, route }: Props) {
       />
       <View style={{ height: spacing.md }} />
       <Button
-        label="Review & slow-mo"
+        label="Full report & slow-mo replay"
         variant="secondary"
         icon="film"
         onPress={() => navigation.navigate('Review', { report })}
@@ -254,6 +296,7 @@ const styles = StyleSheet.create({
   unit: { fontFamily: fonts.semibold, fontSize: 22, color: colors.onDarkMuted, marginLeft: 8 },
   unitCaption: { fontFamily: fonts.regular, fontSize: 13, color: colors.onDarkMuted, marginTop: 2 },
   demoNote: { fontFamily: fonts.medium, fontSize: 12, color: colors.onDarkMuted, marginTop: spacing.sm },
+  verdictLine: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, color: colors.onDarkMuted, marginTop: spacing.sm },
   infoPanel: {
     backgroundColor: colors.surfaceAlt,
     borderRadius: radius.md,

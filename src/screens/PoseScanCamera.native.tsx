@@ -73,6 +73,7 @@ export default function PoseScanCamera({ navigation, route }) {
   const sizeRef = useRef({ w: 1, h: 1 });
   const [landmarks, setLandmarks] = useState(null);
   const [recording, setRecording] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState(CAPTURE_MS / 1000); // capture countdown, UI only
   const [retry, setRetry] = useState('');
   const [leadIn, setLeadIn] = useState(3); // "get ready" countdown, seconds
   const [count, setCount] = useState(0); // live countdown number
@@ -85,6 +86,7 @@ export default function PoseScanCamera({ navigation, route }) {
   const startedAt = useRef(0);
   const frames = useRef([]);
   const timer = useRef(null);
+  const secTimer = useRef(null); // 1s tick driving secondsLeft while recording (UI only)
   const recordingVideoRef = useRef(false);
   // Set on Close / unmount: late recorder callbacks (camera teardown fires
   // onRecordingFinished AFTER we leave) must never advance a cancelled scan.
@@ -99,6 +101,7 @@ export default function PoseScanCamera({ navigation, route }) {
       // handed its clip to the review holder.
       cancelledRef.current = true;
       if (timer.current) clearInterval(timer.current); // clears both setTimeout + setInterval in RN
+      if (secTimer.current) clearInterval(secTimer.current);
       if (recordingVideoRef.current && cameraRef.current) {
         try {
           cameraRef.current.stopRecording();
@@ -114,6 +117,7 @@ export default function PoseScanCamera({ navigation, route }) {
     cancelledRef.current = true;
     capturing.current = false;
     if (timer.current) clearInterval(timer.current);
+    if (secTimer.current) clearInterval(secTimer.current);
     if (recordingVideoRef.current && cameraRef.current) {
       try {
         cameraRef.current.stopRecording(); // its onRecordingFinished only deletes the file now
@@ -134,6 +138,7 @@ export default function PoseScanCamera({ navigation, route }) {
       capturing.current = false;
       recordingVideoRef.current = false;
       setRecording(false);
+      if (secTimer.current) clearInterval(secTimer.current);
       try {
         const result = analyzeGait(frames.current);
         if (!result.captureQuality.ok) {
@@ -304,6 +309,13 @@ export default function PoseScanCamera({ navigation, route }) {
     startedAt.current = Date.now();
     capturing.current = true;
     setRecording(true);
+    // Visible time feedback: tick secondsLeft down once a second (UI only —
+    // the capture itself still ends on the single CAPTURE_MS timeout below).
+    setSecondsLeft(CAPTURE_MS / 1000);
+    if (secTimer.current) clearInterval(secTimer.current);
+    secTimer.current = setInterval(() => {
+      setSecondsLeft((s) => (s > 0 ? s - 1 : 0));
+    }, 1000);
 
     // Opt-in clip: record the camera to a temp file. onRecordingFinished fires
     // after stopRecording and hands us the path; finish() keeps or deletes it.
@@ -516,6 +528,8 @@ export default function PoseScanCamera({ navigation, route }) {
         </View>
       ) : null}
 
+      {recording ? <View style={styles.recDot} pointerEvents="none" /> : null}
+
       <View style={styles.top} pointerEvents="box-none">
         <Pressable onPress={closeScan} hitSlop={12} style={styles.back}>
           <Text style={styles.backText}>Close</Text>
@@ -541,8 +555,13 @@ export default function PoseScanCamera({ navigation, route }) {
           {counting
             ? 'Get ready — start walking when it hits 0'
             : recording
-              ? 'Recording — walk naturally'
-              : retry || 'Stand side-on, full body in frame'}
+              ? landmarks
+                ? `Recording — ${secondsLeft}s · walk back and forth across the frame`
+                : 'We lost you — step back into frame!'
+              : retry ||
+                (landmarks
+                  ? 'Stand side-on, full body in frame'
+                  : 'Stand side-on, full body in frame. No one in frame yet? Tap Record, then get into position during the countdown.')}
         </Text>
         {engineNote ? (
           <Text style={styles.engineNote} numberOfLines={3}>
@@ -574,21 +593,23 @@ export default function PoseScanCamera({ navigation, route }) {
             <Text style={styles.vidText}>Record my video (just this once) — shown only in review, then deleted</Text>
           </Pressable>
         ) : null}
-        {/* Like the web screen, Record is gated on a body being detected right now. */}
+        {/* Record needs a detected body only for an instant start (no lead-in):
+            with a 3s+ countdown a solo user taps Record, then gets into frame
+            during it — the quality gate still fails an empty capture honestly. */}
         <Button
           label={
             counting
               ? `Starting in ${count}…`
               : recording
-                ? 'Recording…'
-                : landmarks
+                ? `Recording… ${secondsLeft}s`
+                : landmarks || leadIn >= 3
                   ? 'Record 10 seconds'
                   : 'Step fully into frame'
           }
           icon="camera"
           variant="accent"
           onPress={startCapture}
-          disabled={recording || counting || !landmarks}
+          disabled={recording || counting || (!landmarks && leadIn < 3)}
         />
         {/* Nobody to film? A reviewer at a desk (or anyone alone) can still see
             the full flow — clearly-labeled sample data, never a dead end. */}
@@ -640,6 +661,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   bottom: { position: 'absolute', left: spacing.xl, right: spacing.xl, bottom: 40 },
+  // Mirrors the web screen's recDot (minimal red "recording" indicator).
+  recDot: { position: 'absolute', top: 16, right: 16, width: 14, height: 14, borderRadius: 7, backgroundColor: colors.danger, zIndex: 2 },
   countWrap: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   countNum: { fontFamily: fonts.extra, fontSize: 140, color: '#fff' },
   leadRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },

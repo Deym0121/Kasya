@@ -143,7 +143,7 @@ export function assessCaptureQuality(frames: PoseFrame[], stepCount: number): Ca
     issues.push('We couldn’t see enough leg movement — try a side-on view with your whole body in frame.');
   }
   if (gaitCyclesDetected < 2) {
-    issues.push('Not enough walking captured — record several strides.');
+    issues.push('Not enough walking captured — record several strides by walking back and forth across the frame, or on a treadmill.');
   }
 
   return { visibilityScore, gaitCyclesDetected, ok: issues.length === 0, issues };

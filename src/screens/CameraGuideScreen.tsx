@@ -10,10 +10,10 @@ type FeatherName = ComponentProps<typeof Feather>['name'];
 
 const GUIDE: Record<ScanView, { icon: FeatherName; text: string }[]> = {
   side: [
-    { icon: 'smartphone', text: 'Place your phone at waist height, 2–3 m away.' },
-    { icon: 'user', text: 'Stand side-on with your whole body in frame.' },
-    { icon: 'sun', text: 'Use good, even lighting — avoid backlight.' },
-    { icon: 'activity', text: 'Walk or run naturally for several strides.' },
+    { icon: 'smartphone', text: 'Lean your phone upright at waist height — a chair, shelf or water bottle works. No tripod needed.' },
+    { icon: 'user', text: 'Step 2–3 m back and turn side-on, whole body in frame head to feet.' },
+    { icon: 'sun', text: 'Good even light — avoid standing in front of a bright window.' },
+    { icon: 'activity', text: 'Walk or run back and forth across the camera’s view for about 20–30 seconds.' },
   ],
   // Web-internal: no route ever opens this screen with view:'rear' — the web
   // scan runs its rear pass in-screen and renders these steps inline via the
@@ -36,21 +36,21 @@ const isWeb = Platform.OS === 'web';
 const COPY: Record<ScanView, { step: string; title: string; sub: string; button: string }> = {
   side: isWeb
     ? {
-        step: 'View 1 of 2 · Side',
+        step: 'Step 2 of 2 · Side view first',
         title: 'Set up your side view',
-        sub: 'A clean side-on view gives cadence and your main form read.',
+        sub: 'From the side we can see your step rhythm (cadence) and how your body moves as you stride.',
         button: 'Start side recording',
       }
     : {
-        step: 'Side view',
+        step: 'Step 2 of 2 · Camera setup',
         title: 'Set up your side view',
-        sub: 'A clean side-on view gives cadence and your main form read.',
+        sub: 'From the side we can see your step rhythm (cadence) and how your body moves as you stride.',
         button: 'Start recording',
       },
   rear: {
-    step: 'View 2 of 2 · Rear',
+    step: 'Optional extra · Rear view',
     title: 'Now the rear view',
-    sub: 'A view from behind adds hip level, base of support and left/right balance — folded into the same result.',
+    sub: 'From behind we can see how level your hips stay and how balanced your left and right sides look — added to the same result.',
     button: 'Start rear recording',
   },
 };

@@ -24,10 +24,11 @@ export default function ScanSetupScreen({ navigation }: Props) {
         />
       }
     >
-      <Label>Step 1 of 2</Label>
-      <Text style={[T.h1, { marginTop: 4 }]}>What are you training for?</Text>
+      <Label>Step 1 of 2 · Your goal</Label>
+      <Text style={[T.h1, { marginTop: 4 }]}>What will you mostly use your shoes for?</Text>
       <Text style={[T.bodyMuted, { marginTop: spacing.xs, marginBottom: spacing.xl }]}>
-        We tailor your shoe matches to this goal.
+        We tailor your shoe matches to this goal. Next: a quick 30-second camera scan of how you
+        walk or run — no video is saved.
       </Text>
 
       <View style={styles.chips}>

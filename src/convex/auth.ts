@@ -82,14 +82,29 @@ export async function signInWithProvider(provider: OAuthProvider): Promise<AuthR
       Apple = require('expo-apple-authentication');
       if (!(await Apple.isAvailableAsync())) throw new Error('unavailable');
     } catch {
-      return { ok: false, error: 'Sign in with Apple isn’t available in this build.' };
+      return { ok: false, error: 'Sign in with Apple isn’t available on this device.' };
     }
+    // Three failure stages with three DIFFERENT messages, so a report like
+    // "it shows an error" pinpoints the layer (Apple sheet vs token vs server).
+    let cred: any;
     try {
-      const cred = await Apple.signInAsync({
+      cred = await Apple.signInAsync({
         requestedScopes: [Apple.AppleAuthenticationScope.FULL_NAME, Apple.AppleAuthenticationScope.EMAIL],
       });
-      if (!cred?.identityToken) return { ok: false, error: 'Apple sign-in didn’t complete — try again.' };
-      const name = [cred.fullName?.givenName, cred.fullName?.familyName].filter(Boolean).join(' ') || undefined;
+    } catch (e: any) {
+      const code = String(e?.code ?? '');
+      if (/CANCEL/i.test(code)) return { ok: false, error: '' }; // user closed the sheet — not an error
+      // The Apple sheet itself failed (device-side). The usual cause is not
+      // being signed into iCloud, or an Apple ID without two-factor auth.
+      const detail = [code, e?.message].filter(Boolean).join(' — ').slice(0, 160);
+      return {
+        ok: false,
+        error: `Apple couldn’t complete sign-in${detail ? ` (${detail})` : ''}. Make sure you’re signed into iCloud in Settings, then try again.`,
+      };
+    }
+    if (!cred?.identityToken) return { ok: false, error: 'Apple sign-in didn’t complete — try again.' };
+    const name = [cred.fullName?.givenName, cred.fullName?.familyName].filter(Boolean).join(' ') || undefined;
+    try {
       await actions.signIn('apple-native', {
         identityToken: cred.identityToken,
         // One-time code the server trades for the refresh token that account
@@ -97,11 +112,14 @@ export async function signInWithProvider(provider: OAuthProvider): Promise<AuthR
         ...(cred.authorizationCode ? { authorizationCode: cred.authorizationCode } : {}),
         ...(name ? { name } : {}),
       });
-      return { ok: true, email: cred.email ?? undefined, name };
-    } catch (e: any) {
-      if (e?.code === 'ERR_REQUEST_CANCELED') return { ok: false, error: '' }; // user closed the sheet — not an error
-      return { ok: false, error: 'Apple sign-in failed — try again, or use email and password.' };
+    } catch (e) {
+      const raw = (e instanceof Error ? e.message : String(e)).slice(0, 120);
+      return {
+        ok: false,
+        error: `We couldn’t verify the Apple sign-in with our server${raw ? ` (${raw})` : ''} — try again in a moment, or use email and password.`,
+      };
     }
+    return { ok: true, email: cred.email ?? undefined, name };
   }
 
   try {

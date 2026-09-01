@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cadenceTip } from '../insights';
+import { cadenceTip, cadenceVerdict } from '../insights';
 
 describe('cadenceTip', () => {
   it('nudges toward quicker, lighter steps when cadence is low', () => {
@@ -55,6 +55,62 @@ describe('cadenceTip', () => {
       expect(t).toMatch(/about|roughly|around|many|couldn/);
       expect(t).not.toMatch(/injur|diagnos|pronation|abnormal|medical|disease/);
       expect(t).not.toMatch(/\bmust\b|\brisk\b|\bproblem\b|\bfault\b|imbalance|\bcorrect\b/);
+    }
+  });
+});
+
+describe('cadenceVerdict', () => {
+  it('reads a typical running cadence as inside the band', () => {
+    const v = cadenceVerdict(172);
+    expect(v.inRange).toBe(true);
+    expect(v.line).toContain('160–180');
+    expect(v.line).toMatch(/running/);
+    expect(v.line).toMatch(/inside/);
+  });
+
+  it('reads a low running cadence as sitting a bit below the band', () => {
+    const v = cadenceVerdict(150, 'running');
+    expect(v.inRange).toBe(false);
+    expect(v.line).toContain('160–180');
+    expect(v.line).toMatch(/below/);
+  });
+
+  it('uses walking bands for walking-shaped goals', () => {
+    for (const goal of ['walking', 'daily_comfort', 'recovery']) {
+      const v = cadenceVerdict(110, goal);
+      expect(v.inRange).toBe(true);
+      expect(v.line).toContain('90–130');
+      expect(v.line).toMatch(/walking/);
+      expect(v.line).toMatch(/inside/);
+    }
+  });
+
+  it('reads above the band as brisk or quick, never as a concern', () => {
+    const walker = cadenceVerdict(140, 'walking');
+    expect(walker.inRange).toBe(false);
+    expect(walker.line).toMatch(/above/);
+    expect(walker.line).toMatch(/brisk/);
+    const runner = cadenceVerdict(188);
+    expect(runner.inRange).toBe(false);
+    expect(runner.line).toMatch(/above/);
+    expect(runner.line).toMatch(/quick/);
+  });
+
+  it('defaults to running bands like the rest of the coaching', () => {
+    expect(cadenceVerdict(150).line).toContain('160–180');
+    expect(cadenceVerdict(150, 'gym').line).toContain('160–180');
+  });
+
+  it('keeps every branch hedged and free of medical / prescriptive language', () => {
+    const goals = [undefined, 'running', 'gym', 'walking', 'daily_comfort', 'recovery'];
+    const values = [80, 110, 128, 150, 172, 188];
+    for (const goal of goals) {
+      for (const value of values) {
+        const line = cadenceVerdict(value, goal).line.toLowerCase();
+        expect(line).toMatch(/about|roughly|around/);
+        expect(line).not.toMatch(/injur|diagnos|pronation|abnormal|medical|disease/);
+        expect(line).not.toMatch(/\bmust\b|\brisk\b|\bproblem\b|\bfault\b|imbalance|\bcorrect\b/);
+      }
     }
   });
 });

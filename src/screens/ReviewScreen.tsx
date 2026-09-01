@@ -12,7 +12,7 @@ import { VideoReplay } from '../viz/VideoReplay';
 import { GaitCycleDiagram } from '../viz/GaitCycleDiagram';
 import { LeftRightCompare } from '../viz/LeftRightCompare';
 import { peekPendingVideo, clearPendingVideo } from '../viz/videoHolder';
-import { typicalBand } from '../gait/metricInfo';
+import { typicalBand, buildSideMetricItems } from '../gait/metricInfo';
 import { LANDMARK } from '../gait/types';
 
 type Props = RootScreenProps<'Review'>;
@@ -159,19 +159,7 @@ export default function ReviewScreen({ navigation, route }: Props) {
 
       <View style={{ height: spacing.xl }} />
       <Label>Your numbers</Label>
-      <MetricGrid
-        columns={3}
-        items={[
-          { key: 'cadence', value: Math.round(report.result.cadence.value) },
-          ...(s ? [{ key: 'stepTime' as const, value: s.meanStepTimeSec.toFixed(2), raw: s.meanStepTimeSec }] : []),
-          ...(s ? [{ key: 'stance' as const, value: s.stanceRatioPct }] : []),
-          { key: 'bounce', value: m.verticalOscillationPct },
-          { key: 'overstride', value: m.overstrideScore },
-          { key: 'rhythm', value: m.rhythmRegularityPct },
-          { key: 'symmetry', value: m.symmetryPct },
-          { key: 'kneeBend', value: m.kneeFlexionRangeDeg },
-        ]}
-      />
+      <MetricGrid columns={3} items={buildSideMetricItems(report.result.cadence.value, m, s)} />
       {s && s.leadFoot !== 'unknown' ? (
         <Text style={styles.caption}>Leading foot this scan: {s.leadFoot}.</Text>
       ) : null}

@@ -38,3 +38,33 @@ export function cadenceTip(cadence: MetricEstimate, goal?: string): string {
   }
   return `Your cadence of about ${spm} steps/min is in a brisk range — nice. Keep your steps light and quick.`;
 }
+
+export interface CadenceVerdict {
+  /** literally inside the typical band named in `line` */
+  inRange: boolean;
+  /** one hedged sentence answering "is my number OK?" */
+  line: string;
+}
+
+/**
+ * A one-line, goal-aware verdict for the cadence hero — answers "is my number
+ * OK?" against the same bands cadenceTip / buildFeedback already coach with:
+ * roughly 90–130 steps/min for walking-shaped goals, roughly 160–180 for
+ * running. Sitting above the band reads as brisk — a neutral-to-nice
+ * observation, never a concern — mirroring the existing coaching copy.
+ */
+export function cadenceVerdict(cadenceSpm: number, goal?: string): CadenceVerdict {
+  const walking = isWalkingGoal(goal);
+  const lo = walking ? 90 : 160;
+  const hi = walking ? 130 : 180;
+  const range = `Typical ${walking ? 'walking' : 'running'} range is about ${lo}–${hi} steps per minute`;
+  const spm = Math.round(cadenceSpm);
+  if (spm < lo) return { inRange: false, line: `${range} — yours sits a bit below it.` };
+  if (spm > hi) {
+    return {
+      inRange: false,
+      line: `${range} — yours sits a bit above it, a ${walking ? 'brisk walking pace' : 'quick step rate'}.`,
+    };
+  }
+  return { inRange: true, line: `${range} — yours sits inside it.` };
+}
