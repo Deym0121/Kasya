@@ -223,6 +223,47 @@ export default function SignInScreen({ navigation }: Props) {
         />
       </LinearGradient>
 
+      {socialOnly ? (
+        /* Social-only: a fixed sheet — no scrolling, no email, no guest.
+           The Kasya logo anchors the brand where the form used to be. */
+        <View style={[styles.sheet, styles.sheetFixed]}>
+          <Image
+            source={require('../../assets/art/kasya-logo.png')}
+            style={styles.sheetLogo}
+            resizeMode="contain"
+            accessible={false}
+          />
+          {SHOW_APPLE && (
+            <Pressable
+              onPress={() => social('apple')}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel="Continue with Apple"
+              style={({ pressed }) => [styles.socialBtn, styles.socialApple, pressed && { opacity: 0.9 }]}
+            >
+              <Text style={styles.appleLogo}>{'\uF8FF'}</Text>
+              <Text style={[styles.socialText, { color: '#000000' }]}>Continue with Apple</Text>
+            </Pressable>
+          )}
+          {SHOW_GOOGLE && (
+            <Pressable
+              onPress={() => social('google')}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel="Continue with Google"
+              style={({ pressed }) => [styles.socialBtn, pressed && { opacity: 0.9 }]}
+            >
+              <GoogleG />
+              <Text style={styles.socialText}>Continue with Google</Text>
+            </Pressable>
+          )}
+          {notice && (
+            <Text style={[styles.notice, notice.tone === 'error' ? { color: colors.danger } : { color: colors.success }]}>
+              {notice.text}
+            </Text>
+          )}
+        </View>
+      ) : (
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView style={styles.sheet} contentContainerStyle={styles.sheetInner} keyboardShouldPersistTaps="handled">
           {!socialOnly && (
@@ -339,6 +380,7 @@ export default function SignInScreen({ navigation }: Props) {
           />
         </ScrollView>
       </KeyboardAvoidingView>
+      )}
     </SafeAreaView>
   );
 }
@@ -391,6 +433,8 @@ const styles = StyleSheet.create({
     marginTop: -radius.xl,
   },
   sheetInner: { padding: spacing.xl, paddingBottom: spacing.xxl },
+  sheetFixed: { padding: spacing.xl, paddingTop: spacing.xl },
+  sheetLogo: { width: 84, height: 84, borderRadius: 20, alignSelf: 'center', marginBottom: spacing.xl },
   segment: {
     flexDirection: 'row',
     backgroundColor: colors.surfaceAlt,
