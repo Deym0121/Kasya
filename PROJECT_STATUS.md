@@ -18,8 +18,14 @@
    (iCloud/2FA). UX: 4-lens audit (45→14 ranked fixes, ALL implemented) — see
    commit 76574fa message; 220/220 tests, key screens browser-verified.
    ⭐ LLOYD MUST RUN (publishes the OTA to build-29 TestFlight devices):
-   `npx eas-cli update --channel production --platform ios --message "v1.2 analyzer UX overhaul + Apple sign-in error detail"`
-   (hermesc can crash transiently → just re-run). Public v1.1 users unaffected
+   `npx eas-cli update --channel production --platform ios --environment production --message "v1.2 analyzer UX overhaul + Apple sign-in error detail"`
+   (--environment production is REQUIRED by current eas-cli and pulls the EAS
+   server env vars — all five EXPO_PUBLIC vars verified present and matching
+   the binary; hermesc can crash transiently → just re-run). 2026-09-01 PM:
+   verified NO apple-native authAccount exists on Convex — Lloyd's "Apple login
+   worked" was the live Google session auto-entering, NOT a real Apple sign-in;
+   clean test = Profile → Sign out → Continue with Apple (after the OTA).
+   Public v1.1 users unaffected
    (runtime 1.1.0 ≠ 1.2.0); App Review judges the embedded bundle, so the pending
    d4d70b8d submission is not tainted. If review approves BEFORE the OTA is
    published, publish it before releasing v1.2 to the public.
