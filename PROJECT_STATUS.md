@@ -5,6 +5,25 @@
 
 ## ⭐ RESUME HERE — exact next actions
 
+-6. **ANALYZER UX OVERHAUL + APPLE SIGN-IN DIAGNOSIS (2026-09-01, commits 76574fa/49fad73)
+   — OTA NOT YET PUBLISHED (classifier blocked `eas update`; Lloyd runs it, command
+   below).** Lloyd reported (a) Apple sign-in shows an error, (b) the analyzer
+   confuses users. APPLE: build 29 binary verified CORRECT (IPA downloaded —
+   applesignin entitlement in executable + embedded profile, ExpoAppleAuthentication
+   module compiled in; Google sign-in WORKED on his device per Convex logs 9:17 AM;
+   no Apple attempt ever reached the server within the tiny log window). The generic
+   catch hid the real error → src/convex/auth.ts now surfaces WHICH layer failed
+   (sheet vs server) + error code + iCloud hint. NEXT: Lloyd retries Apple on
+   TestFlight AFTER the OTA and reports the exact message. Likely device-side
+   (iCloud/2FA). UX: 4-lens audit (45→14 ranked fixes, ALL implemented) — see
+   commit 76574fa message; 220/220 tests, key screens browser-verified.
+   ⭐ LLOYD MUST RUN (publishes the OTA to build-29 TestFlight devices):
+   `npx eas-cli update --channel production --platform ios --message "v1.2 analyzer UX overhaul + Apple sign-in error detail"`
+   (hermesc can crash transiently → just re-run). Public v1.1 users unaffected
+   (runtime 1.1.0 ≠ 1.2.0); App Review judges the embedded bundle, so the pending
+   d4d70b8d submission is not tainted. If review approves BEFORE the OTA is
+   published, publish it before releasing v1.2 to the public.
+
 -5. **v1.1 APPROVED (READY_FOR_SALE, both subs APPROVED) → v1.2 SOCIAL-LOGIN PUSH
    (2026-08-31, this session).** Everything in SOCIAL_AUTH_SETUP.md activated:
    flags ON (eas.json production + `.env` + EAS production environment — all
