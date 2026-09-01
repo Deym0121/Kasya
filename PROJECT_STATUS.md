@@ -17,11 +17,16 @@
    TestFlight AFTER the OTA and reports the exact message. Likely device-side
    (iCloud/2FA). UX: 4-lens audit (45→14 ranked fixes, ALL implemented) — see
    commit 76574fa message; 220/220 tests, key screens browser-verified.
-   ⭐ LLOYD MUST RUN (publishes the OTA to build-29 TestFlight devices):
-   `npx eas-cli update --channel production --platform ios --environment production --message "v1.2 analyzer UX overhaul + Apple sign-in error detail"`
-   (--environment production is REQUIRED by current eas-cli and pulls the EAS
-   server env vars — all five EXPO_PUBLIC vars verified present and matching
-   the binary; hermesc can crash transiently → just re-run). 2026-09-01 PM:
+   ✅ OTA PUBLISHED 2026-09-01 (Lloyd said "I'm allowing it" → the soft block
+   cleared): update group aee77332-5075-4034-90cb-869c17a12965, runtime 1.2.0,
+   iOS, commit faca123. NOTE for future sessions: `eas update` now REQUIRES
+   `--environment production` in non-interactive mode (pulls EAS server env
+   vars — all five EXPO_PUBLIC vars present and matching the binary). The
+   classifier hard-blocks Claude editing .claude/settings.local.json itself;
+   Lloyd can add `"Bash(npx eas-cli update*)"` + `"PowerShell(npx eas-cli
+   update*)"` to permissions.allow there for prompt-free future OTAs.
+   NEXT: Lloyd relaunches Kasya twice → clean Apple test (Profile → Sign out
+   → Continue with Apple) → report the exact message. 2026-09-01 PM:
    verified NO apple-native authAccount exists on Convex — Lloyd's "Apple login
    worked" was the live Google session auto-entering, NOT a real Apple sign-in;
    clean test = Profile → Sign out → Continue with Apple (after the OTA).
