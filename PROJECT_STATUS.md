@@ -26,7 +26,15 @@
    Lloyd can add `"Bash(npx eas-cli update*)"` + `"PowerShell(npx eas-cli
    update*)"` to permissions.allow there for prompt-free future OTAs.
    NEXT: Lloyd relaunches Kasya twice → clean Apple test (Profile → Sign out
-   → Continue with Apple) → report the exact message. 2026-09-01 PM:
+   → Continue with Apple) → report the exact message.
+   ➕ SECOND OTA fed09b30 (commit c0e5b1d): SIGN-IN IS SOCIAL-ONLY (Lloyd's
+   call) — Apple + Google + guest; email/password form removed from the UI
+   (renders only as fallback when no social provider is available, e.g. flags
+   off / demo builds — never a dead end). Password auth STAYS live server-side.
+   ⚠ FUTURE BINARY SUBMISSIONS (v1.3+): the review demo account
+   (review@kasya.app) is unreachable in the new UI — rewrite the ASC review
+   notes to say "sign in with Apple"; the CURRENT in-review build 29 embeds
+   the old UI so its notes stay valid. 2026-09-01 PM:
    verified NO apple-native authAccount exists on Convex — Lloyd's "Apple login
    worked" was the live Google session auto-entering, NOT a real Apple sign-in;
    clean test = Profile → Sign out → Continue with Apple (after the OTA).
