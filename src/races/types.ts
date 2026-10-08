@@ -29,6 +29,17 @@ export const COUNTRIES: RaceCountry[] = [
 
 export type RaceDistance = '5K' | '10K' | '21K' | '42K' | 'Ultra' | 'Other';
 
+/** The distance whitelist, in display order (mirrors scripts/check-races-seed.mjs). */
+export const DISTANCES: RaceDistance[] = ['5K', '10K', '21K', '42K', 'Ultra', 'Other'];
+
+/**
+ * Where a calendar row came from: 'curated' = the weekly refresh routine /
+ * seed import; 'community' = a Kasya Pro runner's submission approved by the
+ * Kasya team (never deleted by the weekly refresh). Absent on older rows,
+ * which are curated.
+ */
+export type RaceEventSource = 'curated' | 'community';
+
 export interface RaceEvent {
   /** stable slug id, e.g. 'manila-marathon-2027' */
   id: string;
@@ -37,6 +48,8 @@ export interface RaceEvent {
   city: string;
   /** ISO local race date: YYYY-MM-DD */
   dateStart: string;
+  /** last day of a multi-day event (YYYY-MM-DD), when it has one */
+  dateEnd?: string;
   distances: RaceDistance[];
   /** true only for the six World Marathon Majors */
   major: boolean;
@@ -47,6 +60,7 @@ export interface RaceEvent {
   organizer?: string;
   /** provenance — the official page the entry was verified against */
   sourceUrl: string;
+  source?: RaceEventSource;
 }
 
 /** Chip filters: every country + the Majors virtual filter + All. */

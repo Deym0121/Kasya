@@ -3,6 +3,7 @@ import { httpAction } from './_generated/server';
 import { internal, api } from './_generated/api';
 import { auth } from './auth';
 import { getAuthUserId } from '@convex-dev/auth/server';
+import { MODEL, callOpenRouter } from './openrouter';
 
 /**
  * Kasya's HTTP surface on Convex:
@@ -19,8 +20,6 @@ import { getAuthUserId } from '@convex-dev/auth/server';
  * still allowed for now (guest/demo mode) — tighten to require auth +
  * entitlement before public launch.
  */
-
-const MODEL = () => process.env.OPENROUTER_MODEL || 'openai/gpt-5-mini';
 
 const EXPLAIN_SYSTEM = `You are Kasya, a friendly running and walking form coach.
 You receive de-identified gait metrics from a phone/webcam scan and write a short, warm, plain-English summary.
@@ -131,34 +130,6 @@ async function guardAiRequest(
     return { error: json(400, { error: 'Malformed request.' }) };
   }
   return { payload };
-}
-
-async function callOpenRouter(
-  messages: { role: string; content: string }[],
-  maxTokens: number,
-): Promise<{ ok: true; text: string } | { ok: false; status: number; detail: string }> {
-  const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      'HTTP-Referer': 'https://kasya.app',
-      'X-Title': 'Kasya',
-    },
-    // reasoning:low keeps gpt-5-class models from spending the whole budget on
-    // hidden reasoning and returning empty content; max_tokens covers both.
-    body: JSON.stringify({
-      model: MODEL(),
-      temperature: 0.6,
-      max_tokens: maxTokens,
-      reasoning: { effort: 'low' },
-      messages,
-    }),
-  });
-  if (!r.ok) return { ok: false, status: r.status, detail: (await r.text()).slice(0, 400) };
-  const data = await r.json();
-  const text: string = data?.choices?.[0]?.message?.content?.trim() || '';
-  return { ok: true, text };
 }
 
 const coach = httpAction(async (ctx, req) => {

@@ -416,17 +416,37 @@ enrichment), every date verified by FETCHING its sourceUrl; takbo.ph + pixhero.p
 are unfetchable to bots (TLS/403) — use pinoyfitness.com, raceroster, official
 pages. (2) merge into src/data/raceSeed.json with standard QC (major=WMM-only,
 whitelists, https, dedupe-by-id absorbing results/photos links), npm run
-check:races + scoped vitest. (3) node scripts/seed-races.mjs -> CONVEX_DEPLOY_KEY
-from .env.local -> npx convex import --table raceEvents --replace --format
-jsonLines scripts/raceEvents.jsonl -y -> verify races:list. (4) commit seed.
+check:races + scoped vitest. (3) node scripts/seed-races.mjs -> POST the printed
+payload to /api/races/ingest with RACES_INGEST_TOKEN -> verify races:list. ⚠ Since
+community race submissions (below), NEVER `npx convex import --table raceEvents
+--replace` — it wipes community-approved races; ingest/replaceAll only replaces
+curated rows. (4) commit seed.
 Server data = instant in every app, no OTA. FULLY AUTOMATED since 2026-08-22: cloud routine trig_015L53Ward3wkL8L7KrPbVhF (claude.ai/code/routines) runs every Monday 9:23 AM PHT — fetches current calendar via the public races:list query, researches/verifies, and publishes via POST /api/races/ingest guarded by RACES_INGEST_TOKEN (scoped secret in Convex env; the deploy key never leaves this machine). Manual "update races" still works anytime.
+
+## Community race submissions (Kasya Pro, human-approved)
+
+Pro runners submit races from Races → "+" / "Missing a race?" (RaceSubmit
+screen); every submission is validated by the shared pure rules in
+`src/races/submission.ts`, then `convex/raceSubmissions.ts` fetches the official
+page (name/date heuristics + OpenRouter JSON verdict). Unreachable page =
+auto-rejected; everything else waits for an admin — NOTHING auto-publishes.
+Admins (emails in `ADMIN_EMAILS`) review on the RaceAdmin screen (banner on
+Races when items wait) and approve → `raceEvents` row with `source:'community'`.
+`races.replaceAll` (weekly routine) replaces curated rows only and merges, never
+deletes, community rows. "Report wrong info" on RaceDetail → `raceReports`
+(5/day), resolved from the same admin screen.
+Deploy: `npx convex env set ADMIN_EMAILS you@example.com` then `npx convex deploy`.
+Optional `RACES_STRICT_PRO=1` once the app calls `Purchases.logIn(<convex user id>)`
+(until then the server can't link RevenueCat purchases to users, so it applies
+the AI-coach rule: refuse linked-but-expired, allow unlinked; the app gates via
+getPlan()).
 
 ## Deferred (Lloyd said yes, do after ship)
 
 1. **Weekly race auto-updater**: scheduled routine — research newly announced
    races (same verify-against-official-source rules as `scripts/check-races-seed.mjs`),
-   add via `scripts/seed-races.mjs` + `npx convex import --table raceEvents
-   --replace --format jsonLines scripts/raceEvents.jsonl -y`, report to Lloyd.
+   add via `scripts/seed-races.mjs` + the printed `/api/races/ingest` call
+   (not `convex import --replace` — keeps community races), report to Lloyd.
 2. Camera device-verification round (overlay alignment → OTA tune).
 3. E:\ migration of the repo (disk).
 

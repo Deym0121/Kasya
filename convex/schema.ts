@@ -50,9 +50,12 @@ export default defineSchema({
     .index('by_rc', ['rcAppUserId']),
 
   /**
-   * Curated race calendar (public read). Facts only — no urgency fields;
-   * status is derived on the client from dateStart. Every row carries its
-   * provenance sourceUrl. Seeded via `npx convex import` (see seed script).
+   * Race calendar (public read). Facts only — no urgency fields; status is
+   * derived on the client from dateStart. Every row carries its provenance
+   * sourceUrl. `source`: 'curated' rows are owned by the weekly refresh
+   * routine (/api/races/ingest → races.replaceAll, which replaces them);
+   * 'community' rows are Pro submissions a human approved and are NEVER
+   * deleted by the refresh. Absent = curated (pre-community rows).
    */
   raceEvents: defineTable({
     id: v.string(),
@@ -60,6 +63,7 @@ export default defineSchema({
     country: v.string(),
     city: v.string(),
     dateStart: v.string(),
+    dateEnd: v.optional(v.string()),
     distances: v.array(v.string()),
     major: v.boolean(),
     regUrl: v.optional(v.string()),
@@ -68,8 +72,63 @@ export default defineSchema({
     photosUrl: v.optional(v.string()),
     organizer: v.optional(v.string()),
     sourceUrl: v.string(),
+    source: v.optional(v.union(v.literal('curated'), v.literal('community'))),
     updatedAt: v.float64(),
-  }).index('by_date', ['dateStart']),
+  })
+    .index('by_date', ['dateStart'])
+    .index('by_event_id', ['id']),
+
+  /**
+   * Community race submissions (Kasya Pro only). Validated by the shared pure
+   * rules in src/races/submission.ts, checked against the official page by
+   * raceSubmissions.verifySubmission, and published ONLY when an admin
+   * approves (status 'approved' + publishedEventId = the raceEvents `id`).
+   */
+  raceSubmissions: defineTable({
+    userId: v.id('users'),
+    status: v.union(
+      v.literal('pending'),
+      v.literal('approved'),
+      v.literal('rejected'),
+      v.literal('auto_rejected'),
+    ),
+    name: v.string(),
+    dateStart: v.string(),
+    dateEnd: v.optional(v.string()),
+    city: v.string(),
+    country: v.string(),
+    distances: v.array(v.string()),
+    officialUrl: v.string(),
+    registrationUrl: v.optional(v.string()),
+    organizer: v.optional(v.string()),
+    verification: v.optional(
+      v.object({
+        checkedAt: v.float64(),
+        urlReachable: v.boolean(),
+        nameFound: v.boolean(),
+        dateFound: v.boolean(),
+        aiVerdict: v.union(v.literal('legit'), v.literal('doubtful'), v.literal('unavailable')),
+        aiSummary: v.string(),
+      }),
+    ),
+    createdAt: v.float64(),
+    reviewedAt: v.optional(v.float64()),
+    reviewNote: v.optional(v.string()),
+    publishedEventId: v.optional(v.string()),
+  })
+    .index('by_user', ['userId', 'createdAt'])
+    .index('by_status_date', ['status', 'dateStart']),
+
+  /** "Report wrong info" on a race (any signed-in user, 5/day). eventId = raceEvents.id. */
+  raceReports: defineTable({
+    eventId: v.string(),
+    userId: v.id('users'),
+    reason: v.string(),
+    createdAt: v.float64(),
+    resolved: v.boolean(),
+  })
+    .index('by_user', ['userId', 'createdAt'])
+    .index('by_resolved', ['resolved', 'createdAt']),
 
   /**
    * Sign in with Apple refresh tokens, kept ONLY so deleteAccount can revoke

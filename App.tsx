@@ -29,6 +29,8 @@ import ShoeMatchesScreen from './src/screens/ShoeMatchesScreen';
 import ShareCardScreen from './src/screens/ShareCardScreen';
 import PaywallScreen from './src/screens/PaywallScreen';
 import RaceDetailScreen from './src/screens/RaceDetailScreen';
+import RaceSubmitScreen from './src/screens/RaceSubmitScreen';
+import RaceAdminScreen from './src/screens/RaceAdminScreen';
 import RecordScreen from './src/screens/RecordScreen';
 import ActivityDetailScreen from './src/screens/ActivityDetailScreen';
 import ActivityShareScreen from './src/screens/ActivityShareScreen';
@@ -222,6 +224,8 @@ function App() {
           <Stack.Screen name="Share" component={ShareCardScreen} options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="Paywall" component={PaywallScreen} options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="RaceDetail" component={RaceDetailScreen} />
+          <Stack.Screen name="RaceSubmit" component={RaceSubmitScreen} />
+          <Stack.Screen name="RaceAdmin" component={RaceAdminScreen} />
           <Stack.Screen
             name="Record"
             component={RecordScreen}

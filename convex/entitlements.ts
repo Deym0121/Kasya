@@ -1,4 +1,6 @@
 import { internalMutation, query } from './_generated/server';
+import type { QueryCtx } from './_generated/server';
+import type { Id } from './_generated/dataModel';
 import { v } from 'convex/values';
 import { getAuthUserId } from '@convex-dev/auth/server';
 
@@ -12,17 +14,28 @@ function isActive(row: { expiresAt: number | null }): boolean {
   return row.expiresAt === null || row.expiresAt > Date.now();
 }
 
+/**
+ * Premium status for one user, by server truth — shared by `mine` (AI coach
+ * gate in http.ts) and race submissions (raceSubmissions.submitRace).
+ */
+export async function proStatusFor(
+  ctx: Pick<QueryCtx, 'db'>,
+  userId: Id<'users'>,
+): Promise<{ active: boolean; linked: boolean }> {
+  const rows = await ctx.db
+    .query('entitlements')
+    .withIndex('by_user', (q) => q.eq('userId', userId))
+    .collect();
+  return { active: rows.some(isActive), linked: rows.length > 0 };
+}
+
 /** The signed-in user's premium status, by server truth. */
 export const mine = query({
   args: {},
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return { active: false, linked: false };
-    const rows = await ctx.db
-      .query('entitlements')
-      .withIndex('by_user', (q) => q.eq('userId', userId))
-      .collect();
-    return { active: rows.some(isActive), linked: rows.length > 0 };
+    return proStatusFor(ctx, userId);
   },
 });
 

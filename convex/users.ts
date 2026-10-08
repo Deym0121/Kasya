@@ -16,7 +16,8 @@ export const me = query({
 
 /**
  * Full in-app account deletion (App Review guideline 5.1.1(v)): removes the
- * user's reports, quota rows, entitlement links, every auth record (accounts,
+ * user's reports, quota rows, entitlement links, race submissions/reports,
+ * every auth record (accounts,
  * sessions, refresh tokens, verification codes) and the user itself.
  */
 export const deleteAccount = mutation({
@@ -37,7 +38,19 @@ export const deleteAccount = mutation({
       .query('entitlements')
       .withIndex('by_user', (q) => q.eq('userId', userId))
       .collect();
-    await Promise.all([...reports, ...usage, ...entitlements].map((r) => ctx.db.delete(r._id)));
+    // Race submissions + "report wrong info" rows. Approved races stay in the
+    // public calendar (raceEvents holds no user reference).
+    const raceSubmissions = await ctx.db
+      .query('raceSubmissions')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .collect();
+    const raceReports = await ctx.db
+      .query('raceReports')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .collect();
+    await Promise.all(
+      [...reports, ...usage, ...entitlements, ...raceSubmissions, ...raceReports].map((r) => ctx.db.delete(r._id)),
+    );
 
     const sessions = await ctx.db
       .query('authSessions')
