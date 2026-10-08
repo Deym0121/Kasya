@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { buildActivityStickerSvg, routeSegments, SHARE_SIZE } from '../activitySticker';
+import { buildActivityStickerSvg, routeSegments, trimRouteEnds, SHARE_SIZE } from '../activitySticker';
+import { haversine } from '../../activity/geo';
 import { Recorder } from '../../activity/recorder';
 import { simulateFixes } from '../../activity/sim';
 import { finalizeRecording } from '../../activity/finalize';
@@ -70,5 +71,27 @@ describe('activity share image', () => {
     });
     expect(one).not.toMatch(/NaN|Infinity/);
     expect(same).not.toMatch(/NaN|Infinity/);
+  });
+});
+
+describe('privacy trim', () => {
+  it('drops ~200 m at both ends of the route, measured along the path', () => {
+    const { summary, track } = recorded();
+    const segs = routeSegments(summary, track);
+    const trimmed = trimRouteEnds(segs, 200);
+    const first = segs[0][0];
+    const kept = trimmed[0][0];
+    // the first kept point is at least ~150 m (straight line) from the true start
+    expect(haversine(first[0], first[1], kept[0], kept[1])).toBeGreaterThan(150);
+    const svgHidden = buildActivityStickerSvg(summary, track, { background: 'brand', format: 'square', hideEndsM: 200 });
+    expect(svgHidden).toContain('<polyline');
+  });
+
+  it('hides a route that is too short to trim and says why', () => {
+    const { summary } = recorded();
+    const short = { ...summary, preview: [[14.55, 121.05], [14.5505, 121.05], [14.551, 121.05]] as [number, number][] };
+    const svg = buildActivityStickerSvg(short, null, { background: 'brand', format: 'square', hideEndsM: 200 });
+    expect(svg).toContain('Route hidden for privacy');
+    expect(svg).not.toContain('<polyline');
   });
 });

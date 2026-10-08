@@ -28,6 +28,7 @@ import {
   backgroundCapable,
 } from '../activity/location';
 import { startDemoFeed, stopDemoFeed, demoFeedRunning } from '../activity/demoFeed';
+import { getVoiceCues, setVoiceCues } from '../activity/voiceCues';
 import { stepsPermission, watchPhoneSteps, hasStepHistory, phoneStepsBetween } from '../activity/steps';
 import { stepsBetween, getHealthState } from '../activity/healthSync';
 import { saveWorkoutToHealth } from '../activity/health';
@@ -66,6 +67,7 @@ export default function RecordScreen({ navigation, route }: Props) {
   const recording = (snap.active && !!stats) || phase === 'saving';
   const [sport, setSport] = useState<Sport>(route.params?.sport ?? 'run');
   const [autoPause, setAutoPause] = useState(true);
+  const [voice, setVoice] = useState(true);
   const [problem, setProblem] = useState<Problem>(null);
   const [saveError, setSaveError] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -103,6 +105,10 @@ export default function RecordScreen({ navigation, route }: Props) {
     return () => {
       alive = false;
     };
+  }, []);
+
+  useEffect(() => {
+    getVoiceCues().then(setVoice);
   }, []);
 
   // GPS preview before Start: centre the map and show signal strength.
@@ -459,6 +465,16 @@ export default function RecordScreen({ navigation, route }: Props) {
                 icon={autoPause ? 'pause-circle' : 'circle'}
                 selected={autoPause}
                 onPress={() => setAutoPause((v) => !v)}
+              />
+              <Chip
+                label={voice ? 'Voice cues on' : 'Voice cues off'}
+                icon={voice ? 'volume-2' : 'volume-x'}
+                selected={voice}
+                onPress={() => {
+                  const next = !voice;
+                  setVoice(next);
+                  setVoiceCues(next);
+                }}
               />
             </View>
 

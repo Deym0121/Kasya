@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { trialDays } from './pricing';
 import { getUser, setUser } from '../storage/session';
 
 /**
@@ -120,6 +121,12 @@ export interface PremiumPackage {
   id: string;
   label: string;
   price: string;
+  /** numeric price in the store's currency (for the savings badge) */
+  amount: number | null;
+  /** store-formatted per-month equivalent, e.g. "₱124.17" */
+  perMonth: string | null;
+  /** free-trial length in days, when the product has a free intro offer */
+  trialDays: number | null;
   pkg: unknown;
 }
 
@@ -134,6 +141,9 @@ export async function getPremiumPackages(): Promise<PremiumPackage[]> {
       id: p.identifier,
       label: p.product?.title || p.identifier,
       price: p.product?.priceString || '',
+      amount: typeof p.product?.price === 'number' ? p.product.price : null,
+      perMonth: p.product?.pricePerMonthString ?? null,
+      trialDays: trialDays(p.product?.introPrice),
       pkg: p,
     }));
   } catch {

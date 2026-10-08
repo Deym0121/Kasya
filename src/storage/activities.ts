@@ -89,11 +89,28 @@ export async function getTrack(id: string): Promise<ActivityTrack | null> {
   }
 }
 
-export function renameActivity(id: string, name: string): Promise<void> {
+/** Edit the user-owned fields of an activity (name, sport, notes). */
+export function updateActivity(
+  id: string,
+  patch: { name?: string; sport?: ActivitySummary['sport']; notes?: string },
+): Promise<void> {
   return locked(async () => {
     const all = await listActivities();
-    await writeIndex(all.map((a) => (a.id === id ? { ...a, name: name.trim() || a.name } : a)));
+    await writeIndex(
+      all.map((a) => {
+        if (a.id !== id) return a;
+        const next = { ...a };
+        if (patch.name !== undefined) next.name = patch.name.trim().slice(0, 60) || a.name;
+        if (patch.sport && SPORTS.includes(patch.sport)) next.sport = patch.sport;
+        if (patch.notes !== undefined) next.notes = patch.notes.trim().slice(0, 500) || undefined;
+        return next;
+      }),
+    );
   });
+}
+
+export function renameActivity(id: string, name: string): Promise<void> {
+  return updateActivity(id, { name });
 }
 
 export function deleteActivity(id: string, opts: { ignoreReimport?: boolean } = {}): Promise<void> {

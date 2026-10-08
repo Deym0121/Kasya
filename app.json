@@ -107,7 +107,7 @@
           "background": false
         }
       ],
-      "./plugins/withLocationOnlyBackground"
+      "./plugins/withActivityBackgroundModes"
     ],
     "extra": {
       "eas": {

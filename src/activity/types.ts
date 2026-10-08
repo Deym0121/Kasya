@@ -82,6 +82,8 @@ export interface ActivitySummary {
   hasTrack: boolean;
   /** recorded with the demo run (simulated GPS) — labelled, like demo scans */
   demo?: boolean;
+  /** the runner's own note ("felt strong, humid") */
+  notes?: string;
   /** ~48 simplified [lat, lon] pairs for list thumbnails */
   preview: [number, number][];
 }

@@ -13,8 +13,10 @@ import App from './App';
 // relaunched app. Guarded: a native-module failure here must never block launch.
 try {
   require('./src/activity/locationTask');
+  // per-km voice cues listen to the recording session itself (screen-independent)
+  require('./src/activity/voiceCues');
 } catch (e) {
-  console.warn('[Kasya] location task unavailable', e);
+  console.warn('[Kasya] activity background modules unavailable', e);
 }
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);

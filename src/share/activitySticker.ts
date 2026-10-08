@@ -1,5 +1,5 @@
 import { brandLockupSvg } from './brandLockup';
-import { metresPerDegree, simplify } from '../activity/geo';
+import { haversine, metresPerDegree, simplify } from '../activity/geo';
 import { formatDuration, formatKm, formatPace, formatSpeed, paceOf, usesSpeed, SPORT_LABEL } from '../activity/format';
 import type { ActivitySummary, ActivityTrack } from '../activity/types';
 
@@ -72,6 +72,31 @@ export function routeSegments(a: ActivitySummary, track: ActivityTrack | null): 
   return a.preview.length > 1 ? [a.preview] : [];
 }
 
+/**
+ * Privacy trim: drop the first and last `metres` of the route (measured along
+ * the path), so a shared map never pins the front door it started from.
+ * Returns [] when the route is too short to show anything meaningful after.
+ */
+export function trimRouteEnds(segs: LL[][], metres: number): LL[][] {
+  if (metres <= 0) return segs;
+  const cum: number[][] = [];
+  let total = 0;
+  let prev: LL | null = null;
+  for (const seg of segs) {
+    const c: number[] = [];
+    for (const p of seg) {
+      if (prev) total += haversine(prev[0], prev[1], p[0], p[1]);
+      c.push(total);
+      prev = p;
+    }
+    cum.push(c);
+  }
+  if (total < 2 * metres + 200) return [];
+  return segs
+    .map((seg, i) => seg.filter((_, j) => cum[i][j] >= metres && cum[i][j] <= total - metres))
+    .filter((seg) => seg.length > 1);
+}
+
 /** Project segments into a box, preserving aspect (cos-lat corrected). */
 function projectRoute(segs: LL[][], box: { x: number; y: number; w: number; h: number }): string[] {
   const all = segs.flat().filter(([la, lo]) => Number.isFinite(la) && Number.isFinite(lo));
@@ -112,7 +137,7 @@ function projectRoute(segs: LL[][], box: { x: number; y: number; w: number; h: n
 export function buildActivityStickerSvg(
   a: ActivitySummary,
   track: ActivityTrack | null,
-  opts: { background: ShareBackground; format: ShareFormat },
+  opts: { background: ShareBackground; format: ShareFormat; hideEndsM?: number },
 ): string {
   const { w: W, h: H } = SHARE_SIZE[opts.format];
   const brand = opts.background === 'brand';
@@ -137,7 +162,10 @@ export function buildActivityStickerSvg(
   const routeBox = story
     ? { x: pad, y: 480, w: W - 2 * pad, h: 760 }
     : { x: pad + 20, y: 330, w: W - 2 * pad - 40, h: 400 };
-  const lines = projectRoute(routeSegments(a, track), routeBox);
+  const allSegs = routeSegments(a, track);
+  const segs = trimRouteEnds(allSegs, opts.hideEndsM ?? 0);
+  const hiddenForPrivacy = allSegs.length > 0 && segs.length === 0;
+  const lines = projectRoute(segs, routeBox);
   const first = lines[0]?.split(' ')[0]?.split(',').map(Number);
   const lastLine = lines[lines.length - 1]?.split(' ');
   const last = lastLine?.[lastLine.length - 1]?.split(',').map(Number);
@@ -154,7 +182,9 @@ export function buildActivityStickerSvg(
         ? `\n  <circle cx="${first[0]}" cy="${first[1]}" r="${story ? 17 : 14}" fill="#2FBF8F" stroke="#0B0C0E" stroke-width="6"/>` +
           `\n  <circle cx="${last[0]}" cy="${last[1]}" r="${story ? 17 : 14}" fill="#FFFFFF" stroke="#0B0C0E" stroke-width="6"/>`
         : '')
-    : `<text x="${W / 2}" y="${routeBox.y + routeBox.h / 2}" text-anchor="middle" font-family="${FONT_MED}" font-size="40" fill="rgba(255,255,255,0.55)"${tf}>Indoor · no GPS route</text>`;
+    : `<text x="${W / 2}" y="${routeBox.y + routeBox.h / 2}" text-anchor="middle" font-family="${FONT_MED}" font-size="40" fill="rgba(255,255,255,0.55)"${tf}>${
+        hiddenForPrivacy ? 'Route hidden for privacy' : 'Indoor · no GPS route'
+      }</text>`;
 
   // Stats. Font sizes are fitted to the column so long values ("1:02:03",
   // "123.4") never run into the next column.

@@ -12,7 +12,7 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
   },
 }));
 
-import { saveActivity, listActivities, deleteActivity, getTrack, listIgnoredImports } from '../activities';
+import { saveActivity, listActivities, deleteActivity, getTrack, listIgnoredImports, updateActivity } from '../activities';
 import type { ActivityRecord } from '../../activity/types';
 
 const rec = (id: string, extra: Partial<ActivityRecord['summary']> = {}): ActivityRecord => ({
@@ -55,5 +55,17 @@ describe('activity storage', () => {
     expect(await getTrack('a1')).toBeNull();
     expect(await listActivities()).toEqual([]);
     expect(await listIgnoredImports()).toEqual(['UUID-2']);
+  });
+});
+
+describe('editing', () => {
+  it('updates name, sport and notes; blank name keeps the old one; bad sport is ignored', async () => {
+    await saveActivity(rec('a1'));
+    await updateActivity('a1', { name: '  Sunday long run  ', sport: 'walk', notes: ' humid ' });
+    let a = (await listActivities())[0];
+    expect([a.name, a.sport, a.notes]).toEqual(['Sunday long run', 'walk', 'humid']);
+    await updateActivity('a1', { name: '   ', sport: 'swim' as never, notes: '' });
+    a = (await listActivities())[0];
+    expect([a.name, a.sport, a.notes]).toEqual(['Sunday long run', 'walk', undefined]);
   });
 });

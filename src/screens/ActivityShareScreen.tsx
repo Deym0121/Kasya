@@ -26,6 +26,8 @@ export default function ActivityShareScreen({ navigation, route }: Props) {
   const [track, setTrack] = useState<ActivityTrack | null>(null);
   const [bg, setBg] = useState<ShareBackground>('brand');
   const [format, setFormat] = useState<ShareFormat>('square');
+  // on by default: a route that starts at your door shouldn't be posted as-is
+  const [hideEnds, setHideEnds] = useState(true);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
   const shotRef = useRef<View>(null);
@@ -46,7 +48,10 @@ export default function ActivityShareScreen({ navigation, route }: Props) {
     }, [id]),
   );
 
-  const svg = useMemo(() => (a ? buildActivityStickerSvg(a, track, { background: bg, format }) : ''), [a, track, bg, format]);
+  const svg = useMemo(
+    () => (a ? buildActivityStickerSvg(a, track, { background: bg, format, hideEndsM: hideEnds ? 200 : 0 }) : ''),
+    [a, track, bg, format, hideEnds],
+  );
   const size = SHARE_SIZE[format];
   // Fit the preview on screen: full width for square, height-capped for story.
   const maxW = Math.min(width - spacing.xl * 2, 420);
@@ -97,6 +102,14 @@ export default function ActivityShareScreen({ navigation, route }: Props) {
         <Chip label="With background" selected={bg === 'brand'} onPress={() => setBg('brand')} />
         <Chip label="Transparent" selected={bg === 'transparent'} onPress={() => setBg('transparent')} />
       </View>
+      <View style={styles.chipRow}>
+        <Chip
+          label="Hide start & end"
+          icon={hideEnds ? 'eye-off' : 'eye'}
+          selected={hideEnds}
+          onPress={() => setHideEnds((v) => !v)}
+        />
+      </View>
 
       {a ? (
         <View style={[styles.previewFrame, { width: previewW, height: previewH }]}>
@@ -123,8 +136,10 @@ export default function ActivityShareScreen({ navigation, route }: Props) {
       )}
 
       <Text style={styles.small}>
-        The image shows your route's shape and your numbers — no map, street names or coordinates. A loop that starts
-        at your door can still hint where you live, so think twice before posting those publicly.
+        The image shows your route's shape and your numbers — no map, street names or coordinates.{' '}
+        {hideEnds
+          ? 'The first and last 200 m are hidden, so it doesn’t show where you started or finished.'
+          : 'Start and finish are visible — think twice before posting a loop that starts at your door.'}
       </Text>
       {note ? <Text style={styles.note}>{note}</Text> : null}
     </ScreenContainer>

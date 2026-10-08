@@ -13,14 +13,27 @@ import {
   restorePurchases,
   PremiumPackage,
 } from '../monetization/entitlements';
+import { savingsPct, trialDisclosure } from '../monetization/pricing';
+import { FREE_SCANS_PER_WEEK } from '../monetization/limits';
 
-// Only benefits that are REALLY gated in the app — scans, history, progress and
-// shoe matches are free for everyone (and stay that way in the copy).
-const BENEFITS: { icon: 'message-circle' | 'file-text'; title: string; sub: string }[] = [
+// Only benefits that are REALLY gated in the app right now — recording, watch
+// sync, history, shoe matches and share images stay free (and the copy says so).
+type BenefitIcon = 'message-circle' | 'file-text' | 'camera' | 'flag';
+const BENEFITS: { icon: BenefitIcon; title: string; sub: string }[] = [
+  {
+    icon: 'camera',
+    title: 'Unlimited gait scans',
+    sub: `Free accounts get ${FREE_SCANS_PER_WEEK} scans a week — scan after every long run with Premium.`,
+  },
   {
     icon: 'message-circle',
     title: 'AI coach chat',
     sub: 'Ask anything about your scan — English or Taglish, up to 50 replies a day.',
+  },
+  {
+    icon: 'flag',
+    title: 'Add races to the calendar',
+    sub: 'Submit a race you’re joining — we check it against the organizer’s page before it goes live.',
   },
   {
     icon: 'file-text',
@@ -29,12 +42,11 @@ const BENEFITS: { icon: 'message-circle' | 'file-text'; title: string; sub: stri
   },
 ];
 
-// Demo-mode price display; live mode shows the store's own priceString.
-// Mirrors the REAL store products ($9.99/mo, $79.99/yr) — a mismatched number
-// here is a metadata-accuracy (2.3.1) problem.
+// Demo-mode price display (web / dev only); live mode always shows the
+// store's own prices. Mirrors the v1.3 USD price points ($7.99 / $49.99).
 const DEMO = {
-  yearly: { price: '$79.99/y', perMonth: '$6.67/mo', foot: '$79.99 per year, cancel anytime.' },
-  monthly: { price: '$9.99/mo', perMonth: null, foot: '$9.99 per month, cancel anytime.' },
+  yearly: { price: '$49.99/y', amount: 49.99, perMonth: '$4.17/mo', foot: '$49.99 per year, cancel anytime.' },
+  monthly: { price: '$7.99/mo', amount: 7.99, perMonth: null, foot: '$7.99 per month, cancel anytime.' },
 };
 
 type PlanChoice = 'yearly' | 'monthly';
@@ -91,10 +103,19 @@ export default function PaywallScreen({ navigation }: Props) {
 
   const yearlyPrice = live ? yearlyPkg?.price || '…' : DEMO.yearly.price;
   const monthlyPrice = live ? monthlyPkg?.price || '…' : DEMO.monthly.price;
+  // The badge is computed from the real prices — never a hard-coded number.
+  const save = live
+    ? savingsPct(monthlyPkg?.amount, yearlyPkg?.amount)
+    : savingsPct(DEMO.monthly.amount, DEMO.yearly.amount);
+  const yearlyPerMonth = live ? (yearlyPkg?.perMonth ? `${yearlyPkg.perMonth}/mo` : null) : DEMO.yearly.perMonth;
+  const trial = live ? (selPkg?.trialDays ?? null) : null;
+  const period = sel === 'yearly' ? 'year' : 'month';
   // Live mode quotes the store's own price — never the demo copy's numbers.
   const footnote = live
     ? selPkg
-      ? `${selPkg.price} per ${sel === 'yearly' ? 'year' : 'month'}, cancel anytime.`
+      ? trial
+        ? trialDisclosure(trial, selPkg.price, period)
+        : `${selPkg.price} per ${period}, cancel anytime.`
       : ''
     : sel === 'yearly'
       ? DEMO.yearly.foot
@@ -152,8 +173,8 @@ export default function PaywallScreen({ navigation }: Props) {
           <Text style={[T.h1, { marginTop: spacing.xl, textAlign: 'center' }]}>Premium unlocked</Text>
           <Text style={[T.bodyMuted, { marginTop: spacing.sm, textAlign: 'center' }]}>
             {live
-              ? 'Your purchase is active. The AI coach chat and PDF report export are now open.'
-              : 'Demo entitlement — no payment was made. The AI coach chat and PDF report export are now open.'}
+              ? 'Your purchase is active — unlimited scans, the AI coach, race submissions and PDF export are open.'
+              : 'Demo entitlement — no payment was made. Unlimited scans, the AI coach, race submissions and PDF export are open.'}
           </Text>
           <View style={{ height: spacing.xl, alignSelf: 'stretch' }} />
           <View style={{ alignSelf: 'stretch' }}>
@@ -212,11 +233,12 @@ export default function PaywallScreen({ navigation }: Props) {
 
       {showYearly && (
         <View>
-          {planCard('yearly', 'Yearly', yearlyPrice, live ? null : DEMO.yearly.perMonth)}
-          {/* 12 × $9.99 = $119.88 vs $79.99/yr → 33% — must match the real math. */}
-          <View style={styles.saveBadge} pointerEvents="none">
-            <Text style={styles.saveBadgeText}>SAVE 33%</Text>
-          </View>
+          {planCard('yearly', 'Yearly', yearlyPrice, yearlyPerMonth)}
+          {save != null && (
+            <View style={styles.saveBadge} pointerEvents="none">
+              <Text style={styles.saveBadgeText}>SAVE {save}%</Text>
+            </View>
+          )}
         </View>
       )}
       {showYearly && showMonthly && <View style={{ height: spacing.md }} />}
@@ -262,9 +284,11 @@ export default function PaywallScreen({ navigation }: Props) {
               ? 'One moment…'
               : live && !pkgsReady
                 ? 'Loading plans…'
-                : sel === 'yearly'
-                  ? 'Subscribe Yearly'
-                  : 'Subscribe Monthly'}
+                : trial
+                  ? `Start ${trial}-day free trial`
+                  : sel === 'yearly'
+                    ? 'Subscribe Yearly'
+                    : 'Subscribe Monthly'}
           </Text>
         </LinearGradient>
       </Pressable>
@@ -289,8 +313,8 @@ export default function PaywallScreen({ navigation }: Props) {
 
       <Text style={styles.note}>
         {live
-          ? `Subscriptions are billed to your ${Platform.OS === 'ios' ? 'App Store' : 'Google Play'} account and renew automatically until cancelled at least 24 hours before the end of the current period, in your store account settings. Scans, history and shoe matches stay free for everyone.`
-          : 'Demo: no real billing yet. In-app purchases activate once store products are configured. Scans, history and shoe matches stay free for everyone.'}
+          ? `Subscriptions are billed to your ${Platform.OS === 'ios' ? 'App Store' : 'Google Play'} account and renew automatically until cancelled at least 24 hours before the end of the current period, in your store account settings. Recording, watch sync, history and shoe matches stay free for everyone.`
+          : 'Demo: no real billing yet. In-app purchases activate once store products are configured. Recording, watch sync, history and shoe matches stay free for everyone.'}
       </Text>
 
       {/* App Review 3.1.2: functional Privacy Policy + Terms links on the paywall. */}

@@ -4,10 +4,10 @@ import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { RootScreenProps } from '../navigation';
 import { colors, fonts, radius, spacing, type as T } from '../theme';
-import { ScreenContainer, Card, Label, Badge, Button, Reveal } from '../components';
+import { ScreenContainer, Card, Label, Badge, Button, Reveal, TextField, Chip } from '../components';
 import { RouteMap } from '../activity/map/RouteMap';
 import { SeriesChart } from '../viz/SeriesChart';
-import { getActivity, getTrack, deleteActivity } from '../storage/activities';
+import { getActivity, getTrack, deleteActivity, updateActivity } from '../storage/activities';
 import { fastestSplitIndex, seriesByDistance } from '../activity/splits';
 import {
   formatDuration,
@@ -19,7 +19,7 @@ import {
   SPORT_LABEL,
   SPORT_ICON,
 } from '../activity/format';
-import type { ActivitySummary, ActivityTrack } from '../activity/types';
+import { SPORTS, type ActivitySummary, type ActivityTrack, type Sport } from '../activity/types';
 
 type Props = RootScreenProps<'ActivityDetail'>;
 
@@ -31,6 +31,7 @@ export default function ActivityDetailScreen({ navigation, route }: Props) {
   const [track, setTrack] = useState<ActivityTrack | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editing, setEditing] = useState<{ name: string; sport: Sport; notes: string } | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -92,6 +93,13 @@ export default function ActivityDetailScreen({ navigation, route }: Props) {
   if (a.avgHr != null) stats.push({ label: 'Avg HR', value: String(a.avgHr), unit: 'bpm' });
   if (a.maxHr != null) stats.push({ label: 'Max HR', value: String(a.maxHr), unit: 'bpm' });
 
+  const saveEdit = async () => {
+    if (!a || !editing) return;
+    await updateActivity(a.id, editing);
+    setA(await getActivity(a.id));
+    setEditing(null);
+  };
+
   const remove = async () => {
     await deleteActivity(a.id);
     close();
@@ -142,7 +150,51 @@ export default function ActivityDetailScreen({ navigation, route }: Props) {
         </View>
         {a.demo ? <Badge label="Demo" tint={colors.surfaceAlt} color={colors.muted} /> : null}
         {a.source === 'health' ? <Badge label={a.sourceName ?? 'Watch'} tint={colors.surfaceAlt} color={colors.inkSoft} /> : null}
+        {!editing && (
+          <Pressable
+            onPress={() => setEditing({ name: a.name, sport: a.sport, notes: a.notes ?? '' })}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Edit name, sport and notes"
+          >
+            <Feather name="edit-2" size={17} color={colors.muted} />
+          </Pressable>
+        )}
       </View>
+      {!editing && a.notes ? <Text style={[T.body, { marginTop: spacing.sm }]}>{a.notes}</Text> : null}
+
+      {editing && (
+        <Card style={{ marginTop: spacing.lg, borderColor: colors.lineStrong }}>
+          <TextField label="Name" value={editing.name} onChangeText={(name) => setEditing({ ...editing, name })} />
+          <Text style={styles.editLabel}>Sport</Text>
+          <View style={styles.editChips}>
+            {SPORTS.map((s) => (
+              <Chip
+                key={s}
+                label={SPORT_LABEL[s]}
+                icon={SPORT_ICON[s]}
+                selected={editing.sport === s}
+                onPress={() => setEditing({ ...editing, sport: s })}
+              />
+            ))}
+          </View>
+          <TextField
+            label="Notes"
+            value={editing.notes}
+            placeholder="How did it feel?"
+            onChangeText={(notes) => setEditing({ ...editing, notes })}
+          />
+          <View style={styles.confirmRow}>
+            <View style={{ flex: 1 }}>
+              <Button label="Cancel" variant="secondary" onPress={() => setEditing(null)} />
+            </View>
+            <View style={{ width: spacing.md }} />
+            <View style={{ flex: 1 }}>
+              <Button label="Save" variant="primary" onPress={saveEdit} />
+            </View>
+          </View>
+        </Card>
+      )}
 
       {confirmDelete && (
         <Card style={{ marginTop: spacing.lg, borderColor: colors.lineStrong }}>
@@ -302,4 +354,6 @@ const styles = StyleSheet.create({
   barTrack: { flex: 1, height: 8, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, marginHorizontal: spacing.sm },
   bar: { height: 8, borderRadius: radius.pill, backgroundColor: colors.inkSoft },
   confirmRow: { flexDirection: 'row', marginTop: spacing.lg },
+  editLabel: { fontFamily: fonts.semibold, fontSize: 13, color: colors.ink, marginBottom: spacing.sm },
+  editChips: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: spacing.lg },
 });
