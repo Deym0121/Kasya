@@ -1,13 +1,7 @@
-import {
-  PoseFrame,
-  GaitResult,
-  CaptureQuality,
-  MetricEstimate,
-  Confidence,
-  LANDMARK,
-  KEY_LANDMARKS,
-} from './types';
-import { median, findPeaks } from './signal';
+import { PoseFrame, GaitResult, CaptureQuality, MetricEstimate, Confidence, LANDMARK, KEY_LANDMARKS } from './types';
+import { detectSteps, StepDetection, HIGH_CONFIDENCE_PERIODICITY } from './steps';
+
+export { MIN_SWING_AMPLITUDE, MIN_RELATIVE_SWING, MIN_PERIODICITY } from './steps';
 
 /** Output of cadence computation (cadence plus the raw counts it derives from). */
 export interface CadenceResult {
@@ -16,96 +10,38 @@ export interface CadenceResult {
   durationSec: number;
 }
 
-/** Minimum frames before we attempt any measurement. */
-const MIN_FRAMES = 10;
-/**
- * Below this rectified ankle-swing amplitude (normalized units) the subject is
- * treated as still. Landmark jitter on a standing subject reaches roughly 0.03
- * on this signal; a real side-on walk clears 0.1 comfortably (synthetic walks
- * swing 0.12–0.2), so 0.05 leaves margin both ways.
- */
-export const MIN_SWING_AMPLITUDE = 0.05;
-
-const ZERO_CADENCE: MetricEstimate = { value: 0, unit: 'spm', confidence: 'low' };
-
-/** Anterior-posterior (horizontal) separation of the two ankles for one frame. */
-function ankleApDifference(frame: PoseFrame): number {
-  const l = frame.landmarks[LANDMARK.LEFT_ANKLE];
-  const r = frame.landmarks[LANDMARK.RIGHT_ANKLE];
-  if (!l || !r) return 0;
-  return l.x - r.x;
-}
-
-function minMax(values: number[]): { min: number; max: number } {
-  let min = Infinity;
-  let max = -Infinity;
-  for (const v of values) {
-    if (v < min) min = v;
-    if (v > max) max = v;
+function cadenceFromDetection(det: StepDetection): CadenceResult {
+  const stepCount = det.indices.length;
+  if (stepCount < 2 || det.cadenceSpm <= 0) {
+    return { cadence: { value: 0, unit: 'spm', confidence: 'low' }, stepCount, durationSec: det.durationSec };
   }
-  return { min, max };
+  // High confidence needs plenty of steps AND a signal that clearly repeats at
+  // exactly the stride those steps imply (split / merged steps break that).
+  const confidence: Confidence =
+    stepCount >= 8 && det.strideCorrelation >= HIGH_CONFIDENCE_PERIODICITY
+      ? 'high'
+      : stepCount >= 3
+        ? 'medium'
+        : 'low';
+  return { cadence: { value: det.cadenceSpm, unit: 'spm', confidence }, stepCount, durationSec: det.durationSec };
 }
 
 /**
  * Cadence (steps/min) from a side-on landmark time-series.
  *
- * Steps are counted as peaks in |ankleApDifference - baseline|: the ankles split
- * maximally once per step, so each extremum of the antiphase ankle signal is one
- * step. This is the one strongly-validated, regulation-safe metric (re-plan).
+ * Steps are the alternating extremes of the ankles' fore–aft separation (see
+ * steps.ts). Cadence comes from the time between steps while actually stepping
+ * — so a pause or a turn doesn't drag it down — and requires a genuinely
+ * periodic stride, so landmark jitter on a standing subject can't fabricate
+ * one. This is the one strongly-validated, regulation-safe metric (re-plan).
  */
 export function computeCadence(frames: PoseFrame[]): CadenceResult {
-  if (frames.length < MIN_FRAMES) {
-    return { cadence: ZERO_CADENCE, stepCount: 0, durationSec: 0 };
-  }
-
-  const durationSec = (frames[frames.length - 1].t - frames[0].t) / 1000;
-  if (durationSec <= 0) {
-    return { cadence: ZERO_CADENCE, stepCount: 0, durationSec: 0 };
-  }
-
-  const diff = frames.map(ankleApDifference);
-  const baseline = median(diff);
-  const rectified = diff.map((v) => Math.abs(v - baseline));
-  const { min, max } = minMax(rectified);
-  const range = max - min;
-
-  // No meaningful ankle swing → not walking → no steps. The absolute floor
-  // matters: the peak threshold below is self-scaling, so without it pure
-  // landmark jitter on a standing subject would still "count" steps.
-  if (range < MIN_SWING_AMPLITUDE) {
-    return { cadence: ZERO_CADENCE, stepCount: 0, durationSec };
-  }
-
-  const fps = (frames.length - 1) / durationSec;
-  const minHeight = min + 0.5 * range;
-  // Refractory of 0.2s caps detection at ~300 spm and rejects jitter doubles.
-  const minDistance = Math.max(1, Math.round(0.2 * fps));
-
-  const peaks = findPeaks(rectified, { minHeight, minDistance });
-  const stepCount = peaks.length;
-  const value = (stepCount / durationSec) * 60;
-  const confidence: Confidence = stepCount >= 8 ? 'high' : stepCount >= 3 ? 'medium' : 'low';
-
-  return { cadence: { value, unit: 'spm', confidence }, stepCount, durationSec };
-}
-
-/** Peak-to-trough amplitude of the rectified ankle-separation signal. */
-function swingAmplitude(frames: PoseFrame[]): number {
-  const diff = frames.map(ankleApDifference);
-  const baseline = median(diff);
-  const rectified = diff.map((v) => Math.abs(v - baseline));
-  const { min, max } = minMax(rectified);
-  return max - min;
+  return cadenceFromDetection(detectSteps(frames));
 }
 
 const ANKLE_LANDMARKS: number[] = [LANDMARK.LEFT_ANKLE, LANDMARK.RIGHT_ANKLE];
 
-/**
- * Assess whether a capture is good enough to surface metrics. Flags poor
- * landmark visibility and too-few gait cycles rather than emitting a
- * confident-looking but unreliable number.
- */
-export function assessCaptureQuality(frames: PoseFrame[], stepCount: number): CaptureQuality {
+function qualityFromDetection(frames: PoseFrame[], det: StepDetection, stepCount: number): CaptureQuality {
   if (frames.length === 0) {
     return { visibilityScore: 0, gaitCyclesDetected: 0, ok: false, issues: ['No frames captured.'] };
   }
@@ -139,8 +75,13 @@ export function assessCaptureQuality(frames: PoseFrame[], stepCount: number): Ca
   if (visibilityScore >= 0.6 && ankleVisibility < 0.6) {
     issues.push('We couldn’t see your ankles clearly — keep your lower legs in frame with good lighting.');
   }
-  if (swingAmplitude(frames) < MIN_SWING_AMPLITUDE) {
+  if (det.status === 'still') {
     issues.push('We couldn’t see enough leg movement — try a side-on view with your whole body in frame.');
+  } else if (det.status === 'no-rhythm') {
+    // Movement, but no repeating stride — jitter, shuffling or standing in place.
+    issues.push(
+      'We couldn’t find a steady stepping rhythm — keep walking (or running) side-on for the whole capture.',
+    );
   }
   if (gaitCyclesDetected < 2) {
     issues.push('Not enough walking captured — record several strides by walking back and forth across the frame, or on a treadmill.');
@@ -149,10 +90,20 @@ export function assessCaptureQuality(frames: PoseFrame[], stepCount: number): Ca
   return { visibilityScore, gaitCyclesDetected, ok: issues.length === 0, issues };
 }
 
+/**
+ * Assess whether a capture is good enough to surface metrics. Flags poor
+ * landmark visibility, too little or non-rhythmic leg movement, and too-few
+ * gait cycles rather than emitting a confident-looking but unreliable number.
+ */
+export function assessCaptureQuality(frames: PoseFrame[], stepCount: number): CaptureQuality {
+  return qualityFromDetection(frames, detectSteps(frames), stepCount);
+}
+
 /** Full deterministic gait pass: cadence + capture quality, with trust gating. */
 export function analyzeGait(frames: PoseFrame[]): GaitResult {
-  const { cadence, stepCount, durationSec } = computeCadence(frames);
-  const captureQuality = assessCaptureQuality(frames, stepCount);
+  const det = detectSteps(frames);
+  const { cadence, stepCount, durationSec } = cadenceFromDetection(det);
+  const captureQuality = qualityFromDetection(frames, det, stepCount);
   // A poor capture can't yield a trustworthy number, whatever the math says.
   const gatedCadence: MetricEstimate = captureQuality.ok ? cadence : { ...cadence, confidence: 'low' };
   return { cadence: gatedCadence, stepCount, durationSec, captureQuality };
@@ -160,7 +111,8 @@ export function analyzeGait(frames: PoseFrame[]): GaitResult {
 
 /**
  * The rectified ankle-separation signal plus detected step indices and per-frame
- * times (seconds). Used to draw the gait graph and to derive step rhythm.
+ * times (seconds). Used to draw the gait graph and to derive step rhythm. The
+ * step markers are the very steps the cadence was computed from.
  */
 export function gaitSignal(frames: PoseFrame[]): {
   signal: number[];
@@ -168,17 +120,6 @@ export function gaitSignal(frames: PoseFrame[]): {
   times: number[];
 } {
   if (frames.length < 2) return { signal: [], stepIndices: [], times: [] };
-  const durationSec = (frames[frames.length - 1].t - frames[0].t) / 1000;
-  const times = frames.map((f) => (f.t - frames[0].t) / 1000);
-  const diff = frames.map(ankleApDifference);
-  const baseline = median(diff);
-  const signal = diff.map((v) => Math.abs(v - baseline));
-  const { min, max } = minMax(signal);
-  const range = max - min;
-  if (durationSec <= 0 || range < MIN_SWING_AMPLITUDE) return { signal, stepIndices: [], times };
-  const fps = (frames.length - 1) / durationSec;
-  const minHeight = min + 0.5 * range;
-  const minDistance = Math.max(1, Math.round(0.2 * fps));
-  const stepIndices = findPeaks(signal, { minHeight, minDistance });
-  return { signal, stepIndices, times };
+  const det = detectSteps(frames);
+  return { signal: det.signal, stepIndices: det.indices, times: det.frameTimes };
 }

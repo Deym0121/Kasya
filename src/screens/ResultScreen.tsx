@@ -22,6 +22,7 @@ import { METRIC_INFO, buildSideMetricItems } from '../gait/metricInfo';
 import { buildReportHtml } from '../report/reportHtml';
 import { exportReport } from '../report/exportReport';
 import { getPlan } from '../monetization/entitlements';
+import { getFitProfile } from '../storage/fitProfile';
 
 type Props = RootScreenProps<'Result'>;
 
@@ -47,7 +48,8 @@ export default function ResultScreen({ navigation, route }: Props) {
     }
     setExporting(true);
     try {
-      await exportReport(buildReportHtml(report));
+      const fit = await getFitProfile().catch(() => null);
+      await exportReport(buildReportHtml(report, fit));
     } catch {
       // pop-up blocked / share cancelled — nothing to clean up
     } finally {

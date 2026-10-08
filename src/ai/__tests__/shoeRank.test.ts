@@ -81,4 +81,14 @@ describe('sanitizeShoePicks', () => {
     const out = sanitizeShoePicks(raw, catalog, opts, 2);
     expect(out.filter((m) => m.shoe.id === 'a1').length).toBe(1);
   });
+
+  it('never lets the AI promote an over-budget pick above shoes that fit the budget', () => {
+    // ₱3,500 cap: a1 (₱5,000+) and a2 (₱4,000+) are over; a3/a4/a5 fit.
+    const raw = { picks: [{ id: 'a1', reason: 'plush' }, { id: 'a4', reason: 'nice' }, { id: 'a5', reason: 'ok' }, { id: 'a3', reason: 'fine' }] };
+    const out = sanitizeShoePicks(raw, catalog, { useCase: 'running', budgetMaxPhp: 3500 }, 3);
+    const firstOver = out.findIndex((m) => m.overBudget);
+    expect(out.slice(0, firstOver).every((m) => m.shoe.priceMin <= 3500)).toBe(true);
+    expect(out.slice(0, 3).map((m) => m.shoe.id)).toEqual(['a4', 'a5', 'a3']);
+    expect(out.find((m) => m.shoe.id === 'a1')!.source).toBe('rules');
+  });
 });

@@ -1,5 +1,6 @@
 import { PoseFrame, LANDMARK } from './types';
 import { detectFootEvents } from './events';
+import { detectSteps } from './steps';
 
 /** A detailed, per-step read of the walk. All values are hedged estimates. */
 export interface StepAnalysis {
@@ -7,7 +8,12 @@ export interface StepAnalysis {
   cadenceSpm: number;
   meanStepTimeSec: number;
   rhythmRegularityPct: number;
-  /** % of each step spent with the foot on the ground (estimate) */
+  /**
+   * % of each stride one foot spends on the ground — contact (foot furthest
+   * forward) to toe-off (furthest back). A 2D estimate: close to true stance
+   * for walking, reads high for running (the ankle keeps travelling back after
+   * toe-off). 0 = not measured.
+   */
   stanceRatioPct: number;
   /** 0..100, reach of the foot ahead of the hips at contact */
   overstrideScore: number;
@@ -76,31 +82,39 @@ const EMPTY: StepAnalysis = {
   leadFoot: 'unknown',
 };
 
+/**
+ * The per-step breakdown. Step timing — count, cadence, step time, rhythm and
+ * left/right timing symmetry — comes from the same shared step detection as
+ * the headline cadence (steps.ts), so the walkthrough can never quote a step
+ * time that contradicts the report's cadence. Per-foot events (events.ts,
+ * direction-aware) supply what needs to know WHICH foot and WHEN it lands:
+ * stance share, reach at contact and knee angle at contact.
+ */
 export function analyzeSteps(frames: PoseFrame[]): StepAnalysis {
   if (frames.length < 6) return EMPTY;
+  const det = detectSteps(frames);
+  if (det.indices.length < 2 || det.cadenceSpm <= 0) return EMPTY;
   const ev = detectFootEvents(frames);
   const contacts = ev.ordered;
-  if (contacts.length < 2) return EMPTY;
 
-  const durationSec = (frames[frames.length - 1].t - frames[0].t) / 1000;
-  const cadenceSpm = durationSec > 0 ? (contacts.length / durationSec) * 60 : 0;
+  const cadenceSpm = det.cadenceSpm;
+  const meanStepTimeSec = 60 / cadenceSpm;
+  const stepTimes = det.stepIntervals;
+  const m = mean(stepTimes);
+  const cv = m > 0 ? std(stepTimes) / m : 1;
+  const rhythmRegularityPct = stepTimes.length >= 2 ? clampPct((1 - cv) * 100) : 0;
 
-  const stepTimes: number[] = [];
-  for (let i = 1; i < contacts.length; i++) {
-    stepTimes.push(tSec(frames, contacts[i].idx) - tSec(frames, contacts[i - 1].idx));
-  }
-  const meanStepTimeSec = mean(stepTimes);
-  const cv = meanStepTimeSec > 0 ? std(stepTimes) / meanStepTimeSec : 1;
-  const rhythmRegularityPct = clampPct((1 - cv) * 100);
-
+  // Reach of the landing foot ahead of the hips, in the direction of travel.
   const overs = contacts.map((c) => {
     const f = frames[c.idx];
     const ankle = f.landmarks[c.foot === 'left' ? LANDMARK.LEFT_ANKLE : LANDMARK.RIGHT_ANKLE];
-    return Math.abs(ankle.x - hipCenterX(f)) / legLen(f);
+    return Math.max(0, ev.direction[c.idx] * (ankle.x - hipCenterX(f))) / legLen(f);
   });
   const overstrideScore = clampPct(mean(overs) * 220);
 
-  const kneeContactDeg = Math.round(mean(contacts.map((c) => kneeAngle(frames[c.idx], c.foot))));
+  const kneeContactDeg = contacts.length
+    ? Math.round(mean(contacts.map((c) => kneeAngle(frames[c.idx], c.foot))))
+    : 0;
   let minKnee = 180;
   for (const f of frames) {
     const kl = kneeAngle(f, 'left');
@@ -110,6 +124,9 @@ export function analyzeSteps(frames: PoseFrame[]): StepAnalysis {
   }
   const kneePeakDeg = Math.round(Math.max(0, 180 - minKnee));
 
+  // Stance share per stride: contact → toe-off over contact → next contact.
+  // Strides much longer than the cadence implies span a pause or a turn.
+  const strideSec = 120 / cadenceSpm;
   const stanceRatios: number[] = [];
   for (const foot of ['left', 'right'] as const) {
     const { contacts: cs, toeOffs: tos } = ev[foot];
@@ -120,25 +137,30 @@ export function analyzeSteps(frames: PoseFrame[]): StepAnalysis {
       if (to != null) {
         const stride = tSec(frames, next) - tSec(frames, c);
         const stance = tSec(frames, to) - tSec(frames, c);
-        if (stride > 0) stanceRatios.push(clampPct((stance / stride) * 100));
+        if (stride > 0 && stride <= 1.5 * strideSec) stanceRatios.push(clampPct((stance / stride) * 100));
       }
     }
   }
   const stanceRatioPct = stanceRatios.length ? Math.round(mean(stanceRatios)) : 0;
 
-  const lSteps: number[] = [];
-  const rSteps: number[] = [];
-  for (let i = 1; i < contacts.length; i++) {
-    const dt = tSec(frames, contacts[i].idx) - tSec(frames, contacts[i - 1].idx);
-    if (contacts[i - 1].foot === 'left') lSteps.push(dt);
-    else rSteps.push(dt);
-  }
-  const ml = mean(lSteps);
-  const mr = mean(rSteps);
-  const symmetryPct = clampPct((1 - Math.abs(ml - mr) / Math.max(ml, mr, 1e-6)) * 100);
+  // Left/right timing: steps starting from one foot's lead vs the other's.
+  // (Which sign is "left" doesn't matter for the comparison itself.)
+  const aSteps: number[] = [];
+  const bSteps: number[] = [];
+  det.stepIntervals.forEach((dt, i) => (det.stepIntervalSigns[i] > 0 ? aSteps : bSteps).push(dt));
+  const ma = mean(aSteps);
+  const mb = mean(bSteps);
+  const symmetryPct =
+    aSteps.length && bSteps.length ? clampPct((1 - Math.abs(ma - mb) / Math.max(ma, mb, 1e-6)) * 100) : 0;
+
+  // The first step's leading foot: a separation maximum means the left ankle is
+  // furthest toward +x, i.e. leading when travelling toward +x.
+  const first = det.indices[0];
+  const leadFoot: StepAnalysis['leadFoot'] =
+    ev.direction.length > first ? (det.signs[0] * ev.direction[first] > 0 ? 'left' : 'right') : 'unknown';
 
   return {
-    stepCount: contacts.length,
+    stepCount: det.indices.length,
     cadenceSpm,
     meanStepTimeSec,
     // Display scores stored rounded (matching form.ts) so records stay clean.
@@ -148,7 +170,7 @@ export function analyzeSteps(frames: PoseFrame[]): StepAnalysis {
     kneeContactDeg,
     kneePeakDeg,
     symmetryPct: Math.round(symmetryPct),
-    leadFoot: contacts[0].foot,
+    leadFoot,
   };
 }
 
@@ -194,7 +216,7 @@ export function describeGait(
         : `, with about ${contactBendDeg}° of knee bend at contact`;
   const stance =
     a.stanceRatioPct > 0
-      ? `your weight rolls over the planted foot; you spend roughly ${a.stanceRatioPct}% of each step on the ground, ${bounce}.`
+      ? `your weight rolls over the planted foot; each foot spends roughly ${a.stanceRatioPct}% of its stride on the ground (a rough 2D estimate), ${bounce}.`
       : `your weight rolls over the planted foot, ${bounce}.`;
   const perMinute =
     reportCadenceSpm != null && reportCadenceSpm > 0 ? ` (~${Math.round(reportCadenceSpm)} per minute)` : '';

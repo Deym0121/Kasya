@@ -1,5 +1,5 @@
 import { GaitReportRecord } from '../storage/reportRecord';
-import { matchShoes } from '../shoes/match';
+import { matchShoes, matchOptionsFor } from '../shoes/match';
 import { SHOES } from '../data/shoes';
 
 /**
@@ -29,7 +29,7 @@ const CONFIDENCE_READING: Record<string, string> = {
   low: 'weak reading — worth re-scanning',
 };
 
-export function buildReportHtml(report: GaitReportRecord): string {
+export function buildReportHtml(report: GaitReportRecord, fit?: { budgetMaxPhp?: number } | null): string {
   const cadence = Math.round(report.result.cadence.value);
   const goal = esc(report.scanType.replace(/_/g, ' '));
   const date = new Date(report.createdAt).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -63,15 +63,13 @@ export function buildReportHtml(report: GaitReportRecord): string {
     ? `<h2>How your step works</h2><ol>${report.walkthrough.map((w) => `<li>${esc(w)}</li>`).join('')}</ol>`
     : '';
 
-  const matches = matchShoes(SHOES, {
-    useCase: report.scanType,
-    gait: { cadenceSpm: report.result.cadence.value, bouncePct: m?.verticalOscillationPct },
-  }).slice(0, 3);
+  // Same inputs as Home / Shoe matches (incl. the saved budget, when given).
+  const matches = matchShoes(SHOES, matchOptionsFor(report, fit)).slice(0, 3);
   const shoeRows = matches
     .map(
       (x, i) =>
         `<div class="match-row"><span class="rank">${i + 1}</span><div><strong>${esc(x.shoe.brand)} ${esc(x.shoe.model)}</strong>` +
-        `<div class="muted">${esc(x.shoe.category.replace(/_/g, ' '))} · ${esc(x.shoe.cushion)} cushion · ₱${x.shoe.priceMin.toLocaleString()}–${x.shoe.priceMax.toLocaleString()} · ${x.score}% match</div></div></div>`,
+        `<div class="muted">${esc(x.shoe.category.replace(/_/g, ' '))} · ${esc(x.shoe.cushion)} cushion · ₱${x.shoe.priceMin.toLocaleString()}–${x.shoe.priceMax.toLocaleString()} · ${x.score}% match${x.overBudget ? ' · over your budget' : ''}</div></div></div>`,
     )
     .join('');
 

@@ -6,7 +6,7 @@ import { colors, spacing, radius, type as T, fonts } from '../theme';
 import { ScreenContainer, Card, Badge, Label, Chip, Button } from '../components';
 import { ShoeThumb } from '../viz/ShoeThumb';
 import { ShopLinksRow } from '../viz/ShopLinksRow';
-import { matchShoes, scoreTone, ShoeMatch } from '../shoes/match';
+import { matchShoes, matchOptionsFor, scoreTone, ShoeMatch } from '../shoes/match';
 import { SHOES } from '../data/shoes';
 import { recommendShoes } from '../ai/shoes';
 import { getFitProfile, setFitProfile, FitProfile } from '../storage/fitProfile';
@@ -62,11 +62,10 @@ type Props = RootScreenProps<'ShoeMatches'>;
 
 export default function ShoeMatchesScreen({ navigation, route }: Props) {
   const { report } = route.params;
-  const gait = { cadenceSpm: report.result.cadence.value, bouncePct: report.metrics?.verticalOscillationPct };
-
-  // Deterministic ranking shows instantly; the AI pass upgrades it in place.
+  // Deterministic ranking shows instantly; the AI pass (which also applies the
+  // saved fit profile's budget) upgrades it in place.
   const [matches, setMatches] = useState<ShoeMatch[]>(() =>
-    matchShoes(SHOES, { useCase: report.scanType, gait }).map((m) => ({ ...m, source: 'rules' as const })),
+    matchShoes(SHOES, matchOptionsFor(report)).map((m) => ({ ...m, source: 'rules' as const })),
   );
   const [profile, setProfile] = useState<FitProfile | null>(null);
   const [draft, setDraft] = useState<FitProfile>({});
@@ -242,6 +241,13 @@ export default function ShoeMatchesScreen({ navigation, route }: Props) {
               {/* Broadly praised in public reviews — the honest "best quality" tier. */}
               {m.shoe.quality?.tone === 'well_regarded' && (
                 <Badge label="★ Top quality" tint={colors.warnSoft} color={colors.warn} />
+              )}
+              {m.overBudget && (
+                <Badge
+                  label={m.overBudget === 'closest' ? 'Closest over your budget' : 'Over your budget'}
+                  tint={colors.warnSoft}
+                  color={colors.warn}
+                />
               )}
               {m.shoe.isOwnProduct && <Badge label="Our product" />}
             </View>

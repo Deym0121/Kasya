@@ -54,12 +54,16 @@ export function sanitizeShoePicks(
 ): ShoeMatch[] {
   const ranked = matchShoes(catalog, opts);
   const byId = new Map(ranked.map((m) => [m.shoe.id, m]));
+  // The budget is a cap: while anything fits it, the AI can't promote an
+  // over-budget pair above the shoes that do (those stay in the ranked rest).
+  const somethingFits = ranked.some((m) => !m.overBudget);
 
   const seen = new Set<string>();
   const aiMatches: ShoeMatch[] = [];
   for (const p of extractPicks(raw)) {
     const base = byId.get(p.id);
     if (!base || seen.has(p.id)) continue;
+    if (base.overBudget === 'over' && somethingFits) continue;
     seen.add(p.id);
     const clean = p.reason && p.reason.trim() && !SHOE_BANNED.test(p.reason) ? p.reason.trim() : base.reason;
     aiMatches.push({ ...base, reason: clean, source: 'ai' });

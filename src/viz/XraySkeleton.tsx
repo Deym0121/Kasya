@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Svg, {
   Line as SvgLine,
@@ -12,6 +12,7 @@ import Svg, {
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, fonts, radius } from '../theme';
 import type { PoseFrame } from '../gait/types';
+import { skeletonViewBoxAttr } from './skeletonFrame';
 
 // Bone skeleton (drawn bright over the translucent body).
 const BONES = [
@@ -97,6 +98,9 @@ export function XraySkeleton({
     };
   }, [playing, speed, n, frames]);
 
+  // Centre the replay on where the body moved (see skeletonFrame.ts).
+  const viewBox = useMemo(() => skeletonViewBoxAttr(frames), [frames]);
+
   if (n < 2) {
     return (
       <View style={[styles.stage, { height }]}>
@@ -119,7 +123,7 @@ export function XraySkeleton({
   return (
     <View>
       <View style={[styles.stage, { height }]}>
-        <Svg width="100%" height={height} viewBox="0 0 1 1" preserveAspectRatio="xMidYMid meet">
+        <Svg width="100%" height={height} viewBox={viewBox} preserveAspectRatio="xMidYMid meet">
           <Defs>
             <LinearGradient id="body" x1="0" y1="0" x2="0" y2="1">
               <Stop offset="0" stopColor="#BCE6FF" stopOpacity="0.62" />
