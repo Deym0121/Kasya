@@ -1,7 +1,7 @@
 import { GaitReportRecord } from '../storage/reportRecord';
 import { buildCoachFeatures } from './features';
 import { Shoe } from '../data/shoes';
-import { ShoeMatch, MatchGait, MatchOptions } from '../shoes/match';
+import { ShoeMatch, MatchOptions, matchOptionsFor } from '../shoes/match';
 import { FitProfile } from '../storage/fitProfile';
 import { sanitizeShoePicks } from './shoeRank';
 import { AI_REQUEST_TIMEOUT_MS, proxyHeaders, resolveProxyUrls, withRequestTimeout } from './explain';
@@ -38,11 +38,7 @@ export async function recommendShoes(
   profile: FitProfile = {},
   signal?: AbortSignal,
 ): Promise<ShoeMatch[]> {
-  const gait: MatchGait = {
-    cadenceSpm: report.result.cadence.value,
-    bouncePct: report.metrics?.verticalOscillationPct,
-  };
-  const opts: MatchOptions = { useCase: report.scanType, gait, budgetMaxPhp: profile.budgetMaxPhp };
+  const opts: MatchOptions = matchOptionsFor(report, profile);
   // Only the structured preferences reach the third-party LLM — never the free-text
   // size field (keeps the payload strictly de-identified; size isn't used for ranking).
   const llmProfile = { width: profile.width, budgetMaxPhp: profile.budgetMaxPhp };

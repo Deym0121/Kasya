@@ -381,30 +381,34 @@ stable callbacks (were reinstalling the native frame processor ~15x/s).
 COORDINATE SPACES (do not regress): overlay = view-normalized; analysis+saved
 frames = upright frame coords, BOTH axes normalized by frame HEIGHT (isotropic —
 per-axis normalization pegs overstride/knee-angle math); VideoReplay.native
-multiplies both axes by video height accordingly. Web unchanged
-(frame-normalized) — cross-platform metric drift is a known follow-up.
+multiplies both axes by video height accordingly. Web analysis frames now
+match (2026-10-09: x × videoWidth/videoHeight in toPoseFrame; the live web
+overlay stays frame-normalized; VideoReplay.web draws x·height).
 
 ## Known follow-ups (all OTA-able after v1.1)
 
-From the 3-lens camera-rework review (2026-08-27): events.ts contact/toe-off
-labels assume walking toward +x (mirrored/leftward walks swap them — affects
-stance% and knee-at-contact; pre-existing, web too); native captures are ~15fps
-(package's internal iOS throttle) vs web's rAF rate — coarser step timing;
-native (isotropic) vs web (frame-normalized) units drift for overstride/knee
-angles — unify by aspect-correcting the web path too, then recheck
-MIN_SWING_AMPLITUDE margins; SkeletonPlayer draws native x range 0..~0.56
-(left-biased in its 0..1 viewBox) — cosmetic.
+FIXED 2026-10-09 (accuracy pass; regression tests in src/gait/__tests__/accuracy.test.ts,
+src/shoes/__tests__/match.test.ts): one shared step detector (src/gait/steps.ts —
+alternating extrema of the ankle separation, stride-interval cadence) now feeds
+report cadence, graph markers AND stepAnalysis (they agree exactly); jitter gate =
+body-relative swing (÷ leg length) + stride periodicity, so standing jitter never
+yields a cadence; asymmetric gaits keep full cadence; direction of travel
+(src/gait/direction.ts: toe-vs-heel, nose-vs-ears, hip travel) orients
+contact/toe-off so leftward/mirrored/back-and-forth walks read the same; web
+analysis frames are now isotropic too (toPoseFrame `aspect`; VideoReplay.web draws
+x·height; Skeleton/Xray players fit a centred viewBox — fixes the 0..0.56 left
+bias); demo walk is joint-angle based (plausible knees). Shoes: bounce 0 =
+unmeasured; budget is a hard cap (over-budget always trails, labelled; "closest
+over budget" only when nothing fits; AI picks can't jump the cap); Home + PDF
+top-3 use the saved budget via matchOptionsFor; ties = reputation → price → id.
 
-From the accuracy audit (headline metrics are trustworthy — cadence ±2.1% over
-54 configs, symmetry tracks truth, gates work): heavy-jitter standing subject
-can fabricate ~72spm at HIGH confidence (add a jitter gate); extreme step-length
-asymmetry halves cadence with contradictory walkthrough; stance% reads ~50 vs
-physiological ~60 (extrema-method bias — relabel or recalibrate); two cadence
-pipelines disagree up to 5%; simulated-scan demo knee numbers implausible.
-From the shoes audit (recommendations correct + honest across 100 combos):
-bounce=0 shown as "controlled" instead of unmeasured; tight-budget top-5 can be
-all over budget; Home top-3 ignores saved budget; catalog premium-first tie
-ordering. Races: PixHero was unreachable (TLS) — retry for PH photosUrl later;
+Still open: native ~15fps vs web rAF timing granularity; stance% reads close to
+truth for walking but HIGH for running (ankle keeps travelling back after
+toe-off) — copy now says so; recalibrating needs labelled on-device runs.
+Overstride score isn't walking-calibrated (a normal walking reach ~0.45 leg
+lengths scores ~90+ and gets flagged) — needs a goal-aware threshold. Web rear-view
+frontal metrics now use isotropic units (hip drop reads ~0.56× its old web value,
+sway ~1.78×) — thresholds unchanged, worth a device sanity check. Races: PixHero was unreachable (TLS) — retry for PH photosUrl later;
 MILO Aug legs (Davao/GenSan/Dipolog/CDO) can be added from the same verified
 Pinoy Fitness source if more volume wanted.
 

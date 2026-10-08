@@ -70,7 +70,7 @@ describe('describeGait', () => {
     };
     const d = describeGait(sparse, 5);
     const all = d.walkthrough.join(' ');
-    expect(all).not.toMatch(/0% of each step/);
+    expect(all).not.toMatch(/ 0% of (each|its) (step|stride)/);
     expect(all).not.toMatch(/around 0°|toward about 0°|about 0° of/);
   });
 

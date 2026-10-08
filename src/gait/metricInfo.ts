@@ -52,8 +52,9 @@ export const METRIC_INFO: Record<MetricKey, MetricInfoEntry> = {
   stance: {
     label: 'Stance',
     unit: '%',
-    plain: 'The share of each step your foot spends on the ground.',
-    typical: 'Around 55–65% is common at easy paces — it varies with speed and is an estimate from 2D video.',
+    plain: 'Roughly how much of each stride one foot spends on the ground — from when it’s furthest forward to furthest back.',
+    typical:
+      'Walking often reads around 60%. Running spends less time on the ground (often 30–40%), but this 2D estimate tends to read higher for runs — it’s best for comparing your own scans.',
   },
   bounce: {
     label: 'Bounce',
@@ -83,7 +84,8 @@ export const METRIC_INFO: Record<MetricKey, MetricInfoEntry> = {
     label: 'Knee bend',
     unit: '°',
     plain: 'The range your knees moved through during the stride.',
-    typical: 'This varies a lot with speed and style — around 30–60° is often seen when walking.',
+    typical:
+      'This varies a lot with speed and style — around 50–65° is often seen when walking, and running usually bends further.',
   },
   hipDrop: {
     label: 'Hip drop',

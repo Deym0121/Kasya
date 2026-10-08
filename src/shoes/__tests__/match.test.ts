@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { matchShoes, scoreTone } from '../match';
-import { Shoe } from '../../data/shoes';
+import { matchShoes, matchOptionsFor, scoreTone } from '../match';
+import { Shoe, SHOES } from '../../data/shoes';
 
 const shoes: Shoe[] = [
   { id: 'run', brand: 'X', model: 'Road', category: 'neutral', cushion: 'high', useCase: ['running'], priceMin: 5000, priceMax: 6000, tier: 'premium', tags: [] },
@@ -151,5 +151,120 @@ describe('scoreTone', () => {
     expect(scoreTone(90)).toBe('strong');
     expect(scoreTone(80)).toBe('good');
     expect(scoreTone(60)).toBe('fair');
+  });
+});
+
+describe('8. unmeasured bounce', () => {
+  it('treats bounce = 0 as not measured — never "controlled", and no score nudge', () => {
+    const base = matchShoes(shoes, { useCase: 'running' });
+    const zero = matchShoes(shoes, { useCase: 'running', gait: { bouncePct: 0 } });
+    for (const m of base) {
+      const z = zero.find((x) => x.shoe.id === m.shoe.id)!;
+      expect(z.score).toBe(m.score);
+      expect(z.reason).not.toMatch(/controlled|bounce/i);
+    }
+    for (const m of matchShoes(SHOES, { useCase: 'walking', gait: { bouncePct: 0 } })) {
+      expect(m.reason).not.toMatch(/controlled/i);
+    }
+  });
+});
+
+describe('9. budget is respected', () => {
+  const GOALS = ['running', 'walking', 'gym', 'recovery', 'daily_comfort'];
+
+  it('never ranks an over-budget shoe above one that fits (real catalog, tight budgets)', () => {
+    for (const useCase of GOALS) {
+      for (const budgetMaxPhp of [500, 1000, 2000, 5000]) {
+        const ranked = matchShoes(SHOES, { useCase, budgetMaxPhp });
+        const firstOver = ranked.findIndex((m) => m.overBudget);
+        const lastFit = ranked.map((m) => !m.overBudget).lastIndexOf(true);
+        if (firstOver >= 0 && lastFit >= 0) expect(lastFit).toBeLessThan(firstOver);
+        const fitting = SHOES.filter((s) => s.priceMin <= budgetMaxPhp).length;
+        for (const m of ranked.slice(0, Math.min(5, fitting))) expect(m.shoe.priceMin).toBeLessThanOrEqual(budgetMaxPhp);
+        for (const m of ranked.filter((x) => x.overBudget)) expect(m.reason).toMatch(/above your/);
+      }
+    }
+  });
+
+  it('a ₱1,000 running budget gets a top-5 that is entirely within budget', () => {
+    const top5 = matchShoes(SHOES, { useCase: 'running', budgetMaxPhp: 1000 }).slice(0, 5);
+    expect(top5.every((m) => m.shoe.priceMin <= 1000 && !m.overBudget)).toBe(true);
+  });
+
+  it('when nothing fits, leads with the closest-priced pairs, explicitly labelled', () => {
+    const ranked = matchShoes(SHOES, { useCase: 'running', budgetMaxPhp: 250 });
+    expect(ranked).toHaveLength(SHOES.length);
+    expect(ranked.every((m) => m.overBudget === 'closest')).toBe(true);
+    for (let i = 1; i < ranked.length; i++) {
+      expect(ranked[i].shoe.priceMin).toBeGreaterThanOrEqual(ranked[i - 1].shoe.priceMin);
+    }
+    expect(ranked[0].reason).toMatch(/^Closest over your ₱250 budget/);
+    expect(ranked[0].reason).not.toMatch(/Usually sells above/);
+  });
+
+  it('labels nothing when no budget is set', () => {
+    expect(matchShoes(SHOES, { useCase: 'running' }).some((m) => m.overBudget)).toBe(false);
+  });
+});
+
+describe('10. one set of matcher inputs for every surface (Home top-3 included)', () => {
+  const report = {
+    scanType: 'running',
+    result: { cadence: { value: 172, confidence: 'high' } },
+    metrics: { verticalOscillationPct: 9 },
+  };
+
+  it('carries the saved fit-profile budget, so Home’s top-3 respects it', () => {
+    const opts = matchOptionsFor(report, { budgetMaxPhp: 2000 });
+    expect(opts.budgetMaxPhp).toBe(2000);
+    const top3 = matchShoes(SHOES, opts).slice(0, 3);
+    expect(top3.every((m) => m.shoe.priceMin <= 2000)).toBe(true);
+    expect(matchOptionsFor(report).budgetMaxPhp).toBeUndefined();
+    expect(matchOptionsFor(report, {}).budgetMaxPhp).toBeUndefined();
+  });
+
+  it('passes gait signals only when measured and trustworthy', () => {
+    expect(matchOptionsFor(report).gait).toEqual({ cadenceSpm: 172, bouncePct: 9 });
+    expect(matchOptionsFor({ ...report, metrics: { verticalOscillationPct: 0 } }).gait).toEqual({ cadenceSpm: 172 });
+    expect(matchOptionsFor({ ...report, result: { cadence: { value: 172, confidence: 'low' } } }).gait).toEqual({});
+    expect(matchOptionsFor({ ...report, result: { cadence: { value: 0, confidence: 'medium' } } }).gait).toEqual({
+      bouncePct: 9,
+    });
+  });
+});
+
+describe('11. neutral, deterministic tie ordering', () => {
+  const tie = (id: string, tier: Shoe['tier'], priceMin: number, tone?: 'well_regarded' | 'solid' | 'mixed'): Shoe => ({
+    id,
+    brand: id,
+    model: id,
+    category: 'neutral',
+    cushion: 'medium',
+    useCase: ['running'],
+    priceMin,
+    priceMax: priceMin + 500,
+    tier,
+    tags: [],
+    ...(tone ? { quality: { tone, note: 'n' } } : {}),
+  });
+  // Listed premium-first, like the real catalog.
+  const tied = [
+    tie('premium-a', 'premium', 9000),
+    tie('premium-b', 'premium', 8000, 'solid'),
+    tie('mid', 'midrange', 4000, 'solid'),
+    tie('budget', 'budget', 1200),
+    tie('praised', 'midrange', 6000, 'well_regarded'),
+  ];
+
+  it('breaks score ties by public-review reputation, then price ascending — not listing order', () => {
+    const ranked = matchShoes(tied, { useCase: 'running' });
+    expect(new Set(ranked.map((m) => m.score)).size).toBe(1);
+    expect(ranked.map((m) => m.shoe.id)).toEqual(['praised', 'mid', 'premium-b', 'budget', 'premium-a']);
+  });
+
+  it('gives the same order whatever order the catalog is listed in', () => {
+    const a = matchShoes(SHOES, { useCase: 'running' }).map((m) => m.shoe.id);
+    const b = matchShoes([...SHOES].reverse(), { useCase: 'running' }).map((m) => m.shoe.id);
+    expect(b).toEqual(a);
   });
 });

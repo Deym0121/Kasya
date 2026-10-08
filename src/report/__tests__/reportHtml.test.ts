@@ -66,4 +66,12 @@ describe('buildReportHtml', () => {
     expect(html).toContain('not medical advice');
     expect(html).not.toMatch(/pronat|orthotic|corrects|abnormal|injur/);
   });
+
+  it('applies the saved budget to the report’s top shoe picks', () => {
+    const html = buildReportHtml(report, { budgetMaxPhp: 2000 });
+    const prices = [...html.matchAll(/₱([\d,]+)–[\d,]+ · \d+% match/g)].map((m) => Number(m[1].replace(/,/g, '')));
+    expect(prices).toHaveLength(3);
+    expect(prices.every((p) => p <= 2000)).toBe(true);
+    expect(html).not.toContain('over your budget');
+  });
 });

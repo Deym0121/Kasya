@@ -19,7 +19,8 @@ import {
 import { getLatestReport } from '../storage/reports';
 import { GaitReportRecord } from '../storage/reportRecord';
 import { getUser, MockUser } from '../storage/session';
-import { matchShoes, scoreTone } from '../shoes/match';
+import { getFitProfile } from '../storage/fitProfile';
+import { matchShoes, matchOptionsFor, scoreTone } from '../shoes/match';
 import { SHOES } from '../data/shoes';
 import { ShoeThumb } from '../viz/ShoeThumb';
 import { pickCoachTip } from '../gait/coach';
@@ -37,15 +38,23 @@ export default function HomeScreen({ navigation }: Props) {
   const [loaded, setLoaded] = useState(false);
   const [user, setUser] = useState<MockUser | null>(null);
   const [due, setDue] = useState<{ due: boolean; daysSince: number | null }>({ due: false, daysSince: null });
+  // The saved fit-profile budget (Shoe matches → Refine fit) caps the top-3 here too.
+  const [budgetMaxPhp, setBudgetMaxPhp] = useState<number | undefined>(undefined);
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
       (async () => {
-        const [r, u, s] = await Promise.all([getLatestReport(), getUser(), getReminderSettings()]);
+        const [r, u, s, fit] = await Promise.all([
+          getLatestReport(),
+          getUser(),
+          getReminderSettings(),
+          getFitProfile().catch(() => ({ budgetMaxPhp: undefined })),
+        ]);
         if (!active) return;
         setLatest(r);
         setUser(u);
+        setBudgetMaxPhp(fit.budgetMaxPhp);
         setLoaded(true);
         setDue(isRescanDue(r?.createdAt ?? null, s.cadence, new Date()));
       })();
@@ -56,11 +65,11 @@ export default function HomeScreen({ navigation }: Props) {
     }, []),
   );
 
-  const goal = latest?.scanType ?? 'running';
-  const matches = matchShoes(SHOES, {
-    useCase: goal,
-    gait: { cadenceSpm: latest?.result.cadence.value, bouncePct: latest?.metrics?.verticalOscillationPct },
-  }).slice(0, 3);
+  // Same matcher inputs as Shoe matches / the PDF (incl. the saved budget), so
+  // Home's top-3 is literally the top of that list.
+  const matches = latest
+    ? matchShoes(SHOES, matchOptionsFor(latest, { budgetMaxPhp })).slice(0, 3)
+    : matchShoes(SHOES, { useCase: 'running', budgetMaxPhp }).slice(0, 3);
   const initials = (user?.name ?? 'R').slice(0, 1).toUpperCase();
   const firstRun = loaded && !latest;
   // Local day key (not UTC) so the tip rotates at local midnight, like the AI quota.
@@ -180,9 +189,16 @@ export default function HomeScreen({ navigation }: Props) {
                 </View>
                 <Feather name="chevron-right" size={18} color={colors.muted} style={{ marginLeft: spacing.sm }} />
               </View>
-              {m.shoe.isOwnProduct && (
-                <View style={{ marginTop: spacing.md }}>
-                  <Badge label="Our product" />
+              {(m.shoe.isOwnProduct || m.overBudget) && (
+                <View style={[styles.badgeRow, { marginTop: spacing.md }]}>
+                  {m.overBudget && (
+                    <Badge
+                      label={m.overBudget === 'closest' ? 'Closest over your budget' : 'Over your budget'}
+                      tint={colors.warnSoft}
+                      color={colors.warn}
+                    />
+                  )}
+                  {m.shoe.isOwnProduct && <Badge label="Our product" />}
                 </View>
               )}
             </Card>
@@ -240,6 +256,7 @@ const styles = StyleSheet.create({
   },
   seeAll: { fontFamily: fonts.semibold, fontSize: 14, color: colors.accentInk },
   shoeRow: { flexDirection: 'row', alignItems: 'center' },
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   shoeName: { fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
   shoeMeta: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted, marginTop: 2, textTransform: 'capitalize' },
   scoreCol: { alignItems: 'flex-end' },

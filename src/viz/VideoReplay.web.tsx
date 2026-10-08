@@ -39,6 +39,9 @@ export function VideoReplay({ videoUri, frames, height = 340 }) {
       const ctx = c.getContext('2d');
       ctx.clearRect(0, 0, c.width, c.height);
       if (frames && frames.length) {
+        // Saved analysis frames are isotropic — BOTH axes in units of the
+        // frame's HEIGHT (PoseScanScreen.web, like native) — so both scale by
+        // the video height to land in frame px.
         const target = t0 + v.currentTime * 1000;
         let i = 0;
         while (i < frames.length - 1 && frames[i + 1].t <= target) i++;
@@ -51,8 +54,8 @@ export function VideoReplay({ videoUri, frames, height = 340 }) {
           const pb = pts[b];
           if (pa && pb && !(pa.x === 0 && pa.y === 0) && !(pb.x === 0 && pb.y === 0)) {
             ctx.beginPath();
-            ctx.moveTo(pa.x * c.width, pa.y * c.height);
-            ctx.lineTo(pb.x * c.width, pb.y * c.height);
+            ctx.moveTo(pa.x * c.height, pa.y * c.height);
+            ctx.lineTo(pb.x * c.height, pb.y * c.height);
             ctx.stroke();
           }
         }
@@ -61,7 +64,7 @@ export function VideoReplay({ videoUri, frames, height = 340 }) {
         for (const p of pts) {
           if (p && !(p.x === 0 && p.y === 0) && (p.visibility ?? 1) > 0.2) {
             ctx.beginPath();
-            ctx.arc(p.x * c.width, p.y * c.height, r, 0, 6.2832);
+            ctx.arc(p.x * c.height, p.y * c.height, r, 0, 6.2832);
             ctx.fill();
           }
         }

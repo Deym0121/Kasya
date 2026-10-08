@@ -192,7 +192,13 @@ export default function PoseScanScreen({ navigation, route }) {
           ctx.fill();
         }
         if (capturingRef.current) {
-          framesRef.current.push(toPoseFrame(pts, performance.now() - startRef.current));
+          // Overlay above stays frame-normalized (it's drawn on a frame-sized
+          // canvas); the ANALYSIS frames are made isotropic — both axes in
+          // frame-HEIGHT units, exactly like native capture — so overstride and
+          // knee-angle math (which mixes x and y) reads the same on both.
+          framesRef.current.push(
+            toPoseFrame(pts, performance.now() - startRef.current, { aspect: v.videoWidth / v.videoHeight }),
+          );
         }
       }
     }

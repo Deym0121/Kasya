@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Svg, { Line as SvgLine, Circle } from 'react-native-svg';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, fonts, radius } from '../theme';
 import { LANDMARK } from '../gait/types';
 import type { PoseFrame } from '../gait/types';
+import { skeletonViewBoxAttr } from './skeletonFrame';
 
 const LEFT_TONE = '#1D9E75'; // teal — left leg
 const RIGHT_TONE = colors.accent; // brand orange — right leg (matches LeftRightCompare legend)
@@ -67,6 +68,9 @@ export function SkeletonPlayer({
     };
   }, [playing, speed, n, frames]);
 
+  // Centre the replay on where the body moved (see skeletonFrame.ts).
+  const viewBox = useMemo(() => skeletonViewBoxAttr(frames), [frames]);
+
   if (n < 2) {
     return (
       <View style={[styles.stage, { height }]}>
@@ -81,7 +85,7 @@ export function SkeletonPlayer({
   return (
     <View>
       <View style={[styles.stage, { height }]}>
-        <Svg width="100%" height={height} viewBox="0 0 1 1" preserveAspectRatio="xMidYMid meet">
+        <Svg width="100%" height={height} viewBox={viewBox} preserveAspectRatio="xMidYMid meet">
           {BONES.map(([a, b], k) => {
             const pa = f.landmarks[a];
             const pb = f.landmarks[b];
