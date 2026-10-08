@@ -7,6 +7,7 @@ import { Feather } from '@expo/vector-icons';
 import { colors, fonts, shadow } from './theme';
 import { MainTabParamList, RootStackParamList } from './navigation';
 import HomeScreen from './screens/HomeScreen';
+import ActivityScreen from './screens/ActivityScreen';
 import RacesScreen from './screens/RacesScreen';
 import HistoryScreen from './screens/HistoryScreen';
 import ProfileScreen from './screens/ProfileScreen';
@@ -38,6 +39,13 @@ export default function MainTabs() {
           component={HomeScreen}
           options={{
             tabBarIcon: ({ color, size }) => <Feather name="home" size={size} color={color} />,
+          }}
+        />
+        <Tab.Screen
+          name="Activity"
+          component={ActivityScreen}
+          options={{
+            tabBarIcon: ({ color, size }) => <Feather name="activity" size={size} color={color} />,
           }}
         />
         <Tab.Screen

@@ -4,6 +4,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { GaitReportRecord } from './storage/reportRecord';
 import { PoseFrame } from './gait/types';
 import { RaceEvent } from './races/types';
+import type { Sport } from './activity/types';
 
 /**
  * Which camera angle a capture screen is set up for. 'rear' is web-internal:
@@ -15,6 +16,7 @@ export type ScanView = 'side' | 'rear';
 /** The bottom tab bar (the authed hub). Scanning lives on a corner FAB, not a tab. */
 export type MainTabParamList = {
   Home: undefined;
+  Activity: undefined;
   Races: undefined;
   History: undefined;
   Profile: undefined;
@@ -44,6 +46,11 @@ export type RootStackParamList = {
   Share: { report: GaitReportRecord };
   Paywall: undefined;
   RaceDetail: { event: RaceEvent };
+  /** GPS recorder (run / walk / ride / hike). Re-opening it while recording returns to the live session. */
+  Record: { sport?: Sport } | undefined;
+  ActivityDetail: { id: string; justFinished?: boolean };
+  /** Strava-style share image for one activity */
+  ActivityShare: { id: string };
 };
 
 /** Props for root-stack screens (scan flow, Result, Paywall, Onboarding, SignIn). */

@@ -71,6 +71,7 @@ export default function HomeScreen({ navigation }: Props) {
   return (
     <ScreenContainer
       edges={['top']}
+      brand="lockup"
       right={
         <Pressable
           onPress={() => navigation.navigate('Profile')}

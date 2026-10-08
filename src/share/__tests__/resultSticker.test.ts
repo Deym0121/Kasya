@@ -30,6 +30,7 @@ describe('buildResultStickerSvg', () => {
     expect(svg).toContain('168'); // rounded cadence
     expect(svg).toContain('spm');
     expect(svg).toContain('Kasya');
+    expect(svg).toContain('href="data:image/png;base64,'); // the real K mark, not a placeholder dot
   });
 
   it('brand mode paints a background, transparent mode paints none', () => {

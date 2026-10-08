@@ -168,7 +168,7 @@ export default function ProfileScreen({ navigation }: Props) {
   const initials = (user?.name ?? 'R').slice(0, 1).toUpperCase();
 
   return (
-    <ScreenContainer title="Profile" edges={['top']}>
+    <ScreenContainer title="Profile" edges={['top']} brand="mark">
       <Card>
         <View style={styles.acct}>
           <View style={styles.avatar}>

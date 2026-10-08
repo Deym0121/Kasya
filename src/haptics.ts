@@ -13,3 +13,14 @@ export async function successHaptic(): Promise<void> {
     // haptics unavailable (simulator, permissions) — silently skip
   }
 }
+
+/** A light tap for in-run moments (each km split, auto-pause). Same no-throw rules. */
+export async function tapHaptic(): Promise<void> {
+  if (Platform.OS === 'web') return;
+  try {
+    const Haptics = await import('expo-haptics');
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  } catch {
+    // unavailable — skip
+  }
+}

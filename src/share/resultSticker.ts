@@ -1,4 +1,5 @@
 import { GaitReportRecord } from '../storage/reportRecord';
+import { brandLockupSvg } from './brandLockup';
 
 /**
  * The Strava-style shareable result sticker, built as a single SVG string so
@@ -75,9 +76,8 @@ export function buildResultStickerSvg(report: GaitReportRecord, opts: StickerOpt
   </defs>
   ${background}
 
-  <!-- logo lockup -->
-  <circle cx="112" cy="122" r="22" fill="#FF4D0D"${textFilter}/>
-  <text x="156" y="140" font-family="${FONT}" font-size="52" letter-spacing="-1" fill="#FFFFFF"${textFilter}>Kasya</text>
+  <!-- logo lockup: the real K runner mark + wordmark -->
+  ${brandLockupSvg(84, 82, 72, { filter: brand ? undefined : 'url(#soft)' })}
 
   <text x="90" y="356" font-family="${FONT_MED}" font-size="34" letter-spacing="6" fill="#FF8A54"${textFilter}>${report.simulated ? 'DEMO · SAMPLE DATA' : 'AI GAIT SCAN'}</text>
 

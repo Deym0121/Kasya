@@ -5,6 +5,74 @@
 
 ## ⭐ RESUME HERE — exact next actions
 
+-7. **v1.3.0 ACTIVITY TRACKING (2026-10-08, Mac — repo now at ~/Desktop/kasya,
+   branch master, UNCOMMITTED until Lloyd says commit).** Strava-style recorder +
+   Apple Health watch sync. New **Activity tab** (2nd tab): start Run/Walk/Ride/
+   Hike, steps today (7-day bars), this-week totals, "Sync your smartwatch" card,
+   activity list with SVG route thumbnails. **Record** screen: live map, moving
+   time, distance, avg/current pace (km/h for rides), steps + cadence, elevation,
+   auto-pause, pause/resume/finish, km haptic, GPS-strength chip, demo run (web +
+   __DEV__). **ActivityDetail**: map, stats, per-km splits (fastest highlighted),
+   pace + elevation charts, delete. Code: `src/activity/*` (pure-TS recorder with
+   Kalman + distance gate + auto-pause hysteresis — 0.5–2% distance error on the
+   realistic-noise simulator; crash-safe chunked event log in AsyncStorage
+   replayed exactly on relaunch), `src/storage/activities.ts` (index in
+   AsyncStorage, tracks as files via expo-file-system). 257/257 tests, typecheck
+   clean, full flow browser-verified (record → minimise → reload mid-ride →
+   restored → resume → finish → save/discard/delete).
+   PRIVACY DESIGN: routes + Health data stay ON DEVICE (no Convex sync) → no new
+   App Privacy "collected" types needed. Apple Health is the backup (Kasya writes
+   recordings there when connected).
+   WATCHES: Apple Watch natively; Garmin/COROS/Polar/Suunto/Samsung/Zepp via their
+   own app's Apple Health sync (route availability per brand NOT yet verified on
+   real devices). Garmin direct API = new applications paused (2026); Strava API
+   forbids competing apps + AI → don't build on it.
+   NATIVE BUILD REQUIRED (new modules: expo-location, expo-task-manager,
+   expo-sensors, @rnmapbox/maps, @kingstinct/react-native-healthkit +
+   react-native-nitro-modules) → version bumped to **1.3.0** (new runtime; 1.2.0
+   users keep getting 1.2 OTAs). BLOCKERS before a TestFlight build:
+   (1) Install Xcode on this Mac (none installed) → `npx expo run:ios` to verify
+       the Mapbox + Nitro pods build with `useFrameworks: static` (unverified).
+   (2) Mapbox account → public `pk.` token in `.env` + EAS production env as
+       EXPO_PUBLIC_MAPBOX_TOKEN (without it maps fall back to SVG outlines).
+   (3) Apple Developer portal: enable **HealthKit** on App ID com.kasya.app and
+       regenerate the App Store provisioning profile (eas.json uses LOCAL creds).
+   (4) App Store: description must mention Apple Health (2.5.1); review notes
+       should explain background location = activity recording only.
+   (5) Real-device test: outdoor run with screen locked; Health import from an
+       Apple Watch and from a Garmin/COROS via their Health sync.
+   UIBackgroundModes is `location` only (plugins/withLocationOnlyBackground.js
+   strips the `fetch` mode expo-task-manager auto-adds). Android: foreground
+   service, no ACCESS_BACKGROUND_LOCATION; Health Connect bridge not built yet
+   (health.ts stub) — ships with the Android release.
+   NEXT FEATURES (agreed direction): animated 3D route replay + video export
+   (Mapbox, Pro), shoe mileage → shoe finder, race-goal plans from the Races
+   tab, AI coach reading activity history (needs privacy-label update first).
+   NO community/social features for now (Lloyd: solo team) — features first.
+   ➕ SAME DAY, ROUND 2 (still uncommitted): 3-agent audit (engine/session,
+   Health+Mapbox+config, screens) → ~30 findings, all real ones fixed + tested
+   (284/284): Android 0.0 speed/altitude placeholders (phantom +3.5 km climb,
+   stuck auto-pause), stale cached first fix (+2 km), bad-first-fix re-seed,
+   climb-while-paused, ghost recording after save/kill (meta `finished` flag +
+   clear/restore race), paused fixes no longer logged, sealed-chunk write
+   retries, save-failure keeps the run (no more setup screen during save /
+   double-tap race), Android steps survive leaving the Record screen, steps
+   exclude paused windows, DST/UTC day-bucket bugs, import dedupe vs long runs,
+   serialised index writes. Health sync is now ANCHORED (late Garmin/COROS
+   syncs no longer lost), header-first + batches of 10 saved per batch, only
+   run/walk/hike/ride types, route backfill for 7 days, Health deletions
+   mirrored, distance sample written separately. Mapbox telemetry OFF, stable
+   camera; location string now "Routes are saved on your phone, not on
+   Kasya's servers" (map tiles still come from Mapbox — check MapboxCommon's
+   PrivacyInfo + App Privacy label after the first pod install).
+   SHARE + LOGO: Strava-style **activity share PNG** (ActivityShare screen:
+   Square 1080² / Story 1080×1920, card or transparent, route + stats + real
+   K logo; src/share/activitySticker.ts). Gait result sticker now uses the
+   REAL K mark (was an orange dot). Logo in every tab header (Home lockup, K
+   mark on Activity/Races/History/Profile). Mark generated from assets/icon.png
+   by scripts/make-logo-mark.mjs → assets/art/kasya-mark.png +
+   src/share/brandAssets.ts (base64 for SVG stickers).
+
 -6. **ANALYZER UX OVERHAUL + APPLE SIGN-IN DIAGNOSIS (2026-09-01, commits 76574fa/49fad73)
    — OTA NOT YET PUBLISHED (classifier blocked `eas update`; Lloyd runs it, command
    below).** Lloyd reported (a) Apple sign-in shows an error, (b) the analyzer

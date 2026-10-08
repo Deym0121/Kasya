@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Pressable, ScrollView, SectionList } from 'reac
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TabScreenProps } from '../navigation';
 import { colors, spacing, radius, type as T, fonts } from '../theme';
-import { EmptyState } from '../components';
+import { EmptyState, BrandMark } from '../components';
 import { useRaces } from '../races/useRaces';
 import {
   applyFilter,
@@ -152,7 +152,11 @@ export default function RacesScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <View style={styles.topbar}>
+        <View style={styles.topSide}>
+          <BrandMark height={22} />
+        </View>
         <Text style={styles.topTitle} numberOfLines={1}>Races</Text>
+        <View style={styles.topSide} />
       </View>
       <View style={styles.body}>
         <View style={styles.toggleRow}>
@@ -282,6 +286,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   topbar: { height: 52, flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md },
   topTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
+  topSide: { width: 64, justifyContent: 'center' },
   body: { flex: 1, paddingHorizontal: spacing.xl, paddingTop: spacing.sm },
   toggleRow: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: radius.pill, padding: 4, marginTop: spacing.sm },
   toggle: { flex: 1, paddingVertical: 8, borderRadius: radius.pill, alignItems: 'center' },

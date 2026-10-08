@@ -29,6 +29,9 @@ import ShoeMatchesScreen from './src/screens/ShoeMatchesScreen';
 import ShareCardScreen from './src/screens/ShareCardScreen';
 import PaywallScreen from './src/screens/PaywallScreen';
 import RaceDetailScreen from './src/screens/RaceDetailScreen';
+import RecordScreen from './src/screens/RecordScreen';
+import ActivityDetailScreen from './src/screens/ActivityDetailScreen';
+import ActivityShareScreen from './src/screens/ActivityShareScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -219,6 +222,14 @@ function App() {
           <Stack.Screen name="Share" component={ShareCardScreen} options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="Paywall" component={PaywallScreen} options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="RaceDetail" component={RaceDetailScreen} />
+          <Stack.Screen
+            name="Record"
+            component={RecordScreen}
+            // no swipe-to-dismiss mid-run: leaving is an explicit tap (and keeps recording)
+            options={{ animation: 'slide_from_bottom', gestureEnabled: false }}
+          />
+          <Stack.Screen name="ActivityDetail" component={ActivityDetailScreen} />
+          <Stack.Screen name="ActivityShare" component={ActivityShareScreen} options={{ animation: 'slide_from_bottom' }} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

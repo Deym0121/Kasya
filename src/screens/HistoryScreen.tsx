@@ -71,7 +71,7 @@ export default function HistoryScreen({ navigation }: Props) {
 
   if (reports.length === 0) {
     return (
-      <ScreenContainer title="History" edges={['top']}>
+      <ScreenContainer title="History" edges={['top']} brand="mark">
         {due.due && (
           <NoticeBanner
             icon="clock"
@@ -99,7 +99,7 @@ export default function HistoryScreen({ navigation }: Props) {
   const active = SERIES.find((s) => s.key === series)!;
 
   return (
-    <ScreenContainer title="History" edges={['top']}>
+    <ScreenContainer title="History" edges={['top']} brand="mark">
       {due.due && (
         <NoticeBanner
           icon="clock"
