@@ -386,7 +386,9 @@ const styles = StyleSheet.create({
   // device — the original Chip clipped with NO lineHeight and 44pt height).
   // Fixed row heights taller than fixed child heights leave real slack:
   // nothing can touch a clip edge.
-  chipRow: { marginTop: spacing.md, height: 52, flexGrow: 0 },
+  // flexShrink 0: on web a horizontal ScrollView above a flex SectionList gets
+  // squeezed to a sliver (chips and month pills overlapped); native is unaffected
+  chipRow: { marginTop: spacing.md, height: 52, flexGrow: 0, flexShrink: 0 },
   chipRowContent: { alignItems: 'center' },
   // compact, brand-consistent country filters (see FilterChip)
   fChip: {
@@ -408,7 +410,7 @@ const styles = StyleSheet.create({
   fChipText: { fontFamily: fonts.semibold, fontSize: 13, color: colors.inkSoft },
   fChipTextOn: { color: colors.bg },
   revTag: { fontFamily: fonts.regular, fontSize: 9, color: colors.line, alignSelf: 'center', marginLeft: 2 },
-  monthRow: { marginTop: spacing.md, height: 72, flexGrow: 0 },
+  monthRow: { marginTop: spacing.md, height: 72, flexGrow: 0, flexShrink: 0 },
   monthRowContent: { alignItems: 'center' },
   // tall date-pill selector, planner style: active pill fills with accent
   monthPill: {
