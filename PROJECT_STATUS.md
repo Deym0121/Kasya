@@ -5,8 +5,28 @@
 
 ## ⭐ RESUME HERE — exact next actions
 
+-8. **v1.3 ROUND 3 (2026-10-09) — all on `feature/activity-tracking`, pushed.
+   Commit as joshualadero0121@gmail.com (repo-local git config; NOT the Lloyd
+   email of older history).** Added: per-km **voice cues** (session-driven, work
+   screen-locked; iOS `audio` background mode via
+   plugins/withActivityBackgroundModes.js — expo-audio's own plugin NOT used, so
+   no microphone permission), share-image **"Hide start & end"** (200 m, on by
+   default), **edit activity** (name/sport/notes), **new pricing**
+   (docs/pricing-v1.3.md: PH ₱249/₱1,490, US $7.99/$49.99, 7-day trial on
+   yearly — set in ASC; paywall computes SAVE % from real prices), **free plan =
+   3 gait scans / rolling 7 days** (Premium unlimited). Merged two agent
+   branches: **community race submissions** (section below) and the **gait +
+   shoe accuracy pass** ("Known follow-ups" → FIXED). 419/419 tests.
+   OWNER TO-DO before the v1.3 build: install Xcode; Mapbox `pk.` token in EAS
+   env; HealthKit capability + new profile; ASC prices + trial; Convex:
+   `npx convex env set ADMIN_EMAILS <your sign-in email>` then `npx convex
+   deploy` (race submissions need it — paywall advertises them).
+   KNOWN GAP: the app never calls RevenueCat `Purchases.logIn(<convex user id>)`,
+   so the server can't map purchases to users — server Pro checks (AI coach,
+   race submit) are lenient until that's added + `RACES_STRICT_PRO=1`.
+
 -7. **v1.3.0 ACTIVITY TRACKING (2026-10-08, Mac — repo now at ~/Desktop/kasya,
-   branch master, UNCOMMITTED until Lloyd says commit).** Strava-style recorder +
+   branch feature/activity-tracking).** Strava-style recorder +
    Apple Health watch sync. New **Activity tab** (2nd tab): start Run/Walk/Ride/
    Hike, steps today (7-day bars), this-week totals, "Sync your smartwatch" card,
    activity list with SVG route thumbnails. **Record** screen: live map, moving
