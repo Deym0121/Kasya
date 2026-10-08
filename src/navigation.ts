@@ -46,6 +46,10 @@ export type RootStackParamList = {
   Share: { report: GaitReportRecord };
   Paywall: undefined;
   RaceDetail: { event: RaceEvent };
+  /** Kasya Pro: submit a community race for review + "My submissions" */
+  RaceSubmit: undefined;
+  /** Admin-only review queue for community race submissions + reports */
+  RaceAdmin: undefined;
   /** GPS recorder (run / walk / ride / hike). Re-opening it while recording returns to the live session. */
   Record: { sport?: Sport } | undefined;
   ActivityDetail: { id: string; justFinished?: boolean };

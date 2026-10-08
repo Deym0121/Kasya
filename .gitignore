@@ -44,3 +44,4 @@ yarn-error.*
 # local iOS signing credentials (EAS credentialsSource: local)
 credentials.json
 scripts/raceEvents.jsonl
+scripts/raceEvents.ingest.json

@@ -1,10 +1,14 @@
-import { View, Text, StyleSheet, Linking } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Linking, Pressable } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { RootScreenProps } from '../navigation';
 import { colors, spacing, radius, type as T, fonts } from '../theme';
-import { ScreenContainer, Button } from '../components';
+import { ScreenContainer, Button, Card, Chip, TextField } from '../components';
 import { dateBadge, statusOf, parseRaceDate, RaceStatus } from '../races/logic';
 import { countryFor } from '../races/types';
+import type { RaceEvent } from '../races/types';
+import { REPORT_REASONS, composeReportReason } from '../races/submission';
+import { canReportRaces, reportRace } from '../races/submissionsApi';
 
 type Props = RootScreenProps<'RaceDetail'>;
 
@@ -18,6 +22,104 @@ const MONTHS = [
 function fullDate(dateStart: string): string {
   const d = parseRaceDate(dateStart);
   return `${WEEKDAYS[d.getDay()]} · ${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+/** Single-day: "Sunday · February 14, 2027"; multi-day adds " – February 15". */
+function eventDate(event: RaceEvent): string {
+  if (!event.dateEnd || event.dateEnd === event.dateStart) return fullDate(event.dateStart);
+  const end = parseRaceDate(event.dateEnd);
+  return `${fullDate(event.dateStart)} – ${MONTHS[end.getMonth()]} ${end.getDate()}`;
+}
+
+/**
+ * "Report wrong info" — signed-in runners only (hidden for guests, the web
+ * demo, and whenever the backend can't be reached). Server rate-limits 5/day.
+ */
+function ReportWrongInfo({ eventId }: { eventId: string }) {
+  const [canReport, setCanReport] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [pick, setPick] = useState<string | null>(null);
+  const [details, setDetails] = useState('');
+  const [sending, setSending] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    canReportRaces().then((ok) => active && setCanReport(ok));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (!canReport) return null;
+
+  async function send() {
+    if (sending) return;
+    const reason = composeReportReason(pick, details);
+    if (!reason) {
+      setMsg({ ok: false, text: 'Pick what’s wrong, or add a few words.' });
+      return;
+    }
+    setSending(true);
+    const res = await reportRace(eventId, reason);
+    setSending(false);
+    setMsg({ ok: res.ok, text: res.message });
+    if (res.ok) {
+      setOpen(false);
+      setPick(null);
+      setDetails('');
+    }
+  }
+
+  if (!open) {
+    return (
+      <View style={styles.reportWrap}>
+        {msg?.ok ? (
+          <Text style={styles.reportThanks} accessibilityLiveRegion="polite">{msg.text}</Text>
+        ) : (
+          <Pressable
+            onPress={() => {
+              setOpen(true);
+              setMsg(null);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Report wrong info"
+            hitSlop={8}
+            style={({ pressed }) => [styles.reportLink, pressed && { opacity: 0.7 }]}
+          >
+            <Feather name="flag" size={14} color={colors.muted} />
+            <Text style={styles.reportLinkText}>Report wrong info</Text>
+          </Pressable>
+        )}
+      </View>
+    );
+  }
+
+  return (
+    <Card style={{ marginTop: spacing.xl, padding: spacing.lg }}>
+      <Text style={T.title}>What’s wrong?</Text>
+      <Text style={[T.small, { marginTop: 2, marginBottom: spacing.md }]}>
+        We’ll check it against the official page and fix the calendar.
+      </Text>
+      <View style={styles.chipWrap}>
+        {REPORT_REASONS.map((r) => (
+          <Chip key={r} label={r} selected={pick === r} onPress={() => setPick(pick === r ? null : r)} />
+        ))}
+      </View>
+      <View style={{ height: spacing.sm }} />
+      <TextField
+        label="Details (optional)"
+        value={details}
+        onChangeText={setDetails}
+        placeholder="e.g. The official page now says March 7"
+        maxLength={300}
+      />
+      {msg && !msg.ok ? <Text style={styles.reportError}>{msg.text}</Text> : null}
+      <Button label="Send report" variant="secondary" icon="send" onPress={send} loading={sending} />
+      <View style={{ height: spacing.sm }} />
+      <Button label="Cancel" variant="ghost" onPress={() => setOpen(false)} disabled={sending} />
+    </Card>
+  );
 }
 
 function countdown(dateStart: string, today: Date): string {
@@ -55,6 +157,7 @@ export default function RaceDetailScreen({ navigation, route }: Props) {
   const s = STATUS_COPY[status];
   const open = (url?: string) => url && Linking.openURL(url).catch(() => {});
   const sourceHost = event.sourceUrl.replace(/^https:\/\//, '').split('/')[0];
+  const community = event.source === 'community';
 
   return (
     <ScreenContainer title="Race" onBack={() => navigation.goBack()}>
@@ -75,8 +178,16 @@ export default function RaceDetailScreen({ navigation, route }: Props) {
         </View>
       </View>
 
+      {community ? (
+        // Full-width strip rather than a pill: the label must never clip on a narrow phone.
+        <View style={styles.communityBadge} accessible accessibilityLabel="Verified. Submitted by a Kasya runner.">
+          <Feather name="check-circle" size={15} color={colors.success} />
+          <Text style={styles.communityText}>Verified · submitted by a Kasya runner</Text>
+        </View>
+      ) : null}
+
       <View style={styles.info}>
-        <InfoRow icon="calendar" label="Date" value={fullDate(event.dateStart)} />
+        <InfoRow icon="calendar" label="Date" value={eventDate(event)} />
         <InfoRow icon="map-pin" label="Where" value={`${country.flag} ${event.city}, ${country.name}`} />
         {event.organizer ? <InfoRow icon="briefcase" label="By" value={event.organizer} /> : null}
         <InfoRow icon="check-circle" label="Source" value={sourceHost} />
@@ -103,8 +214,13 @@ export default function RaceDetailScreen({ navigation, route }: Props) {
       ) : null}
 
       <Text style={styles.note}>
-        Date verified against {sourceHost}. Details can change — confirm on the official page.
+        {community
+          ? `Submitted by a Kasya runner, checked against ${sourceHost} and approved by the Kasya team.`
+          : `Date verified against ${sourceHost}.`}{' '}
+        Details can change — confirm on the official page.
       </Text>
+
+      <ReportWrongInfo eventId={event.id} />
     </ScreenContainer>
   );
 }
@@ -151,4 +267,22 @@ const styles = StyleSheet.create({
   infoLabel: { fontFamily: fonts.semibold, fontSize: 13, color: colors.muted, width: 58 },
   infoValue: { fontFamily: fonts.regular, fontSize: 14, color: colors.ink, flex: 1 },
   note: { ...T.small, textAlign: 'center', marginTop: spacing.xl },
+  communityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.successSoft,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.md,
+  },
+  communityText: { flexShrink: 1, fontFamily: fonts.semibold, fontSize: 13, color: colors.success, textAlign: 'center' },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap' },
+  reportWrap: { alignItems: 'center', marginTop: spacing.lg },
+  reportLink: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, paddingHorizontal: spacing.md },
+  reportLinkText: { fontFamily: fonts.medium, fontSize: 13, color: colors.muted },
+  reportThanks: { ...T.small, color: colors.success, textAlign: 'center', paddingVertical: spacing.md },
+  reportError: { fontFamily: fonts.medium, fontSize: 13, lineHeight: 19, color: colors.danger, marginBottom: spacing.md },
 });

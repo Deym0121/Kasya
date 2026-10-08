@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, SectionList } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, ScrollView, SectionList, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import { Feather } from '@expo/vector-icons';
 import { TabScreenProps } from '../navigation';
 import { colors, spacing, radius, type as T, fonts } from '../theme';
-import { EmptyState, BrandMark } from '../components';
+import { EmptyState, BrandMark, NoticeBanner } from '../components';
 import { useRaces } from '../races/useRaces';
+import { amIAdmin, listPendingSubmissions, submitEntryRoute } from '../races/submissionsApi';
 import {
   applyFilter,
   splitViews,
@@ -94,6 +97,31 @@ function RaceCard({ event, today, onPress }: { event: RaceEvent; today: Date; on
   );
 }
 
+/** "Missing a race?" — the community-submission entry at the end of the list. */
+function SubmitPrompt({ onPress, busy }: { onPress: () => void; busy: boolean }) {
+  return (
+    <View style={styles.submitCard}>
+      <Feather name="plus-circle" size={20} color={colors.accentInk} style={{ marginTop: 1 }} />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.submitTitle}>Missing a race?</Text>
+        <Text style={styles.submitBody}>
+          Kasya Pro runners can submit official races. We verify each one before it’s listed.
+        </Text>
+      </View>
+      <Pressable
+        onPress={onPress}
+        disabled={busy}
+        accessibilityRole="button"
+        accessibilityLabel="Submit a race"
+        hitSlop={8}
+        style={({ pressed }) => [styles.submitBtn, pressed && { opacity: 0.8 }]}
+      >
+        {busy ? <ActivityIndicator size="small" color={colors.accentInk} /> : <Text style={styles.submitBtnText}>Submit</Text>}
+      </Pressable>
+    </View>
+  );
+}
+
 export default function RacesScreen({ navigation }: Props) {
   const { events, source, loading } = useRaces();
   const [view, setView] = useState<'upcoming' | 'results'>('upcoming');
@@ -104,6 +132,39 @@ export default function RacesScreen({ navigation }: Props) {
   const monthX = useRef<Record<string, number>>({});
   const suppressViewabilityUntil = useRef(0);
   const today = useMemo(() => new Date(), []);
+  const [opening, setOpening] = useState(false);
+  const [adminPending, setAdminPending] = useState(0);
+
+  // Admins (ADMIN_EMAILS on the server) get a nudge when races await review.
+  // Fail-soft: no Convex / not deployed / not admin all mean "show nothing".
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      amIAdmin().then(async (isAdmin) => {
+        if (!active) return;
+        if (!isAdmin) return setAdminPending(0);
+        const pending = await listPendingSubmissions();
+        if (active) setAdminPending(pending?.length ?? 0);
+      });
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
+
+  // Pro + signed in → the form; signed-in free runner → paywall; anything else
+  // (guest, no cloud, offline) → RaceSubmit, which explains the situation.
+  const openSubmit = async () => {
+    if (opening) return;
+    setOpening(true);
+    try {
+      const route = await submitEntryRoute();
+      if (route === 'Paywall') navigation.navigate('Paywall');
+      else navigation.navigate('RaceSubmit');
+    } finally {
+      setOpening(false);
+    }
+  };
 
   const filtered = useMemo(() => applyFilter(events, filter), [events, filter]);
   const views = useMemo(() => splitViews(filtered, today), [filtered, today]);
@@ -156,7 +217,18 @@ export default function RacesScreen({ navigation }: Props) {
           <BrandMark height={22} />
         </View>
         <Text style={styles.topTitle} numberOfLines={1}>Races</Text>
-        <View style={styles.topSide} />
+        <View style={[styles.topSide, { alignItems: 'flex-end' }]}>
+          <Pressable
+            onPress={openSubmit}
+            disabled={opening}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Submit a race"
+            style={styles.topBtn}
+          >
+            {opening ? <ActivityIndicator size="small" color={colors.ink} /> : <Feather name="plus" size={22} color={colors.ink} />}
+          </Pressable>
+        </View>
       </View>
       <View style={styles.body}>
         <View style={styles.toggleRow}>
@@ -231,6 +303,17 @@ export default function RacesScreen({ navigation }: Props) {
           <Text style={styles.sourceNote}>Shown from your last update.</Text>
         )}
 
+        {adminPending > 0 && (
+          <View style={{ marginTop: spacing.md }}>
+            <NoticeBanner
+              icon="inbox"
+              text={`${adminPending} race submission${adminPending === 1 ? '' : 's'} waiting for review.`}
+              actionLabel="Review"
+              onAction={() => navigation.navigate('RaceAdmin')}
+            />
+          </View>
+        )}
+
         {sections.length === 0 ? (
           <View style={{ marginTop: spacing.xl }}>
             <EmptyState
@@ -238,6 +321,7 @@ export default function RacesScreen({ navigation }: Props) {
               title="No races here yet"
               body="Check another country or month — the calendar grows as races get announced."
             />
+            <SubmitPrompt onPress={openSubmit} busy={opening} />
           </View>
         ) : (
           <SectionList
@@ -272,6 +356,9 @@ export default function RacesScreen({ navigation }: Props) {
               if (first) setActiveMonth(first);
             }}
             viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
+            ListFooterComponent={
+              view === 'upcoming' ? <SubmitPrompt onPress={openSubmit} busy={opening} /> : null
+            }
             contentContainerStyle={{ paddingBottom: spacing.xxl }}
             showsVerticalScrollIndicator={false}
           />
@@ -287,6 +374,7 @@ const styles = StyleSheet.create({
   topbar: { height: 52, flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md },
   topTitle: { flex: 1, textAlign: 'center', fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
   topSide: { width: 64, justifyContent: 'center' },
+  topBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginRight: -6 },
   body: { flex: 1, paddingHorizontal: spacing.xl, paddingTop: spacing.sm },
   toggleRow: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: radius.pill, padding: 4, marginTop: spacing.sm },
   toggle: { flex: 1, paddingVertical: 8, borderRadius: radius.pill, alignItems: 'center' },
@@ -389,4 +477,29 @@ const styles = StyleSheet.create({
   distRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8, gap: 6 },
   dist: { borderRadius: radius.sm, backgroundColor: colors.surfaceAlt, paddingHorizontal: 8, paddingVertical: 3 },
   distText: { fontFamily: fonts.semibold, fontSize: 11, color: colors.inkSoft },
+  // community-submission prompt (list footer / empty state)
+  submitCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderStyle: 'dashed',
+    padding: spacing.lg,
+    marginTop: spacing.lg,
+  },
+  submitTitle: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink },
+  submitBody: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: colors.muted, marginTop: 2 },
+  submitBtn: {
+    alignSelf: 'center',
+    minHeight: 36,
+    minWidth: 72,
+    paddingHorizontal: 14,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  submitBtnText: { fontFamily: fonts.semibold, fontSize: 13, color: colors.accentInk },
 });

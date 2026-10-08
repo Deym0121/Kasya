@@ -13,6 +13,8 @@ import type * as apple from "../apple.js";
 import type * as auth from "../auth.js";
 import type * as entitlements from "../entitlements.js";
 import type * as http from "../http.js";
+import type * as openrouter from "../openrouter.js";
+import type * as raceSubmissions from "../raceSubmissions.js";
 import type * as races from "../races.js";
 import type * as reports from "../reports.js";
 import type * as users from "../users.js";
@@ -29,6 +31,8 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   entitlements: typeof entitlements;
   http: typeof http;
+  openrouter: typeof openrouter;
+  raceSubmissions: typeof raceSubmissions;
   races: typeof races;
   reports: typeof reports;
   users: typeof users;

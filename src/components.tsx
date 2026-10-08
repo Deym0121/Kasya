@@ -61,6 +61,7 @@ export function ScreenContainer({
   footer,
   edges = ['top', 'bottom'],
   brand,
+  keyboardAware,
 }: {
   children: ReactNode;
   title?: string;
@@ -71,6 +72,8 @@ export function ScreenContainer({
   edges?: Edge[];
   /** show the Kasya logo in the left slot (tab screens): the K mark, or mark + wordmark */
   brand?: 'mark' | 'lockup';
+  /** forms: let iOS inset the scroll view so focused fields stay above the keyboard */
+  keyboardAware?: boolean;
 }) {
   const showBar = !!(title || onBack || right || brand);
   return (
@@ -102,6 +105,7 @@ export function ScreenContainer({
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets={keyboardAware}
       >
         {children}
       </ScrollView>
@@ -211,6 +215,9 @@ export function TextField({
   keyboardType,
   autoCapitalize,
   icon,
+  error,
+  hint,
+  maxLength,
 }: {
   label: string;
   value: string;
@@ -218,13 +225,18 @@ export function TextField({
   placeholder?: string;
   secureTextEntry?: boolean;
   keyboardType?: KeyboardTypeOptions;
-  autoCapitalize?: 'none' | 'sentences';
+  autoCapitalize?: 'none' | 'sentences' | 'words';
   icon?: IconName;
+  /** inline validation message — tints the field and replaces the hint */
+  error?: string;
+  /** small helper line under the field */
+  hint?: string;
+  maxLength?: number;
 }) {
   return (
     <View style={{ marginBottom: spacing.lg }}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <View style={styles.inputWrap}>
+      <View style={[styles.inputWrap, !!error && { borderColor: colors.danger }]}>
         {icon && <Feather name={icon} size={18} color={colors.muted} style={{ marginRight: 10 }} />}
         <TextInput
           style={styles.input}
@@ -235,8 +247,18 @@ export function TextField({
           secureTextEntry={secureTextEntry}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
+          maxLength={maxLength}
+          accessibilityLabel={label}
+          accessibilityHint={error || hint}
         />
       </View>
+      {error ? (
+        <Text style={styles.fieldError} accessibilityLiveRegion="polite">
+          {error}
+        </Text>
+      ) : hint ? (
+        <Text style={styles.fieldHint}>{hint}</Text>
+      ) : null}
     </View>
   );
 }
@@ -665,6 +687,8 @@ const styles = StyleSheet.create({
   },
   bubble: { alignItems: 'center', justifyContent: 'center' },
   fieldLabel: { fontFamily: fonts.semibold, fontSize: 13, color: colors.ink, marginBottom: spacing.sm },
+  fieldError: { fontFamily: fonts.medium, fontSize: 12, lineHeight: 17, color: colors.danger, marginTop: 6 },
+  fieldHint: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 17, color: colors.muted, marginTop: 6 },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
