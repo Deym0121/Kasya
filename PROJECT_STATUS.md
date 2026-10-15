@@ -5,6 +5,26 @@
 
 ## ⭐ RESUME HERE — exact next actions
 
+-9. **v1.3.0 BUILD 33 UPLOADED TO APP STORE CONNECT (2026-10-15 22:00 PHT)** —
+   EAS build 93fe4b20-03f5-4b88-8bd5-13ee9b08cf0e, commit 8194871, EAS-managed
+   signing (Apple ID login, team GH24ATQ8FD; new dist cert + profile with
+   HealthKit). Auto-submitted → TestFlight processing. NOT yet submitted for
+   App Review.
+   **BACKEND MOVED to the Convex PRODUCTION deployment `proficient-cricket-154`**
+   (functions + schema deployed; env vars copied by Joshua). Production builds
+   point there; dev/preview builds + every v1.2 install still use
+   `youthful-civet-99` (the old "dev" deployment that served as prod).
+   STILL TO DO before release: (1) copy DATA dev→prod (dashboard backup zip →
+   `npx convex import --replace-all`) close to release; (2) Google OAuth redirect
+   URI `https://proficient-cricket-154.convex.site/api/auth/callback/google`;
+   (3) RevenueCat webhook → `.../revenuecat` on the new site; (4) ADMIN_EMAILS on
+   prod; (5) update the weekly races routine URL; (6) after data copy, update EAS
+   production env vars (EXPO_PUBLIC_CONVEX_URL / _AI_PROXY_URL) and OTA v1.2
+   (runtime 1.2.0) users onto the new backend; (7) ASC: prices/trial, What's
+   New, review notes, App Privacy (race submissions), screenshots → submit.
+   The CONVEX_DEPLOY_KEY for prod was pasted in chat once — rotate it after the
+   migration. `.env.local` (gitignored) holds it on this Mac.
+
 -8. **v1.3 ROUND 3 (2026-10-09) — all on `feature/activity-tracking`, pushed.
    Commit as joshualadero0121@gmail.com (repo-local git config; NOT the Lloyd
    email of older history).** Added: per-km **voice cues** (session-driven, work
