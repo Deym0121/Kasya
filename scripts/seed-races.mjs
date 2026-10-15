@@ -24,7 +24,7 @@ fs.writeFileSync(payload, JSON.stringify({ events: seed.events }));
 console.log(`Wrote ${seed.events.length} rows to ${payload} (and ${out})`);
 console.log('Publish (keeps community-approved races; RACES_INGEST_TOKEN from Convex env):');
 console.log(
-  '  curl -sS -X POST https://youthful-civet-99.convex.site/api/races/ingest ' +
+  '  curl -sS -X POST https://proficient-cricket-154.convex.site/api/races/ingest ' +
     '-H "Authorization: Bearer $RACES_INGEST_TOKEN" -H "Content-Type: application/json" ' +
     '--data @scripts/raceEvents.ingest.json',
 );

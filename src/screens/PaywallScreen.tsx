@@ -15,6 +15,7 @@ import {
 } from '../monetization/entitlements';
 import { savingsPct, trialDisclosure } from '../monetization/pricing';
 import { FREE_SCANS_PER_WEEK } from '../monetization/limits';
+import { PRIVACY_URL } from '../config/siteUrl';
 
 // Only benefits that are REALLY gated in the app right now — recording, watch
 // sync, history, shoe matches and share images stay free (and the copy says so).
@@ -320,7 +321,7 @@ export default function PaywallScreen({ navigation }: Props) {
       {/* App Review 3.1.2: functional Privacy Policy + Terms links on the paywall. */}
       <View style={styles.legalRow}>
         <Pressable
-          onPress={() => Linking.openURL('https://youthful-civet-99.convex.site/privacy')}
+          onPress={() => Linking.openURL(PRIVACY_URL)}
           accessibilityRole="link"
           accessibilityLabel="Privacy Policy"
           hitSlop={8}

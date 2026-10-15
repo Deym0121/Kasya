@@ -18,6 +18,7 @@ import {
 import { getPlan, isBillingLive, presentCustomerCenter } from '../monetization/entitlements';
 import { signOutCloud, deleteCloudAccount, currentUserEmail } from '../convex/auth';
 import { clearRemoteReports, clearSyncedMap } from '../sync/reportSync';
+import { PRIVACY_URL, SUPPORT_URL } from '../config/siteUrl';
 
 type RowProps = { icon: ComponentProps<typeof Feather>['name']; label: string; onPress: () => void; danger?: boolean };
 function Row({ icon, label, onPress, danger }: RowProps) {
@@ -249,13 +250,13 @@ export default function ProfileScreen({ navigation }: Props) {
         <Row
           icon="shield"
           label="Privacy Policy"
-          onPress={() => Linking.openURL('https://youthful-civet-99.convex.site/privacy')}
+          onPress={() => Linking.openURL(PRIVACY_URL)}
         />
         <View style={styles.div} />
         <Row
           icon="help-circle"
           label="Support"
-          onPress={() => Linking.openURL('https://youthful-civet-99.convex.site/support')}
+          onPress={() => Linking.openURL(SUPPORT_URL)}
         />
         <View style={styles.div} />
         <Row icon="log-out" label="Sign out" onPress={handleSignOut} danger />
