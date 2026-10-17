@@ -23,6 +23,7 @@ import { loadDaily, loadHeartRate, type DailyLoad, type HeartRateToday } from '.
 import { getGoals, onGoals, setGoals } from './goals';
 import { localDayKey } from './days';
 import { HEALTH_NAME } from './health';
+import { syncStepDays } from '../groups/api';
 
 /**
  * The Activity tab's daily dashboard: this week's goal days, the daily score
@@ -42,13 +43,14 @@ const PERIODS: { key: Period; label: string }[] = [
 export function StepsDashboard({
   refreshKey,
   onConnectHealth,
-  footer,
+  onOpenGroups,
 }: {
   /** bump to reload (the tab regained focus) */
   refreshKey: number;
   /** shown on the heart-rate card when Health isn't connected */
   onConnectHealth?: () => void;
-  footer?: React.ReactNode;
+  /** groups & leaderboard entry */
+  onOpenGroups?: () => void;
 }) {
   const [load, setLoad] = useState<DailyLoad | null>(null);
   const [hr, setHr] = useState<HeartRateToday | null | undefined>(undefined);
@@ -72,7 +74,13 @@ export function StepsDashboard({
     let alive = true;
     setNow(new Date());
     loadDaily()
-      .then((l) => alive && setLoad(l))
+      .then((l) => {
+        if (alive) setLoad(l);
+        // Group leaderboards: a no-op unless the user has joined a group.
+        if (l.source === 'health' || l.source === 'phone') {
+          syncStepDays([...l.byDay.values()].map(({ day, steps, activeMin, kcal }) => ({ day, steps, activeMin, kcal }))).catch(() => {});
+        }
+      })
       .catch(() => alive && setLoad({ byDay: new Map(), source: 'none' }));
     loadHeartRate()
       .then((h) => alive && setHr(h))
@@ -164,7 +172,7 @@ export function StepsDashboard({
 
       <HeartRateCard hr={hr} age={goals.age ?? null} onConnect={onConnectHealth} onAddAge={() => setEditing(true)} />
 
-      {footer}
+      {onOpenGroups ? <GroupsEntry onPress={onOpenGroups} /> : null}
 
       <GoalsSheet visible={editing} goals={goals} onClose={() => setEditing(false)} />
     </View>
@@ -606,6 +614,25 @@ function HrStat({ label, value }: { label: string; value: number | null }) {
   );
 }
 
+// ---- groups entry ------------------------------------------------------------------------
+
+function GroupsEntry({ onPress }: { onPress: () => void }) {
+  return (
+    <Card style={{ marginTop: spacing.md }} onPress={onPress}>
+      <View style={styles.groupsRow} accessible accessibilityRole="button" accessibilityLabel="Groups and leaderboard: race your friends on steps">
+        <View style={styles.trophy}>
+          <MaterialCommunityIcons name="trophy" size={22} color={colors.onDark} />
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={T.title}>Groups & leaderboard</Text>
+          <Text style={[T.small, { marginTop: 1 }]}>Race your friends on steps this week. Top 3 earn medals; every step levels you up.</Text>
+        </View>
+        <Feather name="chevron-right" size={18} color={colors.accent} />
+      </View>
+    </Card>
+  );
+}
+
 // ---- goals sheet ---------------------------------------------------------------------
 
 function GoalsSheet({ visible, goals, onClose }: { visible: boolean; goals: Goals; onClose: () => void }) {
@@ -748,6 +775,8 @@ const styles = StyleSheet.create({
   hrUnit: { fontFamily: fonts.bold, fontSize: 13, color: colors.accent },
   hrZone: { fontFamily: fonts.medium, fontSize: 12, color: colors.inkSoft, marginTop: 2 },
   hrAxis: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+  groupsRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  trophy: { width: 46, height: 46, borderRadius: 23, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
   scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' },
   sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.xl, paddingBottom: spacing.xxxl, borderWidth: 1, borderColor: colors.line },
   stepper: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.lg, gap: spacing.sm },

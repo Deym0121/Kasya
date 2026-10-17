@@ -187,9 +187,9 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   segmentBtn: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill },
-  segmentOn: { backgroundColor: colors.ink },
+  segmentOn: { backgroundColor: colors.accent },
   segmentText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.inkSoft },
-  segmentTextOn: { color: colors.bg },
+  segmentTextOn: { color: colors.onDark },
   notice: {
     flexDirection: 'row',
     alignItems: 'flex-start',

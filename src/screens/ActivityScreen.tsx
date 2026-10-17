@@ -98,7 +98,11 @@ export default function ActivityScreen({ navigation }: Props) {
     <ScreenContainer title="Activity" edges={['top']} brand="mark">
       <LiveBanner onPress={() => navigation.navigate('Record')} />
 
-      <StepsDashboard refreshKey={dashKey} onConnectHealth={canHealth && !health?.connected ? connect : undefined} />
+      <StepsDashboard
+        refreshKey={dashKey}
+        onConnectHealth={canHealth && !health?.connected ? connect : undefined}
+        onOpenGroups={() => navigation.navigate('Groups')}
+      />
 
       {/* Start */}
       <View style={{ height: spacing.xl }} />
