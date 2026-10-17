@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Image, type ImageSourcePropType } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { colors, fonts, radius, spacing } from '../theme';
 import type { Medal } from './levels';
@@ -29,15 +29,35 @@ export function RankCircle({ rank, medal, size = 30 }: { rank: number; medal: Me
   );
 }
 
-/** Podium medal: the rank circle with a small award ribbon badge. */
-export function MedalBadge({ rank, medal, size }: { rank: number; medal: Medal; size: number }) {
-  return (
-    <View style={{ width: size, height: size }}>
-      <RankCircle rank={rank} medal={medal} size={size} />
-      <View style={[styles.ribbon, { backgroundColor: MEDAL_COLORS[medal] }]} importantForAccessibility="no">
-        <Feather name="award" size={12} color={colors.bg} />
+/** Laurel-shield badge art for 1st/2nd/3rd — the rank number is part of the art. */
+const BADGE_ART: Record<Medal, ImageSourcePropType> = {
+  gold: require('../../assets/badges/gold.png'),
+  silver: require('../../assets/badges/silver.png'),
+  bronze: require('../../assets/badges/bronze.png'),
+};
+const BADGE_ASPECT = 250 / 300;
+
+/**
+ * The rank badge for 1st–3rd, a plain numbered circle past 3rd. `size` is the
+ * badge height; the slot is a fixed width so names line up across rows.
+ */
+export function RankBadge({ rank, medal, size }: { rank: number; medal: Medal | null; size: number }) {
+  const width = Math.round(size * BADGE_ASPECT);
+  if (!medal) {
+    return (
+      <View style={{ width, alignItems: 'center' }}>
+        <RankCircle rank={rank} medal={null} size={Math.round(size * 0.75)} />
       </View>
-    </View>
+    );
+  }
+  return (
+    <Image
+      source={BADGE_ART[medal]}
+      style={{ width, height: size }}
+      resizeMode="contain"
+      accessible
+      accessibilityLabel={`${MEDAL_NAME[medal]} badge, rank ${rank}`}
+    />
   );
 }
 
@@ -156,18 +176,6 @@ export function PrivacyLine() {
 const styles = StyleSheet.create({
   rankCircle: { alignItems: 'center', justifyContent: 'center' },
   rankText: { fontFamily: fonts.extra },
-  ribbon: {
-    position: 'absolute',
-    right: -4,
-    bottom: -4,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.surface,
-  },
   levelChip: {
     alignSelf: 'flex-start',
     backgroundColor: colors.accentSoft,

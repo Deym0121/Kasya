@@ -9,7 +9,7 @@ import { GROUP_LIMITS, cleanGroupName, normalizeInviteCode } from '../groups/rul
 import { formatCount, levelForSteps, levelTitle, rankBadge, weekRange } from '../groups/levels';
 import { createGroup, joinGroup, loadMyGroups, resyncStepDays } from '../groups/api';
 import type { GroupsAvailability, MyGroup } from '../groups/api';
-import { Notice, PrivacyLine, ProgressBar, RankCircle } from '../groups/ui';
+import { Notice, PrivacyLine, ProgressBar, RankBadge } from '../groups/ui';
 
 type Props = RootScreenProps<'Groups'>;
 type Phase = 'loading' | GroupsAvailability;
@@ -63,7 +63,7 @@ function GroupRow({ g, onPress }: { g: MyGroup; onPress: () => void }) {
       style={({ pressed }) => [styles.groupRow, pressed && { opacity: 0.94 }]}
     >
       {g.myRank && medal ? (
-        <RankCircle rank={g.myRank} medal={medal} size={40} />
+        <RankBadge rank={g.myRank} medal={medal} size={48} />
       ) : (
         <View style={styles.groupIcon}>
           <Feather name="users" size={18} color={colors.accentInk} />

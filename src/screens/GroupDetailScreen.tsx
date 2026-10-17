@@ -17,7 +17,7 @@ import {
   resyncStepDays,
 } from '../groups/api';
 import type { Leaderboard, LeaderboardLoad, LeaderboardMember } from '../groups/api';
-import { LevelChip, MedalBadge, MEDAL_COLORS, Notice, PrivacyLine, RankCircle, Segmented, useTwoTap } from '../groups/ui';
+import { LevelChip, MEDAL_COLORS, Notice, PrivacyLine, RankBadge, Segmented, useTwoTap } from '../groups/ui';
 
 type Props = RootScreenProps<'GroupDetail'>;
 type Period = 'week' | 'month';
@@ -43,7 +43,7 @@ function Podium({ top }: { top: LeaderboardMember[] }) {
         const first = m.rank === 1;
         return (
           <View key={m.userId} style={styles.podiumCol}>
-            <MedalBadge rank={m.rank} medal={medal} size={first ? 60 : 48} />
+            <RankBadge rank={m.rank} medal={medal} size={first ? 100 : 80} />
             <Text style={[styles.podiumName, m.isMe && { color: colors.accentInk }]} numberOfLines={1}>
               {m.isMe ? 'You' : m.displayName}
             </Text>
@@ -81,7 +81,7 @@ function MemberRow({
       accessible={!canRemove}
       accessibilityLabel={`Rank ${m.rank}, ${name}, level ${level}, ${formatCount(m.steps)} steps, ${m.activeMin} active minutes`}
     >
-      <RankCircle rank={m.rank} medal={rankBadge(m.rank)} size={30} />
+      <RankBadge rank={m.rank} medal={rankBadge(m.rank)} size={42} />
       <View style={{ flex: 1, marginHorizontal: spacing.md }}>
         <View style={styles.rowNameLine}>
           <Text style={styles.rowName} numberOfLines={1}>
