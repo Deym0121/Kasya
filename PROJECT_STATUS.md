@@ -5,6 +5,18 @@
 
 ## ⭐ RESUME HERE — exact next actions
 
+-11. **STEPS DASHBOARD + GROUPS/LEADERBOARD (2026-10-17, branch `feature/step-dashboard`, not in build 33, backend NOT deployed)** —
+   Activity tab opens on a daily dashboard modelled on the user's reference UI, in Kasya orange: week strip with
+   goal days marked + streak, 0–1,000 daily score ring (steps 50% / active min 30% / active kcal 20%, each capped
+   at its goal — `src/activity/daily.ts`, tested), Today/Week/Month totals with bars and a goal-day month calendar,
+   heart-rate card (latest/live, resting/avg/max, zones once an age is set), editable goals. Data: Apple Health
+   (now also reads ActiveEnergyBurned, AppleExerciseTime, RestingHeartRate — one extra permission sheet for
+   already-connected users) else the iPhone pedometer with estimates; web shows labelled sample data.
+   Groups (subagent, merged): invite-code groups, weekly/monthly step leaderboards, gold/silver/bronze, levels
+   (25,000·(n−1)² lifetime steps). Convex `groups.ts` + `steps.ts` + 4 tables; daily totals upload ONLY after joining a
+   group, purged when in none; account deletion covers it. **To ship:** `npx convex deploy` to proficient-cricket-154,
+   App Privacy: add Health & Fitness › Fitness (linked, App Functionality), then OTA to runtime 1.3.0 or a new build.
+
 -9. **v1.3.0 BUILD 33 UPLOADED TO APP STORE CONNECT (2026-10-15 22:00 PHT)** —
    EAS build 93fe4b20-03f5-4b88-8bd5-13ee9b08cf0e, commit 8194871, EAS-managed
    signing (Apple ID login, team GH24ATQ8FD; new dist cert + profile with
