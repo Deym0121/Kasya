@@ -30,6 +30,13 @@ export type DailySource = 'health' | 'phone' | 'demo' | 'none';
 export interface DailyLoad {
   byDay: Map<string, DayMetrics>;
   source: DailySource;
+  /** metres run + moving seconds per local day (club distance / pace) */
+  runs: Map<string, RunDay>;
+}
+
+export interface RunDay {
+  runM: number;
+  runSec: number;
 }
 
 const CACHE_KEY = 'kasya:daily:steps:v1';
@@ -45,24 +52,34 @@ async function ensureHealthTypes() {
   } catch {}
 }
 
-/** Kasya-recorded moving minutes per local day. */
-async function recordedMinutes(): Promise<Map<string, number>> {
-  const out = new Map<string, number>();
+/**
+ * Kasya-recorded moving minutes per local day, and the day's runs (recorded
+ * or imported from Apple Health — Garmin, COROS, Apple Watch). Demo runs and
+ * implausible paces don't count toward club distance.
+ */
+async function recordedDays(): Promise<{ minutes: Map<string, number>; runs: Map<string, RunDay> }> {
+  const minutes = new Map<string, number>();
+  const runs = new Map<string, RunDay>();
   try {
     for (const a of await listActivities()) {
       const day = localDayKey(new Date(a.startedAt));
-      out.set(day, (out.get(day) ?? 0) + a.movingSec / 60);
+      minutes.set(day, (minutes.get(day) ?? 0) + a.movingSec / 60);
+      if (a.sport !== 'run' || a.demo || a.distanceM < 200 || a.movingSec <= 0) continue;
+      const pace = (a.movingSec / a.distanceM) * 1000;
+      if (pace < 150 || pace > 1200) continue;
+      const r = runs.get(day) ?? { runM: 0, runSec: 0 };
+      runs.set(day, { runM: r.runM + a.distanceM, runSec: r.runSec + a.movingSec });
     }
   } catch {}
-  return out;
+  return { minutes, runs };
 }
 
 const dayKeys = (days: number, now = new Date()) =>
   Array.from({ length: days }, (_, i) => localDayKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1 - i))));
 
 export async function loadDaily(): Promise<DailyLoad> {
-  if (Platform.OS === 'web') return { byDay: demoDays(), source: 'demo' };
-  const rec = await recordedMinutes();
+  if (Platform.OS === 'web') return { byDay: demoDays(), source: 'demo', runs: new Map() };
+  const { minutes: rec, runs } = await recordedDays();
   const state = await getHealthState().catch(() => null);
 
   if (Platform.OS === 'ios' && state?.connected && healthAvailable()) {
@@ -88,7 +105,7 @@ export async function loadDaily(): Promise<DailyLoad> {
           est: { kcal: !(hk > 0), activeMin: !(hx > 0) },
         });
       }
-      return { byDay, source: 'health' };
+      return { byDay, source: 'health', runs };
     }
   }
 
@@ -118,14 +135,14 @@ export async function loadDaily(): Promise<DailyLoad> {
         const recMin = rec.get(day) ?? 0;
         byDay.set(day, { day, steps, kcal: estimateKcal(steps), activeMin: estimateActiveMin(steps, recMin), est: { kcal: true, activeMin: true } });
       }
-      return { byDay, source: 'phone' };
+      return { byDay, source: 'phone', runs };
     }
   }
 
   // Nothing to read steps from: still credit recorded activities.
   const byDay = new Map<string, DayMetrics>();
   for (const [day, min] of rec) byDay.set(day, { day, steps: 0, kcal: Math.round(min * 7), activeMin: Math.round(min), est: { kcal: true } });
-  return { byDay, source: 'none' };
+  return { byDay, source: 'none', runs };
 }
 
 export interface HeartRateToday {

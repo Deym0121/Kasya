@@ -78,10 +78,12 @@ export function StepsDashboard({
         if (alive) setLoad(l);
         // Group leaderboards: a no-op unless the user has joined a group.
         if (l.source === 'health' || l.source === 'phone') {
-          syncStepDays([...l.byDay.values()].map(({ day, steps, activeMin, kcal }) => ({ day, steps, activeMin, kcal }))).catch(() => {});
+          syncStepDays(
+            [...l.byDay.values()].map(({ day, steps, activeMin, kcal }) => ({ day, steps, activeMin, kcal, ...l.runs.get(day) })),
+          ).catch(() => {});
         }
       })
-      .catch(() => alive && setLoad({ byDay: new Map(), source: 'none' }));
+      .catch(() => alive && setLoad({ byDay: new Map(), source: 'none', runs: new Map() }));
     loadHeartRate()
       .then((h) => alive && setHr(h))
       .catch(() => alive && setHr(null));
@@ -619,13 +621,13 @@ function HrStat({ label, value }: { label: string; value: number | null }) {
 function GroupsEntry({ onPress }: { onPress: () => void }) {
   return (
     <Card style={{ marginTop: spacing.md }} onPress={onPress}>
-      <View style={styles.groupsRow} accessible accessibilityRole="button" accessibilityLabel="Groups and leaderboard: race your friends on steps">
+      <View style={styles.groupsRow} accessible accessibilityLabel="Groups and running clubs: race friends and other clubs">
         <View style={styles.trophy}>
           <MaterialCommunityIcons name="trophy" size={22} color={colors.onDark} />
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={T.title}>Groups & leaderboard</Text>
-          <Text style={[T.small, { marginTop: 1 }]}>Race your friends on steps this week. Top 3 earn medals; every step levels you up.</Text>
+          <Text style={T.title}>Groups & running clubs</Text>
+          <Text style={[T.small, { marginTop: 1 }]}>Race friends on steps, or join a club and take on the country. Top 3 earn badges.</Text>
         </View>
         <Feather name="chevron-right" size={18} color={colors.accent} />
       </View>

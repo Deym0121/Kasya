@@ -11,6 +11,8 @@
 import type * as ai from "../ai.js";
 import type * as apple from "../apple.js";
 import type * as auth from "../auth.js";
+import type * as clubStats from "../clubStats.js";
+import type * as clubs from "../clubs.js";
 import type * as entitlements from "../entitlements.js";
 import type * as groups from "../groups.js";
 import type * as http from "../http.js";
@@ -31,6 +33,8 @@ declare const fullApi: ApiFromModules<{
   ai: typeof ai;
   apple: typeof apple;
   auth: typeof auth;
+  clubStats: typeof clubStats;
+  clubs: typeof clubs;
   entitlements: typeof entitlements;
   groups: typeof groups;
   http: typeof http;

@@ -157,7 +157,32 @@ export default defineSchema({
     ownerId: v.id('users'),
     code: v.string(),
     createdAt: v.float64(),
-  }).index('by_code', ['code']),
+    /**
+     * Running clubs (kind 'club') are groups with a public face: listed in the
+     * monthly club rankings by home country, joinable from the club page when
+     * `open`, max 300 members. Private friend groups leave these unset.
+     * Rules: src/clubs/rules.ts.
+     */
+    kind: v.optional(v.literal('club')),
+    country: v.optional(v.string()),
+    city: v.optional(v.string()),
+    about: v.optional(v.string()),
+    /** 'icon|#color' (src/clubs/rules.ts EMBLEM_*) — the avatar when there's no photo */
+    emblem: v.optional(v.string()),
+    photoId: v.optional(v.id('_storage')),
+    open: v.optional(v.boolean()),
+    /** monthly club distance goal, km */
+    goalKm: v.optional(v.float64()),
+    /** clubs only: kept in step with joins/leaves (rankings show it without counting) */
+    memberCount: v.optional(v.float64()),
+    /** moderation: hidden from rankings + search (reports or an admin); members still see it */
+    hidden: v.optional(v.boolean()),
+    reportCount: v.optional(v.float64()),
+  })
+    .index('by_code', ['code'])
+    .index('by_owner', ['ownerId'])
+    .index('by_photo', ['photoId'])
+    .searchIndex('search_name', { searchField: 'name', filterFields: ['kind', 'hidden', 'country'] }),
 
   /** One row per (group, user). displayName is the public first name — never an email. */
   groupMembers: defineTable({
@@ -184,8 +209,66 @@ export default defineSchema({
     steps: v.float64(),
     activeMin: v.float64(),
     kcal: v.float64(),
+    /** metres run + moving seconds of those runs (club distance / pace); absent = none */
+    runM: v.optional(v.float64()),
+    runSec: v.optional(v.float64()),
     updatedAt: v.float64(),
   }).index('by_user_day', ['userId', 'day']),
+
+  /**
+   * One user's totals per LOCAL calendar month ('YYYY-MM'), kept by
+   * steps.sync deltas — what a club adds when they join and drops when they
+   * leave. Same lifetime as stepDays (purged with them); months older than a
+   * quarter are pruned.
+   */
+  memberMonths: defineTable({
+    userId: v.id('users'),
+    month: v.string(),
+    steps: v.float64(),
+    activeMin: v.float64(),
+    runM: v.float64(),
+    runSec: v.float64(),
+    updatedAt: v.float64(),
+  }).index('by_user_month', ['userId', 'month']),
+
+  /**
+   * A club's totals for one month: the sum of its members' memberMonths while
+   * they were members (past months stay as they were when a member leaves).
+   * Aggregates only — no per-person data. `listed` = the club isn't hidden;
+   * `pace` = s/km once the club ran 20 km that month, else 1e9 (sorts last).
+   */
+  clubMonths: defineTable({
+    clubId: v.id('groups'),
+    month: v.string(),
+    country: v.string(),
+    listed: v.boolean(),
+    steps: v.float64(),
+    activeMin: v.float64(),
+    runM: v.float64(),
+    runSec: v.float64(),
+    pace: v.float64(),
+    updatedAt: v.float64(),
+  })
+    .index('by_club_month', ['clubId', 'month'])
+    .index('by_month_steps', ['month', 'listed', 'steps'])
+    .index('by_month_run', ['month', 'listed', 'runM'])
+    .index('by_month_pace', ['month', 'listed', 'pace'])
+    .index('by_country_steps', ['country', 'month', 'listed', 'steps'])
+    .index('by_country_run', ['country', 'month', 'listed', 'runM'])
+    .index('by_country_pace', ['country', 'month', 'listed', 'pace']),
+
+  /** "Report club" (one per user per club; 3 distinct reports hide it pending review). */
+  clubReports: defineTable({
+    clubId: v.id('groups'),
+    userId: v.id('users'),
+    reason: v.string(),
+    note: v.optional(v.string()),
+    createdAt: v.float64(),
+    resolved: v.boolean(),
+  })
+    .index('by_club_user', ['clubId', 'userId'])
+    .index('by_user', ['userId', 'createdAt'])
+    .index('by_resolved', ['resolved', 'createdAt']),
 
   /** Running lifetime step total (levels) — kept in sync by steps.sync deltas. */
   userStats: defineTable({

@@ -18,7 +18,7 @@ import { GROUP_LIMITS, prepareStepDays } from './rules';
 
 const TIMEOUT_MS = 8000;
 
-function timeBoxed<T>(p: Promise<T>): Promise<T> {
+export function timeBoxed<T>(p: Promise<T>): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<T>((_, reject) => {
     timer = setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS);
@@ -31,7 +31,18 @@ const OFFLINE = 'That didn’t go through — check your connection and try agai
 
 export type GroupsAvailability = 'no_cloud' | 'signed_out' | 'unavailable' | 'ready';
 
-export interface MyGroup {
+/** A club's public face (all null for a private friends' group). */
+export interface ClubFace {
+  kind: 'group' | 'club';
+  /** ISO country code */
+  country: string | null;
+  city: string | null;
+  /** 'icon|#color' — see src/clubs/rules.ts */
+  emblem: string | null;
+  photoUrl: string | null;
+}
+
+export interface MyGroup extends ClubFace {
   id: string;
   name: string;
   code: string;
@@ -51,13 +62,15 @@ export interface LeaderboardMember {
   steps: number;
   activeMin: number;
   kcal: number;
+  runM: number;
+  runSec: number;
   daysWithData: number;
   lifetimeSteps: number;
   isMe: boolean;
 }
 
 export interface Leaderboard {
-  group: { id: string; name: string; code: string; memberCount: number; isOwner: boolean; createdAt: number };
+  group: ClubFace & { id: string; name: string; code: string; memberCount: number; isOwner: boolean; createdAt: number };
   members: LeaderboardMember[];
 }
 

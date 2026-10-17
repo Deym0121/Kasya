@@ -5,6 +5,23 @@
 
 ## ⭐ RESUME HERE — exact next actions
 
+-12. **RUNNING CLUBS (2026-10-17, branch `feature/step-dashboard`, backend NOT deployed)** —
+   Groups screen is now "Groups & clubs" with Friends / Running clubs tabs. A club is a group (`kind: 'club'`) with a
+   public face: photo or emblem, home country, city, about, monthly km goal, open (join from the page) or
+   invite-only, max 300 members, 5 clubs per runner, 2 owned. Monthly club rankings by country (default PH) or
+   worldwide on steps / run km / run pace (pace needs 20 km club running); top 3 get the badge art. Club page shows
+   ranks, month totals, goal bar; members' leaderboard gained a Steps/Distance/Pace switch (groups too). Runs
+   (Kasya-recorded + Health imports incl. Garmin via Apple Health) add `runM`/`runSec` to the daily totals sync.
+   Backend: `convex/clubs.ts` (create/update/photo/joinOpen/report/rankings/profile/search/admin),
+   `convex/clubStats.ts` (memberMonths → clubMonths invariant), `steps.sync` month deltas, new tables `memberMonths`,
+   `clubMonths`, `clubReports` + club fields/indexes on `groups`. Moderation (App Review 1.2): word filter (EN+FIL),
+   Report club, 3 distinct reports hide it, `clubs.adminReported` / `adminReview` (ADMIN_EMAILS — no admin UI yet,
+   use the functions or the dashboard). Tested on convex-test (15 backend tests) + 15 rules tests; 522 total.
+   **Club PHOTOS need a new native build** (adds `expo-image-picker` + `expo-image-manipulator`, Info.plist
+   NSPhotoLibraryUsageDescription); over the air on build 33 the photo button is hidden and clubs use emblems.
+   **To ship:** `npx convex deploy` (prod), OTA to 1.3.0, then build 34 for photos; App Privacy: Fitness +
+   Photos (user content, linked) once photos ship.
+
 -11. **STEPS DASHBOARD + GROUPS/LEADERBOARD (2026-10-17, branch `feature/step-dashboard`, not in build 33, backend NOT deployed)** —
    Activity tab opens on a daily dashboard modelled on the user's reference UI, in Kasya orange: week strip with
    goal days marked + streak, 0–1,000 daily score ring (steps 50% / active min 30% / active kcal 20%, each capped

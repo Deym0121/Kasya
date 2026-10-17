@@ -9,10 +9,17 @@ import { GROUP_LIMITS, cleanGroupName, normalizeInviteCode } from '../groups/rul
 import { formatCount, levelForSteps, levelTitle, rankBadge, weekRange } from '../groups/levels';
 import { createGroup, joinGroup, loadMyGroups, resyncStepDays } from '../groups/api';
 import type { GroupsAvailability, MyGroup } from '../groups/api';
-import { Notice, PrivacyLine, ProgressBar, RankBadge } from '../groups/ui';
+import { Notice, PrivacyLine, ProgressBar, RankBadge, Segmented } from '../groups/ui';
+import { ClubsHub } from '../clubs/ClubsHub';
 
 type Props = RootScreenProps<'Groups'>;
 type Phase = 'loading' | GroupsAvailability;
+type Tab = 'friends' | 'clubs';
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'friends', label: 'Friends' },
+  { key: 'clubs', label: 'Running clubs' },
+];
 
 function LevelCard({ lifetimeSteps, inGroups }: { lifetimeSteps: number; inGroups: boolean }) {
   const info = levelForSteps(lifetimeSteps);
@@ -85,9 +92,10 @@ function GroupRow({ g, onPress }: { g: MyGroup; onPress: () => void }) {
   );
 }
 
-export default function GroupsScreen({ navigation }: Props) {
+export default function GroupsScreen({ navigation, route }: Props) {
   const [phase, setPhase] = useState<Phase>('loading');
-  const [groups, setGroups] = useState<MyGroup[]>([]);
+  const [tab, setTab] = useState<Tab>(route.params?.tab ?? 'friends');
+  const [all, setAll] = useState<MyGroup[]>([]);
   const [lifetimeSteps, setLifetimeSteps] = useState(0);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
@@ -103,7 +111,7 @@ export default function GroupsScreen({ navigation }: Props) {
     const sync = resyncStepDays({ force: false });
     const apply = (res: Awaited<ReturnType<typeof loadMyGroups>>) => {
       if (!alive.current) return;
-      setGroups(res.groups);
+      setAll(res.groups);
       setLifetimeSteps(res.lifetimeSteps);
       setPhase(res.availability);
     };
@@ -122,7 +130,9 @@ export default function GroupsScreen({ navigation }: Props) {
     }, [load]),
   );
 
-  const atLimit = groups.length >= GROUP_LIMITS.maxGroupsPerUser;
+  const groups = all.filter((g) => g.kind !== 'club');
+  const clubs = all.filter((g) => g.kind === 'club');
+  const atLimit = all.length >= GROUP_LIMITS.maxGroupsPerUser;
 
   async function onCreate() {
     if (busy) return;
@@ -187,7 +197,7 @@ export default function GroupsScreen({ navigation }: Props) {
         <EmptyState
           icon="users"
           title="Sign in to race your friends"
-          body="Create a group, invite friends with a code, and climb a weekly step leaderboard together. Groups are tied to your Kasya account — sign in with Apple or Google to start."
+          body="Create a group, invite friends with a code, or join a running club and race other clubs every month. Groups and clubs are tied to your Kasya account — sign in with Apple or Google to start."
           action={{ label: 'Sign in', onPress: () => navigation.navigate('SignIn') }}
         />
         <PrivacyLine />
@@ -196,9 +206,23 @@ export default function GroupsScreen({ navigation }: Props) {
   } else {
     body = (
       <>
-        <LevelCard lifetimeSteps={lifetimeSteps} inGroups={groups.length > 0} />
+        <LevelCard lifetimeSteps={lifetimeSteps} inGroups={all.length > 0} />
         <PrivacyLine />
 
+        <View style={{ marginTop: spacing.xl }}>
+          <Segmented options={TABS} value={tab} onChange={setTab} />
+        </View>
+
+        {tab === 'clubs' ? (
+          <ClubsHub
+            clubs={clubs}
+            ownedClubs={clubs.filter((c) => c.role === 'owner').length}
+            atGroupLimit={atLimit}
+            onOpenClub={(id, name) => navigation.navigate('Club', { clubId: id, name })}
+            onStartClub={() => navigation.navigate('ClubEdit', {})}
+          />
+        ) : (
+        <>
         <View style={{ marginTop: spacing.xxl }}>
           <Label>My groups</Label>
           {groups.length === 0 ? (
@@ -224,7 +248,7 @@ export default function GroupsScreen({ navigation }: Props) {
 
         {atLimit ? (
           <Text style={[T.small, { marginTop: spacing.xl }]}>
-            You’re in {GROUP_LIMITS.maxGroupsPerUser} groups — the most you can be in. Leave one to start or join
+            You’re in {GROUP_LIMITS.maxGroupsPerUser} groups and clubs — the most you can be in. Leave one to start or join
             another.
           </Text>
         ) : (
@@ -253,7 +277,7 @@ export default function GroupsScreen({ navigation }: Props) {
             <Card style={{ marginTop: spacing.lg }}>
               <Text style={T.title}>Join with code</Text>
               <Text style={[T.small, { marginTop: 2, marginBottom: spacing.lg }]}>
-                Got an invite? Enter the 6-character code.
+                Got an invite to a group or club? Enter the 6-character code.
               </Text>
               <TextField
                 label="Invite code"
@@ -272,13 +296,15 @@ export default function GroupsScreen({ navigation }: Props) {
             </Card>
           </>
         )}
+        </>
+        )}
       </>
     );
   }
 
   return (
     <ScreenContainer
-      title="Groups"
+      title="Groups & clubs"
       onBack={() => navigation.goBack()}
       keyboardAware
       right={

@@ -5,12 +5,14 @@ import type { Id } from './_generated/dataModel';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import { GROUP_LIMITS as L, addDaysToKey, cleanStepDay, utcDayKey } from '../src/groups/rules';
 import type { StepDay } from '../src/groups/types';
+import { ZERO_TOTALS, addTotals, dayTotals, diffTotals, isZeroTotals, monthOfDay, sumDelta, type MonthTotals } from '../src/clubs/rules';
+import { applyToClubs, deleteMemberMonths, memberMonthOf, pruneMemberMonths, totalsOf, writeMemberMonth } from './clubStats';
 
 /**
  * Daily activity totals for group leaderboards.
  *
  * Privacy (Apple 5.1.3): only DAILY TOTALS (steps, active minutes, active
- * kcal) — no samples, routes or health records. They're accepted only while
+ * kcal, metres run + their moving time) — no samples, routes or health records. They're accepted only while
  * the caller is in at least one group, read only by fellow members
  * (groups.leaderboard), never used for ads, and deleted when the user leaves
  * their last group (purgeIfGroupless) or deletes the account (users.ts).
@@ -40,6 +42,8 @@ export const sync = mutation({
         steps: v.number(),
         activeMin: v.number(),
         kcal: v.number(),
+        runM: v.optional(v.number()),
+        runSec: v.optional(v.number()),
       }),
     ),
   },
@@ -72,6 +76,24 @@ export const sync = mutation({
       byDay.set(d.day, d); // duplicate days: the last one wins
     }
 
+    // Month totals (clubs): a month seen for the first time starts from the
+    // days already on the server, so totals uploaded before clubs existed count.
+    const months = new Map<string, { row: Awaited<ReturnType<typeof memberMonthOf>>; base: MonthTotals; delta: MonthTotals }>();
+    for (const d of byDay.values()) {
+      const month = monthOfDay(d.day);
+      if (months.has(month)) continue;
+      const row = await memberMonthOf(ctx, userId, month);
+      let base = ZERO_TOTALS;
+      if (!row) {
+        const prior = await ctx.db
+          .query('stepDays')
+          .withIndex('by_user_day', (q) => q.eq('userId', userId).gte('day', `${month}-01`).lte('day', `${month}-31`))
+          .collect();
+        for (const r of prior) base = addTotals(base, dayTotals(r));
+      }
+      months.set(month, { row, base, delta: ZERO_TOTALS });
+    }
+
     let delta = 0;
     let written = 0;
     for (const d of byDay.values()) {
@@ -79,16 +101,45 @@ export const sync = mutation({
         .query('stepDays')
         .withIndex('by_user_day', (q) => q.eq('userId', userId).eq('day', d.day))
         .first();
+      const runM = d.runM ?? 0;
+      const runSec = d.runSec ?? 0;
+      const m = months.get(monthOfDay(d.day))!;
       if (existing) {
-        if (existing.steps === d.steps && existing.activeMin === d.activeMin && existing.kcal === d.kcal) continue;
+        if (
+          existing.steps === d.steps &&
+          existing.activeMin === d.activeMin &&
+          existing.kcal === d.kcal &&
+          (existing.runM ?? 0) === runM &&
+          (existing.runSec ?? 0) === runSec
+        ) {
+          continue;
+        }
         delta += d.steps - existing.steps;
-        await ctx.db.patch(existing._id, { steps: d.steps, activeMin: d.activeMin, kcal: d.kcal, updatedAt: now });
+        m.delta = sumDelta(m.delta, diffTotals(dayTotals(d), dayTotals(existing)));
+        await ctx.db.patch(existing._id, {
+          steps: d.steps,
+          activeMin: d.activeMin,
+          kcal: d.kcal,
+          runM: runM || undefined,
+          runSec: runSec || undefined,
+          updatedAt: now,
+        });
       } else {
         delta += d.steps;
+        m.delta = sumDelta(m.delta, dayTotals(d));
         await ctx.db.insert('stepDays', { userId, ...d, updatedAt: now });
       }
       written++;
     }
+
+    for (const [month, m] of months) {
+      const before = m.row ? totalsOf(m.row) : m.base;
+      const after = addTotals(before, m.delta);
+      if (!m.row || !isZeroTotals(m.delta)) await writeMemberMonth(ctx, userId, month, after, m.row, now);
+      // A new month row reaches the clubs in full; an existing one by its change.
+      await applyToClubs(ctx, userId, month, m.row ? diffTotals(after, before) : after, now);
+    }
+    await pruneMemberMonths(ctx, userId, now);
 
     const stats = await ctx.db
       .query('userStats')
@@ -112,7 +163,7 @@ export const sync = mutation({
   },
 });
 
-/** Every stepDays row + the userStats row for one user. Returns rows deleted. */
+/** Every stepDays row, memberMonths row and the userStats row for one user. Returns rows deleted. */
 export async function deleteStepDataFor(ctx: MutationCtx, userId: Id<'users'>): Promise<number> {
   const days = await ctx.db
     .query('stepDays')
@@ -123,7 +174,7 @@ export async function deleteStepDataFor(ctx: MutationCtx, userId: Id<'users'>): 
     .withIndex('by_user', (q) => q.eq('userId', userId))
     .collect();
   await Promise.all([...days, ...stats].map((r) => ctx.db.delete(r._id)));
-  return days.length + stats.length;
+  return days.length + stats.length + (await deleteMemberMonths(ctx, userId));
 }
 
 /** Drop the user's step data if they're no longer in any group. */

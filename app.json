@@ -107,7 +107,15 @@
           "background": false
         }
       ],
-      "./plugins/withActivityBackgroundModes"
+      "./plugins/withActivityBackgroundModes",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Kasya lets you pick a photo from your library for your running club's picture. Only the photo you choose is uploaded.",
+          "cameraPermission": "Kasya uses the camera to analyze your stride on your device. Video is never uploaded; an optional review clip stays on your phone and is deleted after review.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "extra": {
       "eas": {

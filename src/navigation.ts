@@ -55,10 +55,14 @@ export type RootStackParamList = {
   ActivityDetail: { id: string; justFinished?: boolean };
   /** Strava-style share image for one activity */
   ActivityShare: { id: string };
-  /** Groups hub: my level, my groups, create / join with code (guests get a sign-in prompt) */
-  Groups: undefined;
+  /** Groups hub: my level, Friends (groups) + Running clubs tabs, create / join with code (guests get a sign-in prompt) */
+  Groups: { tab?: 'friends' | 'clubs' } | undefined;
   /** One group's leaderboard. `name` paints the title before the load; `created` shows the invite nudge. */
   GroupDetail: { groupId: string; name?: string; created?: boolean };
+  /** A running club's page (public face, month stats, ranks, join / report). */
+  Club: { clubId: string; name?: string; created?: boolean };
+  /** Start a club (no clubId) or edit one you own. */
+  ClubEdit: { clubId?: string };
 };
 
 /**

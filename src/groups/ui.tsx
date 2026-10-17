@@ -168,7 +168,7 @@ export function PrivacyLine() {
   return (
     <View style={styles.privacy}>
       <Feather name="lock" size={14} color={colors.muted} />
-      <Text style={styles.privacyText}>Only your daily totals are shared with your group members.</Text>
+      <Text style={styles.privacyText}>Only your daily totals (steps, active minutes, run distance) are shared — with the members of your groups and clubs.</Text>
     </View>
   );
 }

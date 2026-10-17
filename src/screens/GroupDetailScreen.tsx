@@ -18,6 +18,8 @@ import {
 } from '../groups/api';
 import type { Leaderboard, LeaderboardLoad, LeaderboardMember } from '../groups/api';
 import { LevelChip, MEDAL_COLORS, Notice, PrivacyLine, RankBadge, Segmented, useTwoTap } from '../groups/ui';
+import { CLUB_LIMITS, CLUB_METRICS, METRIC_LABEL, METRIC_UNIT, metricValue, rankMembersBy, type ClubMetric } from '../clubs/rules';
+import { ClubAvatar, placeLabel } from '../clubs/ui';
 
 type Props = RootScreenProps<'GroupDetail'>;
 type Period = 'week' | 'month';
@@ -30,24 +32,29 @@ const PERIODS: { key: Period; label: string }[] = [
 
 const rangeFor = (p: Period): DayRange => (p === 'week' ? weekRange(new Date()) : monthRange(new Date()));
 
+const METRICS = CLUB_METRICS.map((k) => ({ key: k, label: METRIC_LABEL[k] }));
+
+type RankedMember = LeaderboardMember & { rank: number | null };
+
 /** 1st in the middle (tallest), 2nd left, 3rd right. */
 const PODIUM_ORDER = [1, 0, 2];
 const PEDESTAL: Record<Medal, number> = { gold: 64, silver: 44, bronze: 30 };
 
-function Podium({ top }: { top: LeaderboardMember[] }) {
+function Podium({ top, metric }: { top: RankedMember[]; metric: ClubMetric }) {
   return (
     <View style={styles.podium} accessibilityLabel="Top three">
       {PODIUM_ORDER.filter((i) => i < top.length).map((i) => {
         const m = top[i];
-        const medal = rankBadge(m.rank) as Medal;
-        const first = m.rank === 1;
+        const rank = m.rank ?? i + 1;
+        const medal = rankBadge(rank) as Medal;
+        const first = rank === 1;
         return (
           <View key={m.userId} style={styles.podiumCol}>
-            <RankBadge rank={m.rank} medal={medal} size={first ? 100 : 80} />
+            <RankBadge rank={rank} medal={medal} size={first ? 100 : 80} />
             <Text style={[styles.podiumName, m.isMe && { color: colors.accentInk }]} numberOfLines={1}>
               {m.isMe ? 'You' : m.displayName}
             </Text>
-            <Text style={styles.podiumSteps}>{formatCount(m.steps)}</Text>
+            <Text style={styles.podiumSteps}>{metricValue(metric, m)}</Text>
             <View style={{ marginTop: spacing.xs }}>
               <LevelChip level={levelForSteps(m.lifetimeSteps).level} />
             </View>
@@ -64,24 +71,33 @@ function Podium({ top }: { top: LeaderboardMember[] }) {
 
 function MemberRow({
   m,
+  metric,
   canRemove,
   armed,
   onRemove,
 }: {
-  m: LeaderboardMember;
+  m: RankedMember;
+  metric: ClubMetric;
   canRemove: boolean;
   armed: boolean;
   onRemove: () => void;
 }) {
   const level = levelForSteps(m.lifetimeSteps).level;
   const name = m.isMe ? `${m.displayName} (you)` : m.displayName;
+  const value = metricValue(metric, m);
   return (
     <View
       style={[styles.row, m.isMe && styles.rowMe]}
       accessible={!canRemove}
-      accessibilityLabel={`Rank ${m.rank}, ${name}, level ${level}, ${formatCount(m.steps)} steps, ${m.activeMin} active minutes`}
+      accessibilityLabel={`${m.rank === null ? 'Not ranked on pace yet' : `Rank ${m.rank}`}, ${name}, level ${level}, ${value} ${METRIC_UNIT[metric]}, ${m.activeMin} active minutes`}
     >
-      <RankBadge rank={m.rank} medal={rankBadge(m.rank)} size={42} />
+      {m.rank === null ? (
+        <View style={styles.rankSlot}>
+          <Text style={styles.rankDash}>–</Text>
+        </View>
+      ) : (
+        <RankBadge rank={m.rank} medal={rankBadge(m.rank)} size={42} />
+      )}
       <View style={{ flex: 1, marginHorizontal: spacing.md }}>
         <View style={styles.rowNameLine}>
           <Text style={styles.rowName} numberOfLines={1}>
@@ -95,8 +111,8 @@ function MemberRow({
         {armed ? <Text style={styles.armed}>Tap again to remove {m.displayName}</Text> : null}
       </View>
       <View style={{ alignItems: 'flex-end' }}>
-        <Text style={styles.rowSteps}>{formatCount(m.steps)}</Text>
-        <Text style={styles.rowStepsUnit}>steps</Text>
+        <Text style={styles.rowSteps}>{value}</Text>
+        <Text style={styles.rowStepsUnit}>{METRIC_UNIT[metric]}</Text>
       </View>
       {canRemove ? (
         <Pressable
@@ -116,6 +132,7 @@ function MemberRow({
 export default function GroupDetailScreen({ navigation, route }: Props) {
   const { groupId, created } = route.params;
   const [period, setPeriod] = useState<Period>('week');
+  const [metric, setMetric] = useState<ClubMetric>('steps');
   const [phase, setPhase] = useState<Phase>('loading');
   const [message, setMessage] = useState('');
   const [board, setBoard] = useState<Leaderboard | null>(null);
@@ -167,17 +184,20 @@ export default function GroupDetailScreen({ navigation, route }: Props) {
   }
 
   const group = board?.group;
-  const title = group?.name ?? route.params.name ?? 'Group';
+  const title = group?.name ?? route.params.name ?? 'Leaderboard';
   const members = board?.members ?? [];
+  const ranked: RankedMember[] = rankMembersBy(members, metric);
   const me = members.find((m) => m.isMe);
   const isOwner = !!group?.isOwner;
+  const isClubBoard = group?.kind === 'club';
+  const noun = isClubBoard ? 'club' : 'group';
   const range = rangeFor(period);
   const onlyMe = members.length <= 1;
-  const anySteps = members.some((m) => m.steps > 0);
+  const podium = ranked.filter((m) => m.rank !== null && (metric === 'steps' ? m.steps > 0 : m.runM > 0)).slice(0, 3);
 
   async function onInvite() {
     if (!group) return;
-    const invite = `Join my Kasya group '${group.name}' — code ${group.code}. Open Kasya, go to Groups and tap Join with code.`;
+    const invite = `Join my Kasya ${noun} '${group.name}' — code ${group.code}. Open Kasya, go to Groups and tap Join with code.`;
     try {
       await Share.share({ message: invite });
     } catch {
@@ -232,7 +252,7 @@ export default function GroupDetailScreen({ navigation, route }: Props) {
   const leaveHint = isOwner
     ? heir
       ? `Tap again to leave — ${heir.displayName} becomes the owner.`
-      : 'Tap again to leave — you’re the only member, so the group will be deleted.'
+      : `Tap again to leave — you’re the only member, so the ${noun} will be deleted.`
     : 'Tap again to leave. Your steps stop showing here.';
 
   let body;
@@ -280,6 +300,30 @@ export default function GroupDetailScreen({ navigation, route }: Props) {
       <>
         {notice ? <Notice ok={notice.ok} text={notice.text} /> : null}
 
+        {isClubBoard ? (
+          <Pressable
+            onPress={() => navigation.navigate('Club', { clubId: group.id, name: group.name })}
+            accessibilityRole="button"
+            accessibilityLabel={`${group.name} club page`}
+            style={styles.clubLink}
+          >
+            <ClubAvatar photoUrl={group.photoUrl} emblem={group.emblem} size={40} />
+            <View style={{ flex: 1, marginLeft: spacing.md }}>
+              <Text style={styles.rowName} numberOfLines={1}>
+                Club page
+              </Text>
+              <Text style={styles.rowMeta} numberOfLines={1}>
+                {placeLabel(group.country, group.city)} · rankings, stats and goal
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={18} color={colors.muted} />
+          </Pressable>
+        ) : null}
+
+        <View style={{ marginBottom: spacing.xl }}>
+          <Segmented options={METRICS} value={metric} onChange={setMetric} />
+        </View>
+
         {onlyMe ? (
           <Card>
             <View style={{ alignItems: 'center' }}>
@@ -294,13 +338,17 @@ export default function GroupDetailScreen({ navigation, route }: Props) {
               </Text>
             </View>
           </Card>
-        ) : anySteps ? (
-          <Podium top={members.slice(0, 3)} />
+        ) : podium.length ? (
+          <Podium top={podium} metric={metric} />
         ) : (
           <Card>
-            <Text style={T.title}>No steps yet {period === 'week' ? 'this week' : 'this month'}</Text>
+            <Text style={T.title}>
+              {metric === 'steps' ? 'No steps yet' : 'No runs yet'} {period === 'week' ? 'this week' : 'this month'}
+            </Text>
             <Text style={[T.bodyMuted, { marginTop: spacing.xs }]}>
-              The first one to get moving takes gold.
+              {metric === 'pace'
+                ? 'Pace ranks members who ran 5 km or more — first to get there takes gold.'
+                : 'The first one to get moving takes gold.'}
             </Text>
           </Card>
         )}
@@ -309,10 +357,11 @@ export default function GroupDetailScreen({ navigation, route }: Props) {
           <Label>Leaderboard</Label>
           <Text style={T.small}>{formatRange(range)}</Text>
         </View>
-        {members.map((m) => (
+        {ranked.map((m) => (
           <MemberRow
             key={m.userId}
             m={m}
+            metric={metric}
             canRemove={isOwner && !m.isMe}
             armed={armed === `remove:${m.userId}`}
             onRemove={() => onRemove(m)}
@@ -329,17 +378,28 @@ export default function GroupDetailScreen({ navigation, route }: Props) {
               {group.code}
             </Text>
             <Text style={[T.small, { flex: 1, marginLeft: spacing.md }]}>
-              {group.memberCount}/{GROUP_LIMITS.maxMembersPerGroup} members
+              {group.memberCount}/{isClubBoard ? CLUB_LIMITS.maxMembersPerClub : GROUP_LIMITS.maxMembersPerGroup} members
             </Text>
           </View>
-          <Button label="Invite friends" variant="accent" icon="share" onPress={onInvite} />
+          <Button label={isClubBoard ? 'Invite runners' : 'Invite friends'} variant="accent" icon="share" onPress={onInvite} />
           <PrivacyLine />
         </Card>
 
         {isOwner ? (
           <Card style={{ marginTop: spacing.lg }}>
-            <Label>Manage group</Label>
-            {renameText === null ? (
+            <Label>Manage {noun}</Label>
+            {isClubBoard ? (
+              <Pressable
+                onPress={() => navigation.navigate('ClubEdit', { clubId: group.id })}
+                accessibilityRole="button"
+                accessibilityLabel="Edit club page"
+                style={styles.actionRow}
+              >
+                <Feather name="edit-2" size={18} color={colors.ink} />
+                <Text style={styles.actionLabel}>Edit club page</Text>
+                <Feather name="chevron-right" size={18} color={colors.muted} />
+              </Pressable>
+            ) : renameText === null ? (
               <Pressable
                 onPress={() => {
                   setRenameText(group.name);
@@ -379,12 +439,12 @@ export default function GroupDetailScreen({ navigation, route }: Props) {
             <Pressable
               onPress={onDelete}
               accessibilityRole="button"
-              accessibilityLabel={armed === 'delete' ? 'Confirm deleting the group' : 'Delete group'}
+              accessibilityLabel={armed === 'delete' ? `Confirm deleting the ${noun}` : `Delete ${noun}`}
               style={styles.actionRow}
             >
               <Feather name="trash-2" size={18} color={colors.danger} />
               <Text style={[styles.actionLabel, { color: colors.danger }]}>
-                {armed === 'delete' ? 'Tap again to delete for everyone' : 'Delete group'}
+                {armed === 'delete' ? 'Tap again to delete for everyone' : `Delete ${noun}`}
               </Text>
               {busy === 'delete' ? <ActivityIndicator color={colors.danger} /> : null}
             </Pressable>
@@ -394,12 +454,12 @@ export default function GroupDetailScreen({ navigation, route }: Props) {
         <Pressable
           onPress={onLeave}
           accessibilityRole="button"
-          accessibilityLabel={armed === 'leave' ? 'Confirm leaving the group' : 'Leave group'}
+          accessibilityLabel={armed === 'leave' ? `Confirm leaving the ${noun}` : `Leave ${noun}`}
           style={[styles.actionRow, styles.leaveRow]}
         >
           <Feather name="log-out" size={18} color={colors.danger} />
           <Text style={[styles.actionLabel, { color: colors.danger }]}>
-            {armed === 'leave' ? leaveHint : 'Leave group'}
+            {armed === 'leave' ? leaveHint : `Leave ${noun}`}
           </Text>
           {busy === 'leave' ? <ActivityIndicator color={colors.danger} /> : null}
         </Pressable>
@@ -489,6 +549,18 @@ const styles = StyleSheet.create({
   rowSteps: { fontFamily: fonts.extra, fontSize: 16, color: colors.ink },
   rowStepsUnit: { fontFamily: fonts.regular, fontSize: 11, color: colors.muted },
   armed: { fontFamily: fonts.semibold, fontSize: 12, color: colors.danger, marginTop: 4 },
+  rankSlot: { width: 36, alignItems: 'center' },
+  rankDash: { fontFamily: fonts.bold, fontSize: 16, color: colors.muted },
+  clubLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+  },
   removeBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', marginLeft: spacing.sm },
   codeRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.md, marginBottom: spacing.lg },
   code: { fontFamily: fonts.extra, fontSize: 28, letterSpacing: 4, color: colors.accentInk },

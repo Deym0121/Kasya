@@ -5,4 +5,8 @@ export interface StepDay {
   steps: number;
   activeMin: number;
   kcal: number;
+  /** metres run that day (Kasya-recorded + Apple Health runs); omitted = 0 */
+  runM?: number;
+  /** moving seconds of those runs (pace = runSec / runM) */
+  runSec?: number;
 }

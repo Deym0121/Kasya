@@ -1,4 +1,5 @@
 import type { StepDay } from './types';
+import { cleanRunDay } from '../clubs/runDay';
 
 /**
  * Groups + leaderboards — pure rules shared by the Convex functions
@@ -125,7 +126,13 @@ export function cleanStepDay(d: Partial<StepDay> | null | undefined): StepDay | 
   if (!inRange(d.steps, STEP_LIMITS.steps)) return null;
   if (!inRange(d.activeMin, STEP_LIMITS.activeMin)) return null;
   if (!inRange(d.kcal, STEP_LIMITS.kcal)) return null;
-  return { day: d.day, steps: Math.round(d.steps), activeMin: Math.round(d.activeMin), kcal: Math.round(d.kcal) };
+  const out: StepDay = { day: d.day, steps: Math.round(d.steps), activeMin: Math.round(d.activeMin), kcal: Math.round(d.kcal) };
+  const run = cleanRunDay(d.runM, d.runSec);
+  if (run.runM > 0) {
+    out.runM = run.runM;
+    out.runSec = run.runSec;
+  }
+  return out;
 }
 
 /**
