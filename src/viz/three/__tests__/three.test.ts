@@ -178,3 +178,43 @@ describe('composeFrame', () => {
     expect(times[Math.floor(times.length / 2)]).toBeLessThan(33);
   });
 });
+
+describe('arms', () => {
+  it('swing opposite the legs with a bent elbow in the demo run', () => {
+    const { replay, stage } = clip(1, 'run');
+    // over a stride the elbow drives back behind the shoulder and the hand comes forward
+    let minRel = Infinity;
+    let maxRel = -Infinity;
+    let minElbow = Infinity;
+    let bentFrames = 0;
+    for (let i = 0; i < 30; i++) {
+      const rig = buildRig(poseAt(replay, replay[i].t), stage, 'male');
+      const a = rig.limbs.l;
+      const rel = (a.wrist.x - a.shoulder.x) * stage.facing;
+      minElbow = Math.min(minElbow, (a.elbow.x - a.shoulder.x) * stage.facing);
+      minRel = Math.min(minRel, rel);
+      maxRel = Math.max(maxRel, rel);
+      const u = { x: a.elbow.x - a.shoulder.x, y: a.elbow.y - a.shoulder.y };
+      const f = { x: a.wrist.x - a.elbow.x, y: a.wrist.y - a.elbow.y };
+      const cos = (u.x * f.x + u.y * f.y) / (Math.hypot(u.x, u.y) * Math.hypot(f.x, f.y));
+      if (cos < Math.cos((50 * Math.PI) / 180)) bentFrames++;
+    }
+    expect(maxRel - minRel).toBeGreaterThan(0.06);
+    expect(minElbow).toBeLessThan(-0.02);
+    expect(bentFrames).toBeGreaterThan(25); // running arms stay bent
+  });
+
+  it('gives a lost arm a natural bent swing instead of hanging straight', () => {
+    const { replay, stage } = clip();
+    const L = poseAt(replay, replay[8].t).map((p, i) => (i >= 13 && i <= 22 ? { x: 0, y: 0, visibility: 0 } : p));
+    const rig = buildRig(L, stage, 'male');
+    for (const s of ['r', 'l'] as const) {
+      const a = rig.limbs[s];
+      const u = { x: a.elbow.x - a.shoulder.x, y: a.elbow.y - a.shoulder.y };
+      const f = { x: a.wrist.x - a.elbow.x, y: a.wrist.y - a.elbow.y };
+      const cos = (u.x * f.x + u.y * f.y) / (Math.hypot(u.x, u.y) * Math.hypot(f.x, f.y));
+      expect(cos).toBeLessThan(0.95); // bent, not a straight hanging arm
+      expect(a.wrist.y).toBeLessThan(a.shoulder.y);
+    }
+  });
+});

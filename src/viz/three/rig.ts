@@ -217,8 +217,18 @@ export function buildRig(L: Landmark[], stage: Stage, body: Body = 'male'): Rig 
     const zs = side === nearSide ? 1 : -1;
     const keepZ = (p: V3 | null, z: number) => (p ? v3(p.x, p.y, zs * z) : null);
     const down = v3(0, -1, 0);
-    const elbow = keepZ(j.elbow, lat.elbow) ?? madd3(sh, down, 0.17);
-    const wrist = keepZ(j.wrist, lat.wrist) ?? madd3(elbow, norm3(sub3(elbow, sh), down), 0.15);
+    // Arms the tracker lost still swing naturally: opposite to this side's thigh,
+    // elbow softly bent — a hanging, motionless arm reads as a glitch.
+    const kneeSeen = keepZ(j.knee, lat.knee);
+    const thigh = kneeSeen ? Math.atan2((kneeSeen.x - hip.x) * facing, hip.y - kneeSeen.y) : 0;
+    const swing = Math.max(-0.6, Math.min(0.6, -0.9 * thigh));
+    const upperDir = v3(facing * Math.sin(swing), -Math.cos(swing), 0);
+    const elbow = keepZ(j.elbow, lat.elbow) ?? madd3(sh, upperDir, 0.17);
+    // forearm: the upper arm's angle from straight down, plus ~45° of elbow bend forward
+    const upper = norm3(sub3(elbow, sh), down);
+    const foreAngle = Math.atan2(upper.x * facing, -upper.y) + 0.75;
+    const foreDir = v3(facing * Math.sin(foreAngle), -Math.cos(foreAngle), 0);
+    const wrist = keepZ(j.wrist, lat.wrist) ?? madd3(elbow, foreDir, 0.14);
     const knuckles = j.index && j.pinky ? lerp3(j.index, j.pinky, 0.5) : (j.index ?? j.pinky);
     const handDir = knuckles ? norm3(sub3(knuckles, wrist), norm3(sub3(wrist, elbow))) : norm3(sub3(wrist, elbow), down);
     const hand = madd3(wrist, handDir, 0.055);

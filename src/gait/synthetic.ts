@@ -13,6 +13,12 @@ interface GaitKinematics {
   /** hip vertical bounce amplitude (normalized units) and the stride phase of its lowest point */
   bounce: number;
   bounceLowPhase: number;
+  /**
+   * Arm swing: the shoulder follows the OPPOSITE hip (gain × its angle + offset,
+   * degrees forward of vertical); the elbow is bent `elbow` degrees, `elbowFwd`
+   * more as the arm comes forward.
+   */
+  arm: { gain: number; offset: number; elbow: number; elbowFwd: number };
 }
 
 /**
@@ -29,6 +35,8 @@ const WALK: GaitKinematics = {
   bounce: 0.012,
   // lowest in double support, highest over the planted foot
   bounceLowPhase: 0.05,
+  // relaxed swing, elbows softly bent
+  arm: { gain: 0.65, offset: -2, elbow: 20, elbowFwd: 18 },
 };
 
 const RUN: GaitKinematics = {
@@ -38,6 +46,8 @@ const RUN: GaitKinematics = {
   bounce: 0.025,
   // lowest at mid-stance, highest in flight
   bounceLowPhase: 0.18,
+  // driving swing with the elbow held near 90°
+  arm: { gain: 1.45, offset: 0, elbow: 68, elbowFwd: 26 },
 };
 
 /** Smooth periodic (cubic Hermite) interpolation of a stride curve at `phase`. */
@@ -152,10 +162,28 @@ export function makeSyntheticWalk(opts: SyntheticWalkOptions = {}): PoseFrame[] 
     put(LANDMARK.RIGHT_HIP, hipX, hipY, 0.03);
     put(11, shX, shY, -0.03); // L shoulder
     put(12, shX, shY, 0.03); // R shoulder
-    put(13, shX + dir * 0.06 * R.swing, shY + 0.12, -0.04); // L elbow (swings with the right leg)
-    put(15, shX + dir * 0.1 * R.swing, shY + 0.22, -0.04); // L wrist
-    put(14, shX + dir * 0.06 * L.swing, shY + 0.12, 0.04); // R elbow
-    put(16, shX + dir * 0.1 * L.swing, shY + 0.22, 0.04); // R wrist
+    // Each arm follows the opposite leg's hip angle, elbow bent (more when running).
+    const upperArm = 0.144;
+    const forearm = 0.113;
+    const arm = (contraPhase: number, ids: { elbow: number; wrist: number; pinky: number; index: number; thumb: number }, z: number) => {
+      const sh = kin.arm.gain * sampleCurve(kin.hip, contraPhase) + kin.arm.offset;
+      const fwd = Math.max(0, Math.min(1, sh / 30));
+      const tu = rad(sh);
+      const tf = rad(sh + kin.arm.elbow + kin.arm.elbowFwd * fwd);
+      const ex = shX + dir * upperArm * Math.sin(tu);
+      const ey = shY + upperArm * Math.cos(tu);
+      const wx = ex + dir * forearm * Math.sin(tf);
+      const wy = ey + forearm * Math.cos(tf);
+      const hx = dir * 0.05 * Math.sin(tf);
+      const hy = 0.05 * Math.cos(tf);
+      put(ids.elbow, ex, ey, z);
+      put(ids.wrist, wx, wy, z);
+      put(ids.index, wx + hx, wy + hy - 0.006, z);
+      put(ids.pinky, wx + hx * 0.85, wy + hy * 0.85 + 0.006, z);
+      put(ids.thumb, wx + hx * 0.6, wy + hy * 0.6 - 0.01, z);
+    };
+    arm(phaseR, { elbow: 13, wrist: 15, pinky: 17, index: 19, thumb: 21 }, -0.04); // L arm swings with the right leg
+    arm(phaseL, { elbow: 14, wrist: 16, pinky: 18, index: 20, thumb: 22 }, 0.04); // R arm with the left leg
     // Head faces the direction of travel: nose ahead of the ears.
     put(0, shX + dir * 0.035, shY - 0.1);
     put(2, shX + dir * 0.028, shY - 0.11, -0.01); // L eye
