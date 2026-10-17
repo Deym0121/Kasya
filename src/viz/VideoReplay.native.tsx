@@ -3,13 +3,14 @@
 // Ephemeral video review on a DEVICE: plays the opt-in temp clip with the tracked
 // skeleton drawn on top (react-native-svg), synced to playback. The Review screen
 // deletes the temp file when it unmounts. Needs the dev build to verify.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useEventListener } from 'expo';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import Svg, { Line as SvgLine, Circle } from 'react-native-svg';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, fonts, radius } from '../theme';
+import { isValid, poseAt, prepareReplay } from './motion';
 
 const LINES = [
   [11, 12], [11, 13], [13, 15], [12, 14], [14, 16],
@@ -17,7 +18,6 @@ const LINES = [
   [23, 25], [25, 27], [27, 29], [29, 31], [27, 31],
   [24, 26], [26, 28], [28, 30], [30, 32], [28, 32],
 ];
-const valid = (p) => p && (p.visibility ?? 1) > 0.2 && !(p.x === 0 && p.y === 0);
 const SPEEDS = [0.25, 0.5, 1];
 
 export function VideoReplay({ videoUri, frames, height = 340 }) {
@@ -26,7 +26,7 @@ export function VideoReplay({ videoUri, frames, height = 340 }) {
     p.muted = true;
     p.play();
   });
-  const [idx, setIdx] = useState(0);
+  const [clock, setClock] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(1);
   // Natural video size + measured stage box, so the overlay can match the
@@ -34,25 +34,32 @@ export function VideoReplay({ videoUri, frames, height = 340 }) {
   const [videoSize, setVideoSize] = useState(null);
   const [stage, setStage] = useState(null);
   const t0 = frames && frames.length ? frames[0].t : 0;
-  const timer = useRef(null);
+  const raf = useRef(0);
+  // Cleaned for drawing (bridged dropouts, de-jittered) and blended between
+  // captured frames so the skeleton tracks the video between pose samples.
+  const replay = useMemo(() => prepareReplay(frames ?? []), [frames]);
 
   useEventListener(player, 'sourceLoad', ({ availableVideoTracks }) => {
     const size = availableVideoTracks?.[0]?.size;
     if (size && size.width > 0 && size.height > 0) setVideoSize(size);
   });
 
+  // Follow the player every display frame (was a 60ms poll → visible lag).
   useEffect(() => {
-    timer.current = setInterval(() => {
-      if (!frames || !frames.length) return;
-      const target = t0 + (player.currentTime || 0) * 1000;
-      let i = 0;
-      while (i < frames.length - 1 && frames[i + 1].t <= target) i++;
-      setIdx(i);
-    }, 60);
-    return () => clearInterval(timer.current);
-  }, [player, frames, t0]);
+    let mounted = true;
+    const loop = () => {
+      if (!mounted) return;
+      setClock(player.currentTime || 0);
+      raf.current = requestAnimationFrame(loop);
+    };
+    raf.current = requestAnimationFrame(loop);
+    return () => {
+      mounted = false;
+      cancelAnimationFrame(raf.current);
+    };
+  }, [player]);
 
-  const f = frames && frames.length ? frames[Math.min(idx, frames.length - 1)] : null;
+  const f = replay.length ? { landmarks: poseAt(replay, t0 + clock * 1000) } : null;
   const toggle = () => {
     if (player.playing) {
       player.pause();
@@ -93,7 +100,7 @@ export function VideoReplay({ videoUri, frames, height = 340 }) {
         >
           {f &&
             LINES.map(([a, b], k) =>
-              valid(f.landmarks[a]) && valid(f.landmarks[b]) ? (
+              isValid(f.landmarks[a]) && isValid(f.landmarks[b]) ? (
                 <SvgLine
                   key={`l${k}`}
                   x1={f.landmarks[a].x * sy}
@@ -108,7 +115,7 @@ export function VideoReplay({ videoUri, frames, height = 340 }) {
             )}
           {f &&
             f.landmarks.map((p, k) =>
-              valid(p) ? <Circle key={`p${k}`} cx={p.x * sy} cy={p.y * sy} r={0.013 * sx} fill="#FF3B30" /> : null,
+              isValid(p) ? <Circle key={`p${k}`} cx={p.x * sy} cy={p.y * sy} r={0.013 * sx} fill="#FF3B30" /> : null,
             )}
         </Svg>
       </View>

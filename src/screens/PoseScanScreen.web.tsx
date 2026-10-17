@@ -13,6 +13,7 @@ import { Button } from '../components';
 import { toPoseFrame, analyzeGait, assessFrontalQuality } from '../gait';
 import { BODY_GUIDE, BODY_GUIDE_VIEWBOX } from '../viz/bodyGuide';
 import { setPendingVideo, clearPendingVideo } from '../viz/videoHolder';
+import { LiveLandmarkFilter } from '../viz/motion';
 import { REAR_GUIDE_STEPS } from './CameraGuideScreen';
 
 const WASM = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm';
@@ -78,6 +79,8 @@ export default function PoseScanScreen({ navigation, route }) {
   const capturingRef = useRef(false);
   const startRef = useRef(0);
   const detectedRef = useRef(false);
+  // Steadies the on-screen skeleton only; capture keeps the raw landmarks.
+  const liveFilter = useRef(new LiveLandmarkFilter());
   // Side frames captured this session (for chaining the rear pass in-screen), or
   // handed in via navigation when this screen was opened directly for the rear view.
   const sideFramesRef = useRef(route.params.sideFrames || null);
@@ -171,13 +174,15 @@ export default function PoseScanScreen({ navigation, route }) {
         detectedRef.current = has;
         setDetected(has);
       }
+      if (!pts) liveFilter.current.reset();
       if (pts) {
+        const shown = liveFilter.current.apply(pts, performance.now());
         ctx.strokeStyle = '#39FF14';
         ctx.lineWidth = 5;
         ctx.lineCap = 'round';
         for (const [a, b] of LINES) {
-          const pa = pts[a];
-          const pb = pts[b];
+          const pa = shown[a];
+          const pb = shown[b];
           if (pa && pb) {
             ctx.beginPath();
             ctx.moveTo(pa.x * c.width, pa.y * c.height);
@@ -186,7 +191,7 @@ export default function PoseScanScreen({ navigation, route }) {
           }
         }
         ctx.fillStyle = '#FF3B30';
-        for (const p of pts) {
+        for (const p of shown) {
           ctx.beginPath();
           ctx.arc(p.x * c.width, p.y * c.height, 5, 0, 6.2832);
           ctx.fill();

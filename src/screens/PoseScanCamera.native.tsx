@@ -18,6 +18,7 @@ import { colors, spacing, fonts, radius } from '../theme';
 import { Button } from '../components';
 import { toPoseFrame, analyzeGait } from '../gait';
 import { BODY_GUIDE, BODY_GUIDE_VIEWBOX } from '../viz/bodyGuide';
+import { LiveLandmarkFilter } from '../viz/motion';
 import { setPendingVideo, clearPendingVideo } from '../viz/videoHolder';
 
 // VisionCamera hands back a bare filesystem path; expo-file-system (and the
@@ -72,6 +73,8 @@ export default function PoseScanCamera({ navigation, route }) {
   const [size, setSize] = useState({ w: 1, h: 1 });
   const sizeRef = useRef({ w: 1, h: 1 });
   const [landmarks, setLandmarks] = useState(null);
+  // Steadies the on-screen skeleton only; capture keeps the raw landmarks.
+  const liveFilter = useRef(new LiveLandmarkFilter());
   const [recording, setRecording] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(CAPTURE_MS / 1000); // capture countdown, UI only
   const [retry, setRetry] = useState('');
@@ -183,6 +186,7 @@ export default function PoseScanCamera({ navigation, route }) {
     if (!lm) {
       // Body left the frame — drop the skeleton instead of freezing the last pose.
       lastPoseAt.current = 0;
+      liveFilter.current.reset();
       setLandmarks(null);
       return;
     }
@@ -235,7 +239,7 @@ export default function PoseScanCamera({ navigation, route }) {
       }
     } catch {}
     lastPoseAt.current = Date.now();
-    setLandmarks(draw);
+    setLandmarks(liveFilter.current.apply(draw, Date.now()));
     setEngineNote(analysis ? null : 'skeleton mapping unavailable on this device');
     // No valid mapping → skip the frame rather than mixing coordinate spaces
     // inside one capture; an empty capture fails the quality gate honestly.

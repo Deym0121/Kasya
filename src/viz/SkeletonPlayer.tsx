@@ -6,6 +6,7 @@ import { colors, spacing, fonts, radius } from '../theme';
 import { LANDMARK } from '../gait/types';
 import type { PoseFrame } from '../gait/types';
 import { skeletonViewBoxAttr } from './skeletonFrame';
+import { isValid, poseAt, prepareReplay } from './motion';
 
 const LEFT_TONE = '#1D9E75'; // teal — left leg
 const RIGHT_TONE = colors.accent; // brand orange — right leg (matches LeftRightCompare legend)
@@ -19,11 +20,10 @@ const BONES = [
 ];
 const SPEEDS = [0.25, 0.5, 1];
 
-// Dropped landmarks are stored as {x:0,y:0,visibility:0} — never draw those.
-const valid = (p: any) => p && (p.visibility ?? 1) > 0.2 && !(p.x === 0 && p.y === 0);
 
 /**
- * Slow-mo replay of the captured skeleton, reconstructed from saved landmarks.
+ * Slow-mo replay of the captured skeleton, reconstructed from saved landmarks —
+ * cleaned for drawing and blended between frames (motion.ts) so it moves smoothly.
  * `alignment` overlays a straight hip→ankle line down each leg (left teal, right
  * orange) — the rear-view "how each leg tracks" line, honest (not pronation).
  */
@@ -37,7 +37,10 @@ export function SkeletonPlayer({
   alignment?: boolean;
 }) {
   const n = frames?.length ?? 0;
-  const [idx, setIdx] = useState(0);
+  const replay = useMemo(() => prepareReplay(frames), [frames]);
+  const t0 = n ? frames[0].t : 0;
+  const total = n > 1 ? Math.max(1, frames[n - 1].t - t0) : 1;
+  const [elapsed, setElapsed] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(0.5);
   const raf = useRef(0);
@@ -47,7 +50,6 @@ export function SkeletonPlayer({
     if (!playing || n < 2) return;
     let mounted = true;
     let prev = 0;
-    const total = Math.max(1, frames[n - 1].t - frames[0].t);
     const loop = (ts: number) => {
       if (!mounted) return;
       if (!prev) prev = ts;
@@ -55,10 +57,7 @@ export function SkeletonPlayer({
       prev = ts;
       tRef.current += dt * speed;
       if (tRef.current > total) tRef.current = 0;
-      const target = frames[0].t + tRef.current;
-      let i = 0;
-      while (i < n - 1 && frames[i + 1].t <= target) i++;
-      setIdx(i);
+      setElapsed(tRef.current);
       raf.current = requestAnimationFrame(loop);
     };
     raf.current = requestAnimationFrame(loop);
@@ -66,7 +65,7 @@ export function SkeletonPlayer({
       mounted = false;
       cancelAnimationFrame(raf.current);
     };
-  }, [playing, speed, n, frames]);
+  }, [playing, speed, n, total]);
 
   // Centre the replay on where the body moved (see skeletonFrame.ts).
   const viewBox = useMemo(() => skeletonViewBoxAttr(frames), [frames]);
@@ -79,8 +78,8 @@ export function SkeletonPlayer({
     );
   }
 
-  const f = frames[Math.min(idx, n - 1)];
-  const progress = n > 1 ? idx / (n - 1) : 0;
+  const f = { landmarks: poseAt(replay, t0 + elapsed) };
+  const progress = Math.min(1, elapsed / total);
 
   return (
     <View>
@@ -89,7 +88,7 @@ export function SkeletonPlayer({
           {BONES.map(([a, b], k) => {
             const pa = f.landmarks[a];
             const pb = f.landmarks[b];
-            if (!valid(pa) || !valid(pb)) return null;
+            if (!isValid(pa) || !isValid(pb)) return null;
             return (
               <SvgLine
                 key={`b${k}`}
@@ -104,7 +103,7 @@ export function SkeletonPlayer({
             );
           })}
           {f.landmarks.map((p, k) =>
-            valid(p) ? <Circle key={`p${k}`} cx={p.x} cy={p.y} r={0.013} fill="#FF3B30" /> : null,
+            isValid(p) ? <Circle key={`p${k}`} cx={p.x} cy={p.y} r={0.013} fill="#FF3B30" /> : null,
           )}
           {alignment
             ? ([
@@ -113,7 +112,7 @@ export function SkeletonPlayer({
               ] as const).map(([hip, ankle, tone], i) => {
                 const h = f.landmarks[hip];
                 const a = f.landmarks[ankle];
-                if (!valid(h) || !valid(a)) return null;
+                if (!isValid(h) || !isValid(a)) return null;
                 return (
                   <SvgLine
                     key={`al${i}`}

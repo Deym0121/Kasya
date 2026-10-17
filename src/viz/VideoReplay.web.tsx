@@ -4,10 +4,11 @@
 // (an in-memory object URL — never saved, never uploaded) with the tracked
 // skeleton drawn on top, synced to playback. The Review screen deletes the clip
 // when it unmounts.
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { colors, spacing, fonts, radius } from '../theme';
+import { isValid, poseAt, prepareReplay } from './motion';
 
 const LINES = [
   [11, 12], [11, 13], [13, 15], [12, 14], [14, 16],
@@ -27,6 +28,9 @@ export function VideoReplay({ videoUri, frames, height = 340 }) {
   const [speed, setSpeed] = useState(1);
 
   const t0 = frames && frames.length ? frames[0].t : 0;
+  // Cleaned for drawing (bridged dropouts, de-jittered) and blended between
+  // captured frames so the skeleton tracks the video between pose samples.
+  const replay = useMemo(() => prepareReplay(frames ?? []), [frames]);
 
   const draw = useCallback(() => {
     const v = videoRef.current;
@@ -42,17 +46,14 @@ export function VideoReplay({ videoUri, frames, height = 340 }) {
         // Saved analysis frames are isotropic — BOTH axes in units of the
         // frame's HEIGHT (PoseScanScreen.web, like native) — so both scale by
         // the video height to land in frame px.
-        const target = t0 + v.currentTime * 1000;
-        let i = 0;
-        while (i < frames.length - 1 && frames[i + 1].t <= target) i++;
-        const pts = frames[i].landmarks;
+        const pts = poseAt(replay, t0 + v.currentTime * 1000);
         ctx.strokeStyle = '#39FF14';
         ctx.lineWidth = Math.max(2, c.width * 0.006);
         ctx.lineCap = 'round';
         for (const [a, b] of LINES) {
           const pa = pts[a];
           const pb = pts[b];
-          if (pa && pb && !(pa.x === 0 && pa.y === 0) && !(pb.x === 0 && pb.y === 0)) {
+          if (isValid(pa) && isValid(pb)) {
             ctx.beginPath();
             ctx.moveTo(pa.x * c.height, pa.y * c.height);
             ctx.lineTo(pb.x * c.height, pb.y * c.height);
@@ -62,7 +63,7 @@ export function VideoReplay({ videoUri, frames, height = 340 }) {
         ctx.fillStyle = '#FF3B30';
         const r = Math.max(2, c.width * 0.006);
         for (const p of pts) {
-          if (p && !(p.x === 0 && p.y === 0) && (p.visibility ?? 1) > 0.2) {
+          if (isValid(p)) {
             ctx.beginPath();
             ctx.arc(p.x * c.height, p.y * c.height, r, 0, 6.2832);
             ctx.fill();
@@ -71,7 +72,7 @@ export function VideoReplay({ videoUri, frames, height = 340 }) {
       }
     }
     rafRef.current = requestAnimationFrame(draw);
-  }, [frames, t0]);
+  }, [frames, replay, t0]);
 
   useEffect(() => {
     rafRef.current = requestAnimationFrame(draw);
