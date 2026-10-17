@@ -1,6 +1,8 @@
 import { mutation, query } from './_generated/server';
 import { getAuthUserId } from '@convex-dev/auth/server';
 import { internal } from './_generated/api';
+import { detachMember, joinRateKey } from './groups';
+import { deleteStepDataFor } from './steps';
 
 /** The signed-in user's identity for the app shell (null when signed out). */
 export const me = query({
@@ -17,7 +19,8 @@ export const me = query({
 /**
  * Full in-app account deletion (App Review guideline 5.1.1(v)): removes the
  * user's reports, quota rows, entitlement links, race submissions/reports,
- * every auth record (accounts,
+ * group memberships (owned groups pass to the earliest-joined member, or are
+ * deleted when empty), daily step totals + lifetime stats, every auth record (accounts,
  * sessions, refresh tokens, verification codes) and the user itself.
  */
 export const deleteAccount = mutation({
@@ -51,6 +54,21 @@ export const deleteAccount = mutation({
     await Promise.all(
       [...reports, ...usage, ...entitlements, ...raceSubmissions, ...raceReports].map((r) => ctx.db.delete(r._id)),
     );
+
+    // Groups: leave every group (ownership passes on; an emptied group is
+    // deleted), then every daily step total + the lifetime stats row, and the
+    // wrong-invite-code throttle row keyed by this user id.
+    const memberships = await ctx.db
+      .query('groupMembers')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .collect();
+    for (const m of memberships) await detachMember(ctx, m);
+    await deleteStepDataFor(ctx, userId);
+    const joinLimits = await ctx.db
+      .query('rateLimits')
+      .withIndex('by_key', (q) => q.eq('key', joinRateKey(userId)))
+      .collect();
+    await Promise.all(joinLimits.map((r) => ctx.db.delete(r._id)));
 
     const sessions = await ctx.db
       .query('authSessions')

@@ -34,6 +34,8 @@ import RaceAdminScreen from './src/screens/RaceAdminScreen';
 import RecordScreen from './src/screens/RecordScreen';
 import ActivityDetailScreen from './src/screens/ActivityDetailScreen';
 import ActivityShareScreen from './src/screens/ActivityShareScreen';
+import GroupsScreen from './src/screens/GroupsScreen';
+import GroupDetailScreen from './src/screens/GroupDetailScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -234,6 +236,8 @@ function App() {
           />
           <Stack.Screen name="ActivityDetail" component={ActivityDetailScreen} />
           <Stack.Screen name="ActivityShare" component={ActivityShareScreen} options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="Groups" component={GroupsScreen} />
+          <Stack.Screen name="GroupDetail" component={GroupDetailScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

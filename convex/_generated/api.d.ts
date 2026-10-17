@@ -12,11 +12,13 @@ import type * as ai from "../ai.js";
 import type * as apple from "../apple.js";
 import type * as auth from "../auth.js";
 import type * as entitlements from "../entitlements.js";
+import type * as groups from "../groups.js";
 import type * as http from "../http.js";
 import type * as openrouter from "../openrouter.js";
 import type * as raceSubmissions from "../raceSubmissions.js";
 import type * as races from "../races.js";
 import type * as reports from "../reports.js";
+import type * as steps from "../steps.js";
 import type * as users from "../users.js";
 
 import type {
@@ -30,11 +32,13 @@ declare const fullApi: ApiFromModules<{
   apple: typeof apple;
   auth: typeof auth;
   entitlements: typeof entitlements;
+  groups: typeof groups;
   http: typeof http;
   openrouter: typeof openrouter;
   raceSubmissions: typeof raceSubmissions;
   races: typeof races;
   reports: typeof reports;
+  steps: typeof steps;
   users: typeof users;
 }>;
 

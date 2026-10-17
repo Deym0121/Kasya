@@ -55,7 +55,17 @@ export type RootStackParamList = {
   ActivityDetail: { id: string; justFinished?: boolean };
   /** Strava-style share image for one activity */
   ActivityShare: { id: string };
+  /** Groups hub: my level, my groups, create / join with code (guests get a sign-in prompt) */
+  Groups: undefined;
+  /** One group's leaderboard. `name` paints the title before the load; `created` shows the invite nudge. */
+  GroupDetail: { groupId: string; name?: string; created?: boolean };
 };
+
+/**
+ * Groups + leaderboards routes (root stack, no tab). Entry point for the
+ * steps dashboard: navigation.navigate(GROUP_ROUTES.groups).
+ */
+export const GROUP_ROUTES = { groups: 'Groups', groupDetail: 'GroupDetail' } as const;
 
 /** Props for root-stack screens (scan flow, Result, Paywall, Onboarding, SignIn). */
 export type RootScreenProps<T extends keyof RootStackParamList> = NativeStackScreenProps<

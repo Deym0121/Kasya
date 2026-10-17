@@ -148,7 +148,56 @@ export default defineSchema({
     count: v.float64(),
   }).index('by_user_day', ['userId', 'day']),
 
-  /** Fixed-window rate limiting for the public AI endpoints (per-IP + global). */
+  /**
+   * Step groups (friends' leaderboards). `code` is the 6-char invite code
+   * (unambiguous alphabet, unique). Rules: src/groups/rules.ts.
+   */
+  groups: defineTable({
+    name: v.string(),
+    ownerId: v.id('users'),
+    code: v.string(),
+    createdAt: v.float64(),
+  }).index('by_code', ['code']),
+
+  /** One row per (group, user). displayName is the public first name — never an email. */
+  groupMembers: defineTable({
+    groupId: v.id('groups'),
+    userId: v.id('users'),
+    displayName: v.string(),
+    joinedAt: v.float64(),
+    role: v.union(v.literal('owner'), v.literal('member')),
+  })
+    .index('by_group', ['groupId'])
+    .index('by_user', ['userId'])
+    .index('by_group_user', ['groupId', 'userId']),
+
+  /**
+   * Daily activity totals (Apple 5.1.3): uploaded ONLY while the user is in at
+   * least one group, readable ONLY by fellow members via groups.leaderboard,
+   * never used for ads. `day` is the user's LOCAL calendar day. Rows older
+   * than ~70 days are pruned on sync; all rows go when the user leaves their
+   * last group or deletes the account.
+   */
+  stepDays: defineTable({
+    userId: v.id('users'),
+    day: v.string(),
+    steps: v.float64(),
+    activeMin: v.float64(),
+    kcal: v.float64(),
+    updatedAt: v.float64(),
+  }).index('by_user_day', ['userId', 'day']),
+
+  /** Running lifetime step total (levels) — kept in sync by steps.sync deltas. */
+  userStats: defineTable({
+    userId: v.id('users'),
+    lifetimeSteps: v.float64(),
+    updatedAt: v.float64(),
+  }).index('by_user', ['userId']),
+
+  /**
+   * Fixed-window rate limiting: the public AI endpoints (per-IP + global) and
+   * wrong group invite codes (`groupjoin:<userId>`, hourly windows).
+   */
   rateLimits: defineTable({
     key: v.string(),
     windowStart: v.float64(),
