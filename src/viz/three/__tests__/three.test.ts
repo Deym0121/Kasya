@@ -218,3 +218,29 @@ describe('arms', () => {
     }
   });
 });
+
+describe('feet', () => {
+  it('plant on the floor in stance and pitch through the stride (toes up at strike, heel up at push-off)', () => {
+    const { replay, stage } = clip(1, 'run');
+    let minPitch = Infinity;
+    let maxPitch = -Infinity;
+    let planted = 0;
+    let sunk = 0;
+    for (let i = 0; i < 60; i++) {
+      const rig = buildRig(poseAt(replay, replay[i].t), stage, 'male');
+      for (const s of ['r', 'l'] as const) {
+        const f = rig.limbs[s];
+        const low = Math.min(f.heel.y, f.toe.y);
+        if (low < 0.012) planted++;
+        if (low < -0.015) sunk++;
+        const pitch = Math.atan2(f.toe.y - f.heel.y, Math.abs(f.toe.x - f.heel.x));
+        minPitch = Math.min(minPitch, pitch);
+        maxPitch = Math.max(maxPitch, pitch);
+      }
+    }
+    expect(planted).toBeGreaterThan(20);
+    expect(sunk).toBe(0);
+    expect(maxPitch).toBeGreaterThan(0.08); // toes up at heel strike / in swing
+    expect(minPitch).toBeLessThan(-0.6); // heel high at push-off
+  });
+});

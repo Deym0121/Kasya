@@ -19,6 +19,8 @@ interface GaitKinematics {
    * more as the arm comes forward.
    */
   arm: { gain: number; offset: number; elbow: number; elbowFwd: number };
+  /** ankle angle through the stride, degrees (+ dorsiflexion: toes toward the shin) */
+  ankle: AngleCurve;
 }
 
 /**
@@ -37,6 +39,8 @@ const WALK: GaitKinematics = {
   bounceLowPhase: 0.05,
   // relaxed swing, elbows softly bent
   arm: { gain: 0.65, offset: -2, elbow: 20, elbowFwd: 18 },
+  // heel strike, foot flat, the shin rolls over the foot, push-off, toes clear in swing
+  ankle: [[0, 0], [0.07, -6], [0.25, 4], [0.45, 10], [0.6, -15], [0.7, -8], [0.85, 2], [0.95, 1]],
 };
 
 const RUN: GaitKinematics = {
@@ -48,6 +52,7 @@ const RUN: GaitKinematics = {
   bounceLowPhase: 0.18,
   // driving swing with the elbow held near 90°
   arm: { gain: 1.45, offset: 0, elbow: 68, elbowFwd: 26 },
+  ankle: [[0, 5], [0.08, 12], [0.2, 18], [0.32, 2], [0.38, -20], [0.48, -12], [0.65, 0], [0.85, 7], [0.95, 6]],
 };
 
 /** Smooth periodic (cubic Hermite) interpolation of a stride curve at `phase`. */
@@ -126,6 +131,7 @@ export function makeSyntheticWalk(opts: SyntheticWalkOptions = {}): PoseFrame[] 
   const speed = opts.travel ? 2 * 1.3 * (thigh + shank) * 0.5 * strideFreq : 0;
   const startX = opts.travel ? 0.5 - dir * 0.5 * speed * durationSec : 0.5;
   const frames: PoseFrame[] = [];
+  const contact: number[] = [];
 
   for (let i = 0; i < n; i++) {
     const t = i / fps;
@@ -150,7 +156,19 @@ export function makeSyntheticWalk(opts: SyntheticWalkOptions = {}): PoseFrame[] 
       const kneeY = hipY + thigh * Math.cos(th);
       const ankleX = kneeX + dir * shank * Math.sin(sh);
       const ankleY = kneeY + shank * Math.cos(sh);
-      return { kneeX, kneeY, ankleX, ankleY, swing: Math.sin(th) };
+      // The foot pitches with the shin and the ankle angle: toes up at heel strike,
+      // flat through mid-stance, heel high at push-off.
+      const pitch = sh + rad(sampleCurve(kin.ankle, phase));
+      const dx = dir * Math.cos(pitch);
+      const dy = -Math.sin(pitch);
+      const nx = dir * Math.sin(pitch);
+      const ny = Math.cos(pitch);
+      const heelX = ankleX - 0.028 * dx + 0.042 * nx;
+      const heelY = ankleY - 0.028 * dy + 0.042 * ny;
+      const toeX = ankleX + 0.09 * dx + 0.032 * nx;
+      const toeY = ankleY + 0.09 * dy + 0.032 * ny;
+      const stance = ((phase % 1) + 1) % 1 < kin.stanceFraction;
+      return { kneeX, kneeY, ankleX, ankleY, heelX, heelY, toeX, toeY, stance, swing: Math.sin(th) };
     };
     const L = leg(phaseL, 1);
     const R = leg(phaseR, rightReach);
@@ -195,13 +213,47 @@ export function makeSyntheticWalk(opts: SyntheticWalkOptions = {}): PoseFrame[] 
     put(LANDMARK.RIGHT_KNEE, R.kneeX, R.kneeY, 0.05);
     put(LANDMARK.LEFT_ANKLE, L.ankleX, L.ankleY, -0.05);
     put(LANDMARK.RIGHT_ANKLE, R.ankleX, R.ankleY, 0.05);
-    // Feet point the way you travel: heel behind the ankle, toes ahead.
-    put(LANDMARK.LEFT_HEEL, L.ankleX - dir * 0.02, L.ankleY + 0.02, -0.05);
-    put(LANDMARK.RIGHT_HEEL, R.ankleX - dir * 0.02, R.ankleY + 0.02, 0.05);
-    put(LANDMARK.LEFT_FOOT_INDEX, L.ankleX + dir * 0.05, L.ankleY + 0.03, -0.05);
-    put(LANDMARK.RIGHT_FOOT_INDEX, R.ankleX + dir * 0.05, R.ankleY + 0.03, 0.05);
+    put(LANDMARK.LEFT_HEEL, L.heelX, L.heelY, -0.05);
+    put(LANDMARK.RIGHT_HEEL, R.heelX, R.heelY, 0.05);
+    put(LANDMARK.LEFT_FOOT_INDEX, L.toeX, L.toeY, -0.05);
+    put(LANDMARK.RIGHT_FOOT_INDEX, R.toeX, R.toeY, 0.05);
 
+    // lowest point (largest y) of any foot that is in stance this frame
+    const planted = [L, R].filter((f) => f.stance).map((f) => Math.max(f.heelY, f.toeY));
+    contact.push(planted.length ? Math.max(...planted) : NaN);
     frames.push({ t: t * 1000, landmarks: lm });
+  }
+  // Keep planted feet ON the floor: shift each stance frame so its planted foot
+  // touches one ground level; flight frames take the correction interpolated
+  // between their neighbours (the bounce still lifts the body in flight).
+  const known = contact.map((c, i) => [i, c] as const).filter(([, c]) => Number.isFinite(c));
+  if (known.length) {
+    const ground = known.reduce((s, [, c]) => s + c, 0) / known.length;
+    const corr = contact.map((c) => (Number.isFinite(c) ? ground - c : NaN));
+    for (let i = 0; i < corr.length; i++) {
+      if (Number.isFinite(corr[i])) continue;
+      let a = i - 1;
+      while (a >= 0 && !Number.isFinite(corr[a])) a--;
+      let b = i + 1;
+      while (b < corr.length && !Number.isFinite(corr[b])) b++;
+      const ca = a >= 0 ? corr[a] : corr[b];
+      const cb = b < corr.length ? corr[b] : ca;
+      corr[i] = a >= 0 && b < corr.length ? ca + ((cb - ca) * (i - a)) / (b - a) : ca;
+    }
+    // a light binomial smooth, so the hips don't kink where stance hands over to flight
+    const at = (i: number) => corr[Math.min(corr.length - 1, Math.max(0, i))];
+    const smoothCorr = corr.map((_, i) => (at(i - 2) + 4 * at(i - 1) + 6 * at(i) + 4 * at(i + 1) + at(i + 2)) / 16);
+    // ...and never through the floor: lift where a foot would sink, eased in and out
+    // (widen the lift, then smooth it) so the body still moves without kinks.
+    const feet = [LANDMARK.LEFT_HEEL, LANDMARK.RIGHT_HEEL, LANDMARK.LEFT_FOOT_INDEX, LANDMARK.RIGHT_FOOT_INDEX];
+    const sink = frames.map((f, i) => Math.max(0, Math.max(...feet.map((k) => f.landmarks[k].y)) + smoothCorr[i] - ground));
+    const sk = (i: number) => sink[Math.min(sink.length - 1, Math.max(0, i))];
+    const wide = sink.map((_, i) => Math.max(sk(i - 2), sk(i - 1), sk(i), sk(i + 1), sk(i + 2)));
+    const wk = (i: number) => wide[Math.min(wide.length - 1, Math.max(0, i))];
+    const lift = wide.map((_, i) => (wk(i - 2) + 4 * wk(i - 1) + 6 * wk(i) + 4 * wk(i + 1) + wk(i + 2)) / 16);
+    frames.forEach((f, i) => {
+      for (const p of f.landmarks) p.y += smoothCorr[i] - lift[i];
+    });
   }
   return frames;
 }
