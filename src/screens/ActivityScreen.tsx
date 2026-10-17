@@ -11,7 +11,8 @@ import { session } from '../activity/session';
 import { useRecording, useRecordingActive, useNow } from '../activity/useRecording';
 import { liveMovingSec } from '../activity/recorder';
 import { totals, weekDays, inThisWeek } from '../activity/finalize';
-import { getHealthState, connectHealth, syncHealth, weekOfSteps, type HealthState } from '../activity/healthSync';
+import { getHealthState, connectHealth, syncHealth, type HealthState } from '../activity/healthSync';
+import { StepsDashboard } from '../activity/StepsDashboard';
 import { healthAvailable, HEALTH_NAME } from '../activity/health';
 import {
   formatDuration,
@@ -38,16 +39,16 @@ export default function ActivityScreen({ navigation }: Props) {
   const [list, setList] = useState<ActivitySummary[]>([]);
   const [filter, setFilter] = useState<Sport | 'all'>('all');
   const [health, setHealth] = useState<HealthState | null>(null);
-  const [steps, setSteps] = useState<{ day: string; steps: number }[] | null>(null);
+  const [dashKey, setDashKey] = useState(0);
   const [connecting, setConnecting] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [showHow, setShowHow] = useState(false);
 
   const refresh = useCallback(async () => {
-    const [acts, h, st] = await Promise.all([listActivities(), getHealthState(), weekOfSteps().catch(() => null)]);
+    const [acts, h] = await Promise.all([listActivities(), getHealthState()]);
     setList(acts);
     setHealth(h);
-    setSteps(st);
+    setDashKey((k) => k + 1);
     // tabs stay mounted for days: re-read the clock on every refresh so "this
     // week" and today's bar roll over
     setNow(Date.now());
@@ -91,15 +92,16 @@ export default function ActivityScreen({ navigation }: Props) {
   const days = weekDays(list, nowDate, filter === 'all' ? undefined : filter);
   const maxDay = Math.max(...days, 1);
   const today = (nowDate.getDay() + 6) % 7;
-  const todaySteps = steps?.[steps.length - 1]?.steps ?? null;
-  const maxSteps = Math.max(...(steps ?? []).map((d) => d.steps), 1);
   const canHealth = Platform.OS === 'ios' && healthAvailable();
 
   return (
     <ScreenContainer title="Activity" edges={['top']} brand="mark">
       <LiveBanner onPress={() => navigation.navigate('Record')} />
 
+      <StepsDashboard refreshKey={dashKey} onConnectHealth={canHealth && !health?.connected ? connect : undefined} />
+
       {/* Start */}
+      <View style={{ height: spacing.xl }} />
       <Card style={styles.startCard}>
         <Text style={T.h2}>Record an activity</Text>
         <Text style={[T.small, { marginTop: 2 }]}>GPS distance, pace per km, splits and your route — even with the screen locked.</Text>
@@ -121,33 +123,6 @@ export default function ActivityScreen({ navigation }: Props) {
           ))}
         </View>
       </Card>
-
-      {/* Steps */}
-      {steps && steps.length > 0 ? (
-        <Card style={{ marginTop: spacing.md }}>
-          <View style={styles.cardHead}>
-            <Label>Steps today</Label>
-            <Text style={T.small}>{health?.connected ? `From ${HEALTH_NAME}` : 'From this phone'}</Text>
-          </View>
-          <Text style={styles.bigNum}>{(todaySteps ?? 0).toLocaleString()}</Text>
-          <View style={styles.bars}>
-            {steps.map((d, i) => (
-              <View key={d.day} style={styles.barCol} accessible accessibilityLabel={`${d.day}: ${d.steps.toLocaleString()} steps`}>
-                <View style={styles.barBox}>
-                  <View
-                    style={[
-                      styles.barFill,
-                      { height: `${Math.max(4, Math.round((d.steps / maxSteps) * 100))}%` as const },
-                      i === steps.length - 1 && { backgroundColor: colors.accent },
-                    ]}
-                  />
-                </View>
-                <Text style={styles.barLbl}>{DAY_LETTERS[(new Date(d.day + 'T12:00:00').getDay() + 6) % 7]}</Text>
-              </View>
-            ))}
-          </View>
-        </Card>
-      ) : null}
 
       {/* This week */}
       <View style={{ height: spacing.xl }} />

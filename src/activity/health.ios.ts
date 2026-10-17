@@ -3,8 +3,9 @@ import type { ActivitySummary, ActivityTrack, Fix, Sport } from './types';
 import type { HealthWorkout, HealthWorkoutHeader, WorkoutListing } from './health';
 import { fillDays, localDayKey } from './days';
 
-export type { HealthWorkout, HealthWorkoutHeader, WorkoutListing } from './health';
+export type { HealthWorkout, HealthWorkoutHeader, WorkoutListing, HeartRatePoint } from './health';
 export { localDayKey, fillDays } from './days';
+import type { HeartRatePoint } from './health';
 
 /**
  * Apple Health bridge (@kingstinct/react-native-healthkit). The native module
@@ -53,13 +54,22 @@ const ROUTE = 'HKWorkoutRouteTypeIdentifier' as const;
 const DIST_FOOT = 'HKQuantityTypeIdentifierDistanceWalkingRunning' as const;
 const DIST_BIKE = 'HKQuantityTypeIdentifierDistanceCycling' as const;
 
+const ACTIVE_KCAL = 'HKQuantityTypeIdentifierActiveEnergyBurned' as const;
+const EXERCISE = 'HKQuantityTypeIdentifierAppleExerciseTime' as const;
+const HEART = 'HKQuantityTypeIdentifierHeartRate' as const;
+const RESTING_HEART = 'HKQuantityTypeIdentifierRestingHeartRate' as const;
+
 const READ = [
   WORKOUT,
   ROUTE,
   'HKQuantityTypeIdentifierStepCount',
-  'HKQuantityTypeIdentifierHeartRate',
+  HEART,
   DIST_FOOT,
   DIST_BIKE,
+  // the daily dashboard: active calories, exercise minutes, resting heart rate
+  ACTIVE_KCAL,
+  EXERCISE,
+  RESTING_HEART,
 ] as const;
 
 const SHARE = [WORKOUT, ROUTE, DIST_FOOT, DIST_BIKE] as const;
@@ -241,6 +251,68 @@ export async function healthDailySteps(days: number): Promise<{ day: string; ste
     return fillDays(filled, days, now);
   } catch {
     return [];
+  }
+}
+
+/** Per-day totals of active calories or exercise minutes for the last `days` local days, oldest first. */
+export async function healthDailySums(kind: 'kcal' | 'exerciseMin', days: number): Promise<{ day: string; value: number }[]> {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1));
+  try {
+    const opts = { filter: { date: { startDate: start, endDate: now } } };
+    const buckets =
+      kind === 'kcal'
+        ? await need().queryStatisticsCollectionForQuantity(ACTIVE_KCAL, ['cumulativeSum'], start, { day: 1 }, { ...opts, unit: 'kcal' })
+        : await need().queryStatisticsCollectionForQuantity(EXERCISE, ['cumulativeSum'], start, { day: 1 }, { ...opts, unit: 'min' });
+    const filled = fillDays(
+      buckets
+        .filter((b) => b.startDate)
+        .map((b) => ({ day: localDayKey(new Date(b.startDate!)), steps: Math.round(b.sumQuantity?.quantity ?? 0) })),
+      days,
+      now,
+    );
+    return filled.map((d) => ({ day: d.day, value: d.steps }));
+  } catch {
+    return [];
+  }
+}
+
+/** Today's heart-rate samples, oldest first, thinned to about one per 2 minutes. */
+export async function healthHeartRateToday(): Promise<HeartRatePoint[]> {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  try {
+    const samples = await need().queryQuantitySamples(HEART, {
+      filter: { date: { startDate: start, endDate: now } },
+      unit: 'count/min',
+      ascending: true,
+      limit: 0,
+    });
+    const out: HeartRatePoint[] = [];
+    for (const smp of samples) {
+      const t = new Date(smp.startDate).getTime();
+      if (out.length && t - out[out.length - 1].t < 120_000) continue;
+      out.push({ t, bpm: Math.round(smp.quantity) });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+export async function healthRestingHeartRate(): Promise<number | null> {
+  const now = new Date();
+  const start = new Date(now.getTime() - 7 * 86400_000);
+  try {
+    const samples = await need().queryQuantitySamples(RESTING_HEART, {
+      filter: { date: { startDate: start, endDate: now } },
+      unit: 'count/min',
+      ascending: false,
+      limit: 1,
+    });
+    return samples[0] ? Math.round(samples[0].quantity) : null;
+  } catch {
+    return null;
   }
 }
 

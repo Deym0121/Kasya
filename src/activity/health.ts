@@ -68,4 +68,25 @@ export async function saveWorkoutToHealth(_s: ActivitySummary, _t: ActivityTrack
   return false;
 }
 
+/** Per-day totals of active calories ('kcal') or exercise minutes ('exerciseMin'), oldest first. */
+export async function healthDailySums(_kind: 'kcal' | 'exerciseMin', _days: number): Promise<{ day: string; value: number }[]> {
+  return [];
+}
+
+export interface HeartRatePoint {
+  /** epoch ms */
+  t: number;
+  bpm: number;
+}
+
+/** Today's heart-rate samples, oldest first (watch readings synced to Health). */
+export async function healthHeartRateToday(): Promise<HeartRatePoint[]> {
+  return [];
+}
+
+/** The most recent resting heart rate in the last week, if the watch records it. */
+export async function healthRestingHeartRate(): Promise<number | null> {
+  return null;
+}
+
 export { localDayKey, fillDays } from './days';
