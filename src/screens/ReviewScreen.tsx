@@ -125,22 +125,24 @@ export default function ReviewScreen({ navigation, route }: Props) {
       </Card>
 
       <View style={{ height: spacing.xl }} />
-      <Label>{videoUri ? 'Your video · skeleton overlay' : 'Movement replay'}</Label>
-      <View style={{ height: spacing.sm }} />
       {videoUri ? (
-        <VideoReplay videoUri={videoUri} frames={frames} />
-      ) : (
         <>
-          <XraySkeleton frames={frames} flagged={flaggedJoints} />
-          {focusAreas.length ? (
-            <Text style={styles.caption}>
-              The glowing joints ({focusAreas.join(', ')}) are where your movement stood out this scan — a spot to
-              focus on, not a sign of injury.
-            </Text>
-          ) : (
-            <Text style={styles.caption}>Your major joints are marked — this is a replay of the motion we captured.</Text>
-          )}
+          <Label>Your video · skeleton overlay</Label>
+          <View style={{ height: spacing.sm }} />
+          <VideoReplay videoUri={videoUri} frames={frames} />
+          <View style={{ height: spacing.xl }} />
         </>
+      ) : null}
+      <Label>Movement replay · 3D</Label>
+      <View style={{ height: spacing.sm }} />
+      <XraySkeleton frames={frames} flagged={flaggedJoints} />
+      {focusAreas.length ? (
+        <Text style={styles.caption}>
+          The glowing joints ({focusAreas.join(', ')}) are where your movement stood out this scan — a spot to
+          focus on, not a sign of injury.
+        </Text>
+      ) : (
+        <Text style={styles.caption}>Your major joints are marked — this is a replay of the motion we captured.</Text>
       )}
 
       {report.walkthrough && report.walkthrough.length > 0 ? (

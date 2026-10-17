@@ -5,6 +5,22 @@
 
 ## ⭐ RESUME HERE — exact next actions
 
+-10. **3D GAIT REPLAY (2026-10-17, branch `viz/3d-body-replay`, not in build 33)** —
+   The Review screen's movement replay is now a real 3D figure the user can
+   drag to turn (Side / 3D / Front presets): **Human** (male or female runner,
+   choice remembered on device), **X-ray** (glowing see-through body + skeleton)
+   and **Skeleton** (skull, 24 vertebrae, ribs, pelvis, long bones, hand/foot
+   bones). Code: `src/viz/three/` (pure TS: rig = 2D side-view landmarks lifted
+   to 3D by anatomy; mesh/human/bones = lofted surfaces; render = lighting,
+   culling, painter's sort) drawn by `src/viz/Stage3D.tsx` (Skia vertices —
+   Skia is already in the binary, so this is **OTA-able to runtime 1.3.0**) and
+   `Stage3D.web.tsx` (WebGL). Shape/colour cached per vertex; level of detail
+   and frame pacing adapt to the device. The review now shows the 3D replay
+   even right after a scan (below the video overlay). Built on the other
+   session's restored Human/Anatomy/Skeleton work (commit 110bc98); the 2D SVG
+   figure code it replaces was removed. Not yet seen on a real iPhone — check
+   smoothness in TestFlight after an OTA.
+
 -9. **v1.3.0 BUILD 33 UPLOADED TO APP STORE CONNECT (2026-10-15 22:00 PHT)** —
    EAS build 93fe4b20-03f5-4b88-8bd5-13ee9b08cf0e, commit 8194871, EAS-managed
    signing (Apple ID login, team GH24ATQ8FD; new dist cert + profile with
