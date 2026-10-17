@@ -423,12 +423,50 @@ function TrendCard({
           ))}
         </View>
       ) : null}
+      {period === 'month' ? <MonthCalendar byDay={byDay} now={now} goals={goals} /> : null}
       <View style={styles.trendFoot}>
         <FootStat label="Total" value={`${total.toLocaleString()}${unit}`} />
         <FootStat label="Daily avg" value={`${Math.round(total / (period === 'day' ? 7 : elapsed)).toLocaleString()}${unit}`} />
         <FootStat label="Goal days" value={`${period === 'day' ? keys.filter((k) => goalMet(byDay.get(k), goals)).length : summary.daysMet} / ${period === 'day' ? 7 : elapsed}`} />
       </View>
     </Card>
+  );
+}
+
+/** The month as a calendar, Monday first; goal days filled orange. */
+function MonthCalendar({ byDay, now, goals }: { byDay: Map<string, DayMetrics>; now: Date; goals: Goals }) {
+  const today = localDayKey(now);
+  const days = periodDays('month', now);
+  const lead = (new Date(now.getFullYear(), now.getMonth(), 1).getDay() + 6) % 7;
+  const cells: (string | null)[] = [...Array(lead).fill(null), ...days];
+  while (cells.length % 7) cells.push(null);
+  const weeks = Array.from({ length: cells.length / 7 }, (_, w) => cells.slice(w * 7, w * 7 + 7));
+  return (
+    <View style={styles.cal} accessibilityLabel="Goal days this month">
+      <View style={styles.calRow}>
+        {WEEK_LETTERS.map((l, i) => (
+          <Text key={i} style={styles.calHead}>
+            {l}
+          </Text>
+        ))}
+      </View>
+      {weeks.map((wk, w) => (
+        <View key={w} style={styles.calRow}>
+          {wk.map((k, i) => {
+            if (!k) return <View key={i} style={styles.calCell} />;
+            const met = k <= today && goalMet(byDay.get(k), goals);
+            const isToday = k === today;
+            return (
+              <View key={k} style={styles.calCell}>
+                <View style={[styles.calDot, met && styles.stripMet, !met && isToday && styles.stripToday, k > today && { opacity: 0.35 }]}>
+                  <Text style={[styles.calDate, met && { color: colors.onDark }, isToday && { color: colors.ink }]}>{Number(k.slice(8))}</Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      ))}
+    </View>
   );
 }
 
@@ -688,6 +726,12 @@ const styles = StyleSheet.create({
   trendLabels: { flexDirection: 'row', marginTop: 2 },
   trendLbl: { fontFamily: fonts.medium, fontSize: 11, color: colors.muted, textAlign: 'center' },
   trendFoot: { flexDirection: 'row', marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.line, gap: spacing.sm },
+  cal: { marginTop: spacing.lg, gap: 6 },
+  calRow: { flexDirection: 'row' },
+  calHead: { flex: 1, textAlign: 'center', fontFamily: fonts.semibold, fontSize: 11, color: colors.muted },
+  calCell: { flex: 1, alignItems: 'center' },
+  calDot: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceAlt, borderWidth: 1.5, borderColor: 'transparent' },
+  calDate: { fontFamily: fonts.semibold, fontSize: 12, color: colors.inkSoft },
   footVal: { fontFamily: fonts.bold, fontSize: 15, color: colors.ink },
   footLbl: { fontFamily: fonts.regular, fontSize: 11, color: colors.muted, marginTop: 1 },
   source: { marginTop: spacing.sm },
