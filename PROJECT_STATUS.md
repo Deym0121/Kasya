@@ -5,6 +5,14 @@
 
 ## ⭐ RESUME HERE — exact next actions
 
+-14. **BUILD 34 (1.3.0) BUILT 2026-10-18** — EAS build a3a57904-b73c-4938-b859-da63456a2de9, commit f581a54,
+   FINISHED; auto-submit scheduled (submission 090fa4cb-1233-4e56-969a-424df3166507, ASC API key on EAS).
+   Build log verified: EXPO_PUBLIC_CONVEX_URL = proficient-cricket-154 (eas.json profile `env` beats the EAS
+   "production" environment — eas-cli `{...serverEnvVars, ...buildProfile.env}`), ExpoImagePicker 56.0.25 +
+   ExpoImageManipulator 56.0.26 compiled in → club photo upload works on this build (feature-detected; build 33
+   keeps emblems). Same runtime 1.3.0, so 1.3.0 OTAs reach both 33 and 34. This is the build to submit for
+   review (App Privacy: Fitness + Photos). Other expo packages left at build-33 patch versions on purpose.
+
 -13. **DEPLOYED + OTA'D (2026-10-18)** — `npx convex deploy` of commit 3fa1c9b to PROD `proficient-cricket-154`
    (groups, steps, clubs, clubStats + their tables/indexes; smoke-tested `clubs:rankings` / `clubs:search`).
    OTA **update group 8ef27442-1d67-4ddb-b708-62a6e730abab**, branch/channel production, runtime 1.3.0, iOS —
