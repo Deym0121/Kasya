@@ -5,6 +5,20 @@
 
 ## ⭐ RESUME HERE — exact next actions
 
+-13. **DEPLOYED + OTA'D (2026-10-18)** — `npx convex deploy` of commit 3fa1c9b to PROD `proficient-cricket-154`
+   (groups, steps, clubs, clubStats + their tables/indexes; smoke-tested `clubs:rankings` / `clubs:search`).
+   OTA **update group 8ef27442-1d67-4ddb-b708-62a6e730abab**, branch/channel production, runtime 1.3.0, iOS —
+   reaches TestFlight build 33 only (v1.2 users are runtime 1.2.0, untouched). Not in it: the 3D replay branch.
+   ⚠ **HOW 1.3.0 OTAs MUST BE BUILT until v1.2 users move to prod:** the EAS *production environment* still holds
+   the OLD backend (`EXPO_PUBLIC_CONVEX_URL=https://youthful-civet-99…`) on purpose for runtime 1.2.0. A plain
+   `eas update --environment production` would point build 33 back at the old backend. So: bundle locally with
+   the eas.json production-profile values forced —
+   `env EXPO_PUBLIC_CONVEX_URL=https://proficient-cricket-154.convex.cloud EXPO_PUBLIC_AI_PROXY_URL=https://proficient-cricket-154.convex.site/api/explain EXPO_PUBLIC_REVENUECAT_IOS_KEY=<eas.json> EXPO_PUBLIC_GOOGLE_SIGNIN=1 EXPO_PUBLIC_APPLE_SIGNIN=1 NODE_ENV=production npx expo export --platform ios --output-dir dist --dump-assetmap --clear`
+   → grep the .hbc (prod URL present, `youthful-civet-99` absent) → `npx eas-cli update --channel production
+   --platform ios --skip-bundler --input-dir dist --environment production --non-interactive -m "…"`.
+   No `.env` exists on this Mac. Still open: ADMIN_EMAILS on prod (club report review), App Privacy (Fitness;
+   Photos once build 34 ships photos), build 34 for club photos.
+
 -12. **RUNNING CLUBS (2026-10-17, branch `feature/step-dashboard`, backend NOT deployed)** —
    Groups screen is now "Groups & clubs" with Friends / Running clubs tabs. A club is a group (`kind: 'club'`) with a
    public face: photo or emblem, home country, city, about, monthly km goal, open (join from the page) or
