@@ -72,9 +72,12 @@ Kasya Premium is an auto-renewing subscription. Payment is charged to your Apple
 
 Kasya provides wellness estimates, not medical advice.
 
-Terms of Use: https://proficient-cricket-154.convex.site/terms
+Terms of Use (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 Privacy Policy: https://proficient-cricket-154.convex.site/privacy
 ```
+
+(The Terms line keeps Apple's standard EULA — it already works and satisfies 3.1.2. Kasya's own Terms page,
+with the club community rules, is linked inside the app at sign-in and when creating/joining a club.)
 
 ### What's New in This Version (≤4000)
 
