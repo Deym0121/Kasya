@@ -16,6 +16,7 @@ import { Feather } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { RootScreenProps } from '../navigation';
 import { colors, spacing, radius, fonts } from '../theme';
+import { LegalNote } from '../legal/LegalNote';
 import { Button, TextField } from '../components';
 import { getLastEmail, getPlanFor, setOnboarded, setUser } from '../storage/session';
 import {
@@ -262,6 +263,7 @@ export default function SignInScreen({ navigation }: Props) {
               {notice.text}
             </Text>
           )}
+          <LegalNote style={styles.legal} />
         </View>
       ) : (
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -371,6 +373,7 @@ export default function SignInScreen({ navigation }: Props) {
             </>
           )}
           <Button label="Continue as guest" variant="ghost" onPress={() => enterApp('')} />
+          <LegalNote style={styles.legal} />
 
           <Image
             source={require('../../assets/art/auth-footer.webp')}
@@ -387,6 +390,7 @@ export default function SignInScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
+  legal: { textAlign: 'center', marginTop: spacing.lg, paddingHorizontal: spacing.md },
   hero: { paddingHorizontal: spacing.xl, paddingTop: spacing.sm, paddingBottom: spacing.xxl + spacing.md, overflow: 'hidden' },
   back: { width: 36, height: 36, justifyContent: 'center', marginLeft: -8 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: spacing.xs },

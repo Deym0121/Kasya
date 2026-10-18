@@ -15,7 +15,7 @@ import {
 } from '../monetization/entitlements';
 import { savingsPct, trialDisclosure } from '../monetization/pricing';
 import { FREE_SCANS_PER_WEEK } from '../monetization/limits';
-import { PRIVACY_URL } from '../config/siteUrl';
+import { PRIVACY_URL, TERMS_URL } from '../config/siteUrl';
 
 // Only benefits that are REALLY gated in the app right now — recording, watch
 // sync, history, shoe matches and share images stay free (and the copy says so).
@@ -330,12 +330,12 @@ export default function PaywallScreen({ navigation }: Props) {
         </Pressable>
         <Text style={styles.legalDot}>·</Text>
         <Pressable
-          onPress={() => Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}
+          onPress={() => Linking.openURL(TERMS_URL)}
           accessibilityRole="link"
           accessibilityLabel="Terms of Use"
           hitSlop={8}
         >
-          <Text style={styles.legalLink}>Terms of Use (EULA)</Text>
+          <Text style={styles.legalLink}>Terms of Use</Text>
         </Pressable>
       </View>
     </ScreenContainer>

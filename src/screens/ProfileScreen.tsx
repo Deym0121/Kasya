@@ -18,7 +18,7 @@ import {
 import { getPlan, isBillingLive, presentCustomerCenter } from '../monetization/entitlements';
 import { signOutCloud, deleteCloudAccount, currentUserEmail } from '../convex/auth';
 import { clearRemoteReports, clearSyncedMap } from '../sync/reportSync';
-import { PRIVACY_URL, SUPPORT_URL } from '../config/siteUrl';
+import { PRIVACY_URL, SUPPORT_URL, TERMS_URL } from '../config/siteUrl';
 
 type RowProps = { icon: ComponentProps<typeof Feather>['name']; label: string; onPress: () => void; danger?: boolean };
 function Row({ icon, label, onPress, danger }: RowProps) {
@@ -251,6 +251,12 @@ export default function ProfileScreen({ navigation }: Props) {
           icon="shield"
           label="Privacy Policy"
           onPress={() => Linking.openURL(PRIVACY_URL)}
+        />
+        <View style={styles.div} />
+        <Row
+          icon="file-text"
+          label="Terms of Use"
+          onPress={() => Linking.openURL(TERMS_URL)}
         />
         <View style={styles.div} />
         <Row

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator, TextInput } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { colors, fonts, radius, spacing, type as T } from '../theme';
 import { Button, Card, Label } from '../components';
@@ -9,6 +10,7 @@ import { countryName, flagEmoji, guessCountry } from './countries';
 import { CLUB_LIMITS, CLUB_METRICS, METRIC_LABEL, addMonths, localMonthKey, type ClubMetric } from './rules';
 import { loadRankings, searchClubs, type ClubRankRow, type ClubSearchRow, type RankingsLoad } from './api';
 import { ClubAvatar, ClubRankItem, CountryPicker, placeLabel } from './ui';
+import { getHiddenClubs } from './hidden';
 
 /**
  * The Clubs tab of the Groups screen: my clubs, start / find a club, and the
@@ -56,6 +58,7 @@ export function ClubsHub({
   const [query, setQuery] = useState('');
   const [found, setFound] = useState<ClubSearchRow[] | null>(null);
   const [searching, setSearching] = useState(false);
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
   const ticket = useRef(0);
 
   const monthKey = useMemo(() => {
@@ -66,6 +69,7 @@ export function ClubsHub({
   const load = useCallback(async () => {
     const mine = ++ticket.current;
     setBoard(null);
+    getHiddenClubs().then(setHidden);
     const res = await loadRankings(monthKey, scope === 'country' ? country : null, metric);
     if (mine === ticket.current) setBoard(res);
   }, [monthKey, scope, country, metric]);
@@ -73,6 +77,13 @@ export function ClubsHub({
   useEffect(() => {
     load();
   }, [load, clubs.length]);
+
+  // Back from a club page: pick up a club I just hid (or showed again).
+  useFocusEffect(
+    useCallback(() => {
+      getHiddenClubs().then(setHidden);
+    }, []),
+  );
 
   // Club search, debounced.
   useEffect(() => {
@@ -99,7 +110,8 @@ export function ClubsHub({
         ? `You’re in ${CLUB_LIMITS.maxClubsPerUser} clubs — leave one to start another.`
         : 'You’re in the most clubs and groups you can join — leave one to start a club.';
 
-  const rows: ClubRankRow[] = board?.status === 'ready' ? board.rows : [];
+  // Clubs I hid stay out of my lists (their rank numbers keep their place).
+  const rows: ClubRankRow[] = board?.status === 'ready' ? board.rows.filter((r) => r.isMine || !hidden.has(r.id)) : [];
   const listedIds = new Set(rows.map((r) => r.id));
   const myExtra = board?.status === 'ready' ? board.mine.filter((m) => !listedIds.has(m.id)) : [];
   const scopeName = scope === 'country' ? countryName(country) : 'the world';
@@ -271,7 +283,7 @@ export function ClubsHub({
             No club by that name yet. Invite-only clubs don’t need to be found — join them with their code on the Friends tab.
           </Text>
         ) : null}
-        {(found ?? []).map((c) => (
+        {(found ?? []).filter((c) => c.isMine || !hidden.has(c.id)).map((c) => (
           <Pressable
             key={c.id}
             onPress={() => onOpenClub(c.id, c.name)}

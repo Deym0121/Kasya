@@ -19,6 +19,8 @@ import {
 } from '../clubs/rules';
 import { joinOpenClub, loadClubProfile, reportClub, type ClubProfile, type ProfileLoad } from '../clubs/api';
 import { ClubAvatar } from '../clubs/ui';
+import { getHiddenClubs, setClubHidden } from '../clubs/hidden';
+import { LegalNote } from '../legal/LegalNote';
 
 type Props = RootScreenProps<'Club'>;
 type Phase = 'loading' | ProfileLoad['status'];
@@ -74,10 +76,12 @@ export default function ClubScreen({ navigation, route }: Props) {
   const [reporting, setReporting] = useState(false);
   const [reason, setReason] = useState<ReportReason | null>(null);
   const [note, setNote] = useState('');
+  const [hiddenByMe, setHiddenByMe] = useState(false);
   const alive = useRef(true);
   const now = new Date();
 
   const load = useCallback(async () => {
+    getHiddenClubs().then((h) => alive.current && setHiddenByMe(h.has(clubId)));
     const res = await loadClubProfile(clubId, localMonthKey(new Date()));
     if (!alive.current) return;
     if (res.status === 'ready') {
@@ -135,6 +139,19 @@ export default function ClubScreen({ navigation, route }: Props) {
       setReporting(false);
       setClub({ ...club, reportedByMe: true });
     }
+  }
+
+  async function onToggleHidden() {
+    const next = !hiddenByMe;
+    await setClubHidden(clubId, next);
+    if (!alive.current) return;
+    setHiddenByMe(next);
+    setNotice({
+      ok: true,
+      text: next
+        ? 'Hidden — this club won’t show in your rankings or search. Only you see this change.'
+        : 'This club shows in your rankings and search again.',
+    });
   }
 
   const title = club?.name ?? route.params.name ?? 'Club';
@@ -259,6 +276,7 @@ export default function ClubScreen({ navigation, route }: Props) {
           ) : club.open ? (
             <>
               <Button label="Join club" variant="accent" icon="user-plus" onPress={onJoin} loading={busy === 'join'} />
+              <LegalNote privacy={false} lead="By joining you agree to the community rules in Kasya’s" style={{ textAlign: 'center' }} />
               <Button label="Share club" variant="secondary" icon="share" onPress={onShare} />
             </>
           ) : (
@@ -336,6 +354,17 @@ export default function ClubScreen({ navigation, route }: Props) {
               <Text style={styles.reportText}>Report this club</Text>
             </Pressable>
           )
+        ) : null}
+        {!club.isMember ? (
+          <Pressable
+            onPress={onToggleHidden}
+            accessibilityRole="button"
+            accessibilityLabel={hiddenByMe ? 'Show this club again' : 'Hide this club from my rankings and search'}
+            style={styles.reportLink}
+          >
+            <Feather name={hiddenByMe ? 'eye' : 'eye-off'} size={16} color={colors.muted} />
+            <Text style={styles.reportText}>{hiddenByMe ? 'Show this club again' : 'Hide this club'}</Text>
+          </Pressable>
         ) : null}
       </>
     );

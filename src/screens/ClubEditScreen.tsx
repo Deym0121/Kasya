@@ -22,6 +22,7 @@ import {
 import { createClub, loadClubProfile, removeClubPhoto, updateClub, uploadClubPhoto } from '../clubs/api';
 import { canPickPhoto, pickClubPhoto, type PickedPhoto } from '../clubs/photo';
 import { ClubAvatar, CountryPicker } from '../clubs/ui';
+import { LegalNote } from '../legal/LegalNote';
 
 type Props = RootScreenProps<'ClubEdit'>;
 
@@ -336,9 +337,14 @@ export default function ClubEditScreen({ navigation, route }: Props) {
         </Card>
 
         <Text style={[T.small, { marginTop: spacing.lg }]}>
-          Club name, photo and description are public on the rankings. Keep them friendly — clubs that get reported
-          are hidden while we review them.
+          Club name, photo and description are public in the rankings and search. Clubs that get reported are hidden
+          while we review them.
         </Text>
+        <LegalNote
+          privacy={false}
+          lead={`${editing ? 'By saving' : 'By creating a club'} you agree to the community rules (zero tolerance for objectionable content or abusive users) in Kasya’s`}
+          style={{ marginTop: spacing.sm }}
+        />
       </View>
 
       <CountryPicker

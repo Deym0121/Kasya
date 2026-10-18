@@ -1,5 +1,5 @@
 /**
- * Public pages (privacy policy, support) are served by the same Convex
+ * Public pages (privacy policy, terms of use, support) are served by the same Convex
  * deployment the build talks to — `<name>.convex.cloud` serves the API,
  * `<name>.convex.site` the HTTP routes. Deriving it keeps every link on the
  * backend of this build instead of a hard-coded deployment name.
@@ -15,3 +15,4 @@ export function siteUrlFrom(convexUrl: string | undefined): string {
 export const SITE_URL = siteUrlFrom(process.env.EXPO_PUBLIC_CONVEX_URL);
 export const PRIVACY_URL = `${SITE_URL}/privacy`;
 export const SUPPORT_URL = `${SITE_URL}/support`;
+export const TERMS_URL = `${SITE_URL}/terms`;
