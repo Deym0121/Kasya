@@ -1,6 +1,7 @@
 # Kasya 1.3.0 — App Store Connect listing (paste-ready)
 
-Build to submit: **1.3.0 (35)** — it carries the Terms agreement + "Hide this club" in the embedded bundle
+Build to submit: **1.3.0 (35)** — removes the `audio` background mode (1.3 (34) was rejected under 2.5.4) and
+carries the Terms agreement + "Hide this club" in the embedded bundle
 (App Review judges the embedded bundle, not later OTAs). Plain text only: no emoji, no `<` `>`.
 
 ---
@@ -52,7 +53,7 @@ SHOE FINDER
 
 ACTIVITY TRACKING
 • Record runs, walks, rides and hikes with GPS: distance, pace per km, splits, elevation, steps and cadence, even with your screen locked.
-• Voice cues every kilometer with your pace and time.
+• Voice cues every kilometer with your pace and time while Kasya is open.
 • Connects with Apple Health to bring in workouts, steps and heart rate from your Apple Watch, plus Garmin, COROS, Polar, Suunto and other watches that sync with Apple Health.
 • A daily activity score with steps, active minutes, calories and heart rate, weekly and monthly totals, and goal streaks.
 • Share your activity as an image with your route and stats.
@@ -87,7 +88,7 @@ Kasya now tracks your runs, walks, rides and hikes, syncs your watch, and adds r
 • Daily activity dashboard: a daily score, steps, active minutes, calories and heart rate, with weekly and monthly totals and the days you hit your goal.
 • Running clubs: create or join a club with its own photo, and race other clubs every month in the Philippines and worldwide by steps, distance and pace.
 • Groups with friends: invite with a code, weekly and monthly leaderboards, badges for the top 3, and levels.
-• Record with GPS: distance, pace per km, splits, elevation, steps and cadence, even with your screen locked, with voice cues every kilometer.
+• Record with GPS: distance, pace per km, splits, elevation, steps and cadence, even with your screen locked. Voice cues every kilometer while Kasya is open.
 • Sync your watch through Apple Health: Apple Watch, plus Garmin, COROS, Polar, Suunto and others.
 • Share your activity as an image.
 • Smarter gait analysis and shoe matches that respect your budget.
@@ -113,6 +114,8 @@ Not collected: Location (routes stay on device), Browsing/Search history, Diagno
 ## 4. App Review Information → Notes (add to the 1.3 notes in docs/release-v1.3.md)
 
 ```
+Background modes: the app declares only "location" (keeps GPS recording an activity with the screen locked, with the blue location indicator). The "audio" background mode flagged under Guideline 2.5.4 in build 34 has been removed in build 35; voice cues now play only while the app is on screen.
+
 Running clubs and groups (user-generated content):
 - Clubs are created in Activity tab > Groups & running clubs > Running clubs > Start a running club. Club name, photo, city and description are public in club rankings and search.
 - Users agree to the Terms of Use (zero tolerance for objectionable content or abusive users) on the sign-in screen and again when creating or joining a club. Terms: https://proficient-cricket-154.convex.site/terms

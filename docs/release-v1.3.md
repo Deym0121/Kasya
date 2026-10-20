@@ -7,7 +7,7 @@ Build: v1.3.0 (build 30), EAS-managed signing, branch `feature/activity-tracking
 Kasya now tracks your runs, walks, rides and hikes — and syncs your watch.
 
 • Record with GPS: distance, pace per km, splits, elevation, steps and cadence, with auto-pause. Keeps recording with your screen locked.
-• Voice cues every kilometer with your pace and time.
+• Voice cues every kilometer with your pace and time while Kasya is open.
 • Sync your watch through Apple Health — Apple Watch, plus Garmin, COROS, Polar, Suunto, Samsung and Amazfit via their own Health sync.
 • Share your activity: route + stats + the Kasya logo, square or story size, with an option to hide where you started and finished.
 • Smarter gait analysis: more accurate cadence on uneven strides, works whichever direction you walk, and no more phantom readings when you stand still.
@@ -19,7 +19,7 @@ Kasya now tracks your runs, walks, rides and hikes — and syncs your watch.
 
 - Sign in with Apple or Google (email/password sign-in is not shown in this version).
 - **Location**: used only while the user records an activity (Activity tab → Run/Walk/Ride/Hike → Start). "While Using" permission + the location background mode keep GPS recording with the screen locked, with the blue status-bar indicator. Location is never used when not recording. Routes are stored on the device only.
-- **Background audio**: speaks a short voice cue at each kilometer during a recording (toggle on the Record screen).
+- **Voice cues**: a short spoken cue at each kilometer while the app is on screen (toggle on the Record screen). No `audio` background mode — removed after the 2.5.4 rejection of build 34.
 - **HealthKit**: optional, from Activity tab → "Connect Apple Health". Reads workouts, workout routes, steps and heart rate so workouts from the user's watch appear in Kasya; writes the user's Kasya recordings back to Health. Health data stays on the device and is never used for advertising.
 - **Motion & Fitness**: step count and cadence during foot activities.
 - **Free vs Premium**: free accounts get 3 gait scans per 7 days — a 4th scan in a week opens the paywall by design. Premium: unlimited scans, AI coach, race submissions, PDF export.
@@ -41,4 +41,4 @@ Kasya now tracks your runs, walks, rides and hikes — and syncs your watch.
 
 1. Convex deployed (race submissions + ADMIN_EMAILS) — the paywall advertises submissions.
 2. Prices + 7-day trial set in App Store Connect (docs/pricing-v1.3.md).
-3. TestFlight pass on a real iPhone: record a short outdoor walk with the screen locked (voice cue at 1 km), connect Apple Health, share an image, a gait scan, the paywall.
+3. TestFlight pass on a real iPhone: record a short outdoor walk with the screen locked (GPS keeps recording; the 1 km voice cue plays only with Kasya on screen), connect Apple Health, share an image, a gait scan, the paywall.

@@ -1,14 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { session } from './session';
 import { computeSplits } from './splits';
 import { kmCueText } from './cues';
 
 /**
- * Per-km voice cues ("Kilometer 3. Pace 5:32…"). Driven by the session itself,
- * not by a screen, so cues keep coming with the phone locked in a pocket:
- * background GPS keeps JS alive, and on iOS the `audio` background mode plus
- * a ducking playback session let the voice play over the runner's music.
+ * Per-km voice cues ("Kilometer 3. Pace 5:32…"), driven by the session itself.
+ * They play only while Kasya is on screen: the app declares no `audio`
+ * background mode (App Review 2.5.4 rejected it for spoken cues), so a km
+ * crossed with the phone locked passes silently instead of being spoken late.
+ * A ducking playback session lets the voice play over the runner's music.
  * Imported once at startup (index.ts). Native modules are required lazily.
  */
 const KEY = 'kasya:voicecues:v1';
@@ -37,13 +38,13 @@ export async function setVoiceCues(on: boolean): Promise<void> {
   await AsyncStorage.setItem(KEY, on ? '1' : '0').catch(() => {});
 }
 
-/** Play over music (ducking it) and keep speaking with the screen locked. */
+/** Play over music (ducking it), even with the ringer switch on silent. */
 async function prepareAudio() {
   if (audioReady || Platform.OS === 'web') return;
   audioReady = true;
   try {
     const { setAudioModeAsync } = require('expo-audio');
-    await setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: true, interruptionMode: 'duckOthers' });
+    await setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: false, interruptionMode: 'duckOthers' });
   } catch {
     audioReady = false;
   }
@@ -86,6 +87,8 @@ session.subscribe(() => {
   if (km <= lastKm) return;
   lastKm = km;
   if (!enabled || stats.status !== 'recording') return;
+  // Foreground only (no background audio mode): skip, don't queue, a cue we can't play now.
+  if (Platform.OS !== 'web' && AppState.currentState !== 'active') return;
   const rec = session.recorder;
   const splits = rec ? computeSplits(rec.points) : [];
   const done = splits.filter((s) => s.distanceM >= 999);
