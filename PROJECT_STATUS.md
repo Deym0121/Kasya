@@ -5,6 +5,15 @@
 
 ## ⭐ RESUME HERE — exact next actions
 
+-15. **1.3 (34) REJECTED 2026-10-20 — Guideline 2.5.4** (submission 9dfeaef2-b0a0-4d5b-8052-8a9f710cadc6, iPad
+   Air M3): `audio` in UIBackgroundModes, reviewer found no persistent audio. User chose to REMOVE it (not argue
+   with a video): commit 542963c — UIBackgroundModes = `location` only; voice cues play only while Kasya is on
+   screen (km crossed while backgrounded is skipped). Same commit-range also ships the Terms agreement (sign-in,
+   club create/join), Profile → Terms of Use, paywall → /terms, "Hide this club". Legal pages DEPLOYED to prod
+   2026-10-20 (`/privacy` rewritten, new `/terms`, `/support`). **Build 35** EAS beae836c-7c51-4cd6-806c-6c6dd440357e,
+   auto-submit 572f0eb0-ce39-43bf-8350-e437b3e58eba. NEXT (user, in ASC): select build 35 on the 1.3 version, paste
+   the review note from docs/appstore-v1.3-listing.md §4, reply in Resolution Center, resubmit.
+
 -14. **BUILD 34 (1.3.0) BUILT 2026-10-18** — EAS build a3a57904-b73c-4938-b859-da63456a2de9, commit f581a54,
    FINISHED; auto-submit scheduled (submission 090fa4cb-1233-4e56-969a-424df3166507, ASC API key on EAS).
    Build log verified: EXPO_PUBLIC_CONVEX_URL = proficient-cricket-154 (eas.json profile `env` beats the EAS
