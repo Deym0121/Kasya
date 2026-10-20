@@ -123,7 +123,7 @@ Running clubs and groups (user-generated content):
 - Reporting: every club page has "Report this club"; three reports hide the club from rankings and search until we review it. We review reports within 24 hours and remove content or users that break the rules.
 - Blocking: "Hide this club" removes a club from the user's own rankings and search; club owners can remove members.
 - Only daily totals (steps, active minutes, active calories, run distance and time) are shared with group/club members. Routes, location and Health records never leave the device.
-- Contact: lloyd.bbedigital@gmail.com
+- Contact: joshualadero0121@gmail.com
 ```
 
 ## 5. Errors people hit when updating — and what this listing does about them

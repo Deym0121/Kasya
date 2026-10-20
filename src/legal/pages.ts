@@ -9,7 +9,7 @@
  * the community rules clubs need (1.2).
  */
 
-export const CONTACT_EMAIL = 'lloyd.bbedigital@gmail.com';
+export const CONTACT_EMAIL = 'joshualadero0121@gmail.com';
 export const LAST_UPDATED = 'October 18, 2026';
 export const APPLE_EULA_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 
